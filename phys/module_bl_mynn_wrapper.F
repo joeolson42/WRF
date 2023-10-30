@@ -443,12 +443,6 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
       ! First, create pressure differences (delp) across model layers
       do i=its,itf
          dx(i)=dxc
-!         delp(i,1)  = ps(i,j) - (p(i,2,j)*dz(i,1,j) + p(i,1,j)*dz(i,2,j))/(dz(i,1,j)+dz(i,2,j))
-!         do k=2,kte-1
-!            delp(i,k) = (p(i,k,j)*dz(i,k-1,j) + p(i,k-1,j)*dz(i,k,j))/(dz(i,k,j)+dz(i,k-1,j)) - &
-!                        (p(i,k+1,j)*dz(i,k,j) + p(i,k,j)*dz(i,k+1,j))/(dz(i,k,j)+dz(i,k+1,j))
-!         enddo
-!         delp(i,kte) = delp(i,kte-1)
       enddo
 
 !      do i=its,itf
@@ -459,8 +453,8 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
 !      enddo
 
       !In WRF, mixing ratio is incoming. Convert to specific humidity:
-       do k=kts,ktf
-          do i=its,itf
+      do k=kts,ktf
+         do i=its,itf
              sqv(i,k)=qv(i,k,j)/(1.0 + qv(i,k,j))
              sqc(i,k)=qc2d(i,k)/(1.0 + qv(i,k,j))
              sqi(i,k)=qi2d(i,k)/(1.0 + qv(i,k,j))
