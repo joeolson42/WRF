@@ -1071,7 +1071,7 @@
                               nwfa, nifa, nbca, nwfa2d, nifa2d, nbca2d,  &
                               aer_init_opt, wif_input_opt,               &
                               th, pii, p, w, dz,                         &
-                              dt_in, itimestep,                          &
+                              dt_in, itimestep, xland,                   &
                               RAINNC, RAINNCV, &
                               SNOWNC, SNOWNCV, &
                               GRAUPELNC, GRAUPELNCV, SR, &
@@ -1106,6 +1106,8 @@
 #endif
       REAL, DIMENSION(ims:ime, kms:kme, jms:jme), INTENT(IN):: &
                           pii, p, w, dz
+      REAL, DIMENSION(ims:ime, jms:jme), INTENT(IN):: &
+                          xland
       REAL, DIMENSION(ims:ime, jms:jme), INTENT(INOUT):: &
                           RAINNC, RAINNCV, SR
       REAL, DIMENSION(ims:ime, jms:jme), OPTIONAL, INTENT(INOUT)::      &
@@ -1130,7 +1132,7 @@
                           rainprod1d, evapprod1d
 #endif
       REAL, DIMENSION(its:ite, jts:jte):: pcp_ra, pcp_sn, pcp_gr, pcp_ic
-      REAL:: dt, pptrain, pptsnow, pptgraul, pptice
+      REAL:: dt, pptrain, pptsnow, pptgraul, pptice, xland1d
       REAL:: qc_max, qr_max, qs_max, qi_max, qg_max, ni_max, nr_max
       REAL:: nwfa1
       REAL:: ygra1, zans1
@@ -1205,6 +1207,7 @@
       j_loop:  do j = j_start, j_end
       i_loop:  do i = i_start, i_end
 
+         xland1d = xland(i,j)
          pptrain = 0.
          pptsnow = 0.
          pptgraul = 0.
@@ -1284,7 +1287,7 @@
 
          call mp_thompson(aer_init_opt, wif_input_opt, &
                           qv1d, qc1d, qi1d, qr1d, qs1d, qg1d, qb1d, ni1d,     &
-                          nr1d, nc1d, ng1d, nwfa1d, nifa1d, nbca1d, t1d, p1d, w1d, dz1d,  &
+                          nr1d, nc1d, ng1d, nwfa1d, nifa1d, nbca1d, t1d, p1d, w1d, dz1d,  xland1d, &
                       pptrain, pptsnow, pptgraul, pptice, &
 #if ( WRF_CHEM == 1 )
                       wetscav_on, rainprod1d, evapprod1d, &
@@ -1513,7 +1516,7 @@
       subroutine mp_thompson (aer_init_opt, wif_input_opt, &
                           qv1d, qc1d, qi1d, qr1d, qs1d, qg1d, qb1d,       &
                           ni1d, nr1d, nc1d, ng1d, nwfa1d, nifa1d, nbca1d, &
-                          t1d, p1d, w1d, dzq,                             &
+                          t1d, p1d, w1d, dzq, xland1d,                      &
                           pptrain, pptsnow, pptgraul, pptice, &
 #if ( WRF_CHEM == 1 )
                           wetscav_on, rainprod, evapprod, &
@@ -1530,7 +1533,7 @@
                           ni1d, nr1d, nc1d, ng1d, nwfa1d, nifa1d, nbca1d, t1d
       REAL, DIMENSION(kts:kte), INTENT(IN):: p1d, w1d, dzq
       REAL, INTENT(INOUT):: pptrain, pptsnow, pptgraul, pptice
-      REAL, INTENT(IN):: dt
+      REAL, INTENT(IN):: dt, xland1d
 #if ( WRF_CHEM == 1 )
       REAL, DIMENSION(kts:kte), INTENT(INOUT):: &
                           rainprod, evapprod
@@ -3413,7 +3416,7 @@
 !+---+-----------------------------------------------------------------+ !  DROPLET NUCLEATION
            if (clap .gt. eps) then
             if (is_aerosol_aware) then
-               xnc = MAX(2., activ_ncloud(temp(k), w1d(k), nwfa(k)))
+               xnc = MAX(2., activ_ncloud(temp(k), w1d(k), nwfa(k), xland1d))
             else
                xnc = Nt_c
             endif
@@ -5175,14 +5178,14 @@
 !.. updraft velocity could easily be negative, we could use the temp
 !.. and its tendency to diagnose a pretend postive updraft velocity.
 !+---+-----------------------------------------------------------------+
-      real function activ_ncloud(Tt, Ww, NCCN)
+      real function activ_ncloud(Tt, Ww, NCCN, xland_in)
 
       implicit none
-      REAL, INTENT(IN):: Tt, Ww, NCCN
+      REAL, INTENT(IN):: Tt, Ww, NCCN, xland_in
       REAL:: n_local, w_local
       INTEGER:: i, j, k, l, m, n
       REAL:: A, B, C, D, t, u, x1, x2, y1, y2, nx, wy, fraction
-
+      REAL:: lower_lim_nuc_frac
 
 !     ta_Na = (/10.0, 31.6, 100.0, 316.0, 1000.0, 3160.0, 10000.0/)  ntb_arc
 !     ta_Ww = (/0.01, 0.0316, 0.1, 0.316, 1.0, 3.16, 10.0, 31.6, 100.0/)  ntb_arw
@@ -5229,6 +5232,13 @@
       l = 3
       m = 2
 
+      ! in WRF, water is 2
+      if (xland_in .ge. 1.5) then       ! water
+         lower_lim_nuc_frac = 0.15
+      else
+         lower_lim_nuc_frac = 0.      ! land
+      endif
+
       A = tnccn_act(i-1,j-1,k,l,m)
       B = tnccn_act(i,j-1,k,l,m)
       C = tnccn_act(i,j,k,l,m)
@@ -5243,6 +5253,7 @@
 !     u = (w_local-ta_Ww(j-1))/(ta_Ww(j)-ta_Ww(j-1))
 
       fraction = (1.0-t)*(1.0-u)*A + t*(1.0-u)*B + t*u*C + (1.0-t)*u*D
+      fraction = MAX(fraction, lower_lim_nuc_frac)
 
 !     if (NCCN*fraction .gt. 0.75*Nt_c_max) then
 !        write(*,*) ' DEBUG-GT ', n_local, w_local, Tt, i, j, k

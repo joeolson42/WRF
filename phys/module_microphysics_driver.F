@@ -1075,6 +1075,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                      DZ=dz8w,                            &
                      DT_IN=dt,                           &
                      ITIMESTEP=itimestep,                &
+                     xland=xland,                        &
                      RAINNC=RAINNC,                      &
                      RAINNCV=RAINNCV,                    &
                      SNOWNC=SNOWNC,                      &
@@ -1170,6 +1171,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                      DZ=dz8w,                            &
                      DT_IN=dt,                           &
                      ITIMESTEP=itimestep,                &
+                     xland=xland,                        &
                      RAINNC=RAINNC,                      &
                      RAINNCV=RAINNCV,                    &
                      SNOWNC=SNOWNC,                      &
@@ -1243,6 +1245,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                      DZ=dz8w,                            &
                      DT_IN=dt,                           &
                      ITIMESTEP=itimestep,                &
+                     xland=xland,                        &
                      RAINNC=RAINNC,                      &
                      RAINNCV=RAINNCV,                    &
                      SNOWNC=SNOWNC,                      &
