@@ -380,9 +380,19 @@ state    real   Q2               ij     misc        1         -     irh01{22}{23
 state    real   T2               ij     misc        1         -     i01rh01{22}{23}du  "T2"                   "TEMP at 2 M"       "K"
 state    real   TH2              ij     misc        1         -     irhdu     "TH2"                  "POT TEMP at 2 M"   "K"
 state    real   PSFC             ij     misc        1         -     i01rh01du   "PSFC"                 "SFC PRESSURE"      "Pa"
-
 state    real   U10              ij     misc        1         -     irh01{22}{23}du     "U10"                "U at 10 M"         "m s-1"
 state    real   V10              ij     misc        1         -     irh01{22}{23}du     "V10"                "V at 10 M"         "m s-1"
+
+#hrrr diagnostics
+state    real   WSPD10           ij     misc        1         -     irh      "WSPD10"                "Wind Speed at 10 M"            "m s-1"
+state    real   WSPD80           ij     misc        1         -     irh      "WSPD80"                "Wind Speed at 80 M"            "m s-1"
+state    real   MAXCLDFRA        ij     misc        1         -     irh      "MAXCLDFRA"             "MAX CLOUD FRACTION"            "0 to 1"
+state    real   lwp2d            ij     misc        1         -     irh      "LWP"                   "TIME-STEP Liquid water path"   "g/m2"
+state    real   iwp2d            ij     misc        1         -     irh      "IWP"                   "TIME-STEP ice water path"      "g/m2"
+state    real   composite_refl_10cm  ij  misc       1         -     ihdu     "composite_refl_10cm"   "Composite reflectivity"        "dBZ"
+state    real   refl_10cm_1km    ij     misc        1         -     ihdu     "refl_10cm_1km"         "Reflectivity at 1 km AGL"      "dBZ"
+state    real   refl_10cm_4km    ij     misc        1         -     ihdu     "refl_10cm_4km"         "Reflectivity at 4 km AGL"      "dBZ"
+
 # LPI
 state    real   LPI              ij     misc        1         -     rhdu   "LPI"                 "Lightning Potential Index"      "m^2 s-2"
 
@@ -2189,6 +2199,7 @@ rconfig   logical nocolons                namelist,time_control         1       
 rconfig   logical cycling                 namelist,time_control         1             .false. -    "true for cycling (using wrfout file as input data)"
 rconfig   integer output_diagnostics      namelist,time_control         1              0
 rconfig   integer nwp_diagnostics         namelist,time_control         1              0
+rconfig   integer hrrr_diagnostics        namelist,time_control         1              0
 rconfig   logical output_ready_flag       namelist,time_control         1             .false. -    "drop a flag called wrfoutReady_d<domain>_<date> after history write" "" ""
 rconfig   logical force_use_old_data      namelist,time_control         1             .false. -    "T=use v3 input data, F=only use v4 data" "" ""
 
@@ -3227,6 +3238,8 @@ package   wenopd_scalar  moist_adv_opt==4            -             -
 
 package   maxmin_output  output_diagnostics==1            -    state:t2min,t2max,tt2min,tt2max,t2mean,t2std,q2min,q2max,tq2min,tq2max,q2mean,q2std,skintempmin,skintempmax,tskintempmin,tskintempmax,skintempmean,skintempstd,u10max,v10max,spduv10max,tspduv10max,u10mean,v10mean,spduv10mean,u10std,v10std,spduv10std,raincvmax,rainncvmax,traincvmax,trainncvmax,raincvmean,rainncvmean,raincvstd,rainncvstd
 package   nwp_output     nwp_diagnostics==1            -       state:wspd10max,w_up_max,w_dn_max,up_heli_max,w_mean,grpl_max,hail_maxk1,hail_max2d
+package   hrrr_diags_rt  hrrr_diagnostics==1           -       state:wspd10max,w_up_max,w_dn_max,up_heli_max,w_mean,grpl_max,hail_maxk1,hail_max2d,lwp2d,iwp2d,WSPD10,WSPD80,MAXCLDFRA
+package   hrrr_diags_res hrrr_diagnostics==2           -       state:wspd10max,w_up_max,w_dn_max,up_heli_max,w_mean,grpl_max,hail_maxk1,hail_max2d,lwp2d,iwp2d,WSPD10,WSPD80,MAXCLDFRA
 
 package   dfi_setup      dfi_stage==0                -             -
 package   dfi_bck        dfi_stage==1                -             -

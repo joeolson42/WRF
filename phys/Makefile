@@ -224,6 +224,7 @@ DIAGNOSTIC_MODULES_EM = \
 	module_diag_functions.o \
         module_diag_hailcast.o \
 	module_diag_misc.o \
+        module_diag_hrrr.o \
 	module_diag_nwp.o \
         module_diag_rasm.o \
 	module_diag_pld.o \

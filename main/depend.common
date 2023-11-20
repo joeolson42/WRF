@@ -792,6 +792,7 @@ module_diagnostics_driver.o: \
                 module_diag_rasm.o                      \
                 module_diag_trad_fields.o               \
                 module_diag_solar.o                     \
+                module_diag_hrrr.o                      \
 		../frame/module_comm_dm.o		\
 		../frame/module_state_description.o 	\
 		../frame/module_domain.o 		\
@@ -801,6 +802,10 @@ module_diagnostics_driver.o: \
 
 module_diag_misc.o: \
 		../frame/module_dm.o
+
+module_diag_hrrr.o: \
+                ../frame/module_dm.o                    \
+                module_mp_thompson.o
 
 module_diag_cl.o: \
 		../frame/module_dm.o 			\

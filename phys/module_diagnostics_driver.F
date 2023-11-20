@@ -79,6 +79,7 @@ CONTAINS
       USE module_diag_hailcast, ONLY : hailcast_diagnostic_driver
       USE module_diag_solar, ONLY : solar_diag
       USE module_trad_fields, ONLY : trad_fields
+      USE module_diag_hrrr, ONLY : hrrr_diagnostic_driver, hrrr_refl_first_time_step
 
       IMPLICIT NONE
 
@@ -122,6 +123,7 @@ CONTAINS
       !  Is this to be a history output time?  If so, compute the diagnostics.
 
       LOGICAL :: diag_flag
+      LOGICAL :: first_time_step
 
       !  The sundry dimensions required to keep a model running smoothly:
       !     The first letter:
@@ -404,6 +406,9 @@ CONTAINS
                 ,KTS=k_start, KTE=min(k_end,kde-1)                   &
                 ,NUM_TILES=grid%num_tiles                            &
                                                                     )
+
+!JOE - add option to avoid using nwp diagnostics, only use hrrr diagnostics
+IF (config_flags%hrrr_diagnostics /= 1) THEN
 
       NWPDIAGS: IF ( config_flags%nwp_diagnostics == 1 ) THEN
       CALL wrf_debug ( 100 , '--> CALL DIAGNOSTICS PACKAGE: NWP DIAGNOSTICS' )
@@ -781,6 +786,7 @@ CONTAINS
    END SELECT mp_select
    END IF NWPDIAGS
 
+END IF ! JOE: use hrrr_diagnostics OR nwp diags, not both
 
       !  Climate-oriented diagnostic quantities.
 
@@ -788,7 +794,7 @@ CONTAINS
 
          IF ( ( config_flags%auxhist3_interval == 0 ) ) THEN
             WRITE (diag_message , * ) &
-            "CLWRF: ERROR -- error -- ERROR -- error : NO 'auxhist3_interval' has been defined in 'namelist.input'"
+            "ERROR: NO 'auxhist3_interval' has been defined in 'namelist.input'"
             CALL wrf_error_fatal ( diag_message )
          END IF
 
@@ -1255,6 +1261,143 @@ CONTAINS
               j_start=grid%j_start, j_end=min(grid%j_end, jde-1),           &
               kts=k_start, kte=min(k_end,kde-1), num_tiles=grid%num_tiles   )
       END IF SOLAR_FIELDS
+
+      !===========================================================
+      !  NOAA-ESRL/GSL Diagnostics for RAP/HRRR
+      !===========================================================
+
+      HRRR_DIAGS : IF ( config_flags%hrrr_diagnostics .GT. 0 ) THEN
+
+         CALL wrf_debug ( 100 , '--> CALL HRRR DIAGNOSTICS' )
+
+         CALL domain_clock_get ( grid, current_time=currentTime)
+
+      select_mp: SELECT CASE(config_flags%mp_physics)
+
+      CASE (THOMPSON, THOMPSONAERO)
+
+      first_time_step = (grid%itimestep .eq. 1)
+      IF (first_time_step .and. (config_flags%do_radar_ref .eq. 1)) THEN
+        ! dcd  compute reflectivity and fall speed needed for the wrfout at t=0
+        CALL hrrr_refl_first_time_step(                                 &
+                 REFL_10CM=grid%refl_10cm                              &
+!                ,VT_DBZ_WT=grid%vt_dbz_wt                              &
+                ,MP_PHYSICS=config_flags%mp_physics                    &
+                ,QV_CURR=moist(ims,kms,jms,P_QV)                       &
+                ,QC_CURR=moist(ims,kms,jms,P_QC)                       &
+                ,QNR_CURR=scalar(ims,kms,jms,P_QNR)                    &
+                ,QR_CURR=moist(ims,kms,jms,P_QR)                       &
+                ,QS_CURR=moist(ims,kms,jms,P_QS)                       &
+                ,QG_CURR=moist(ims,kms,jms,P_QG)                       &
+                ,RHO_CURR=grid%rho                                     &
+                ,TH=th_phy, PII=pi_phy, P=p_phy                        &
+                ,IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme     &
+                ,KTS=k_start, KTE=min(k_end,kde-1)                     &
+                ,I_START=grid%i_start,I_END=min(grid%i_end, ide-1)     &
+                ,J_START=grid%j_start,J_END=min(grid%j_end, jde-1)     &
+                ,NUM_TILES=grid%num_tiles                              &
+                                                                       )
+        diag_flag = .true.
+      ENDIF
+
+         CALL hrrr_diagnostic_driver(                                &
+                 hrrr_diagnostics=config_flags%hrrr_diagnostics      &
+                ,DPSDT=grid%dpsdt   ,DMUDT=grid%dmudt                &
+                ,P8W=p8w   ,PK1M=grid%pk1m                           &
+                ,MU_2=grid%mu_2  ,MU_2M=grid%mu_2m                   &
+                ,U=grid%u_2    ,V=grid%v_2                           &
+                ,TEMP=grid%t_phy                                     &
+                ,RAINCV=grid%raincv    ,RAINNCV=grid%rainncv         &
+                ,RAINC=grid%rainc    ,RAINNC=grid%rainnc             &
+                ,I_RAINC=grid%i_rainc    ,I_RAINNC=grid%i_rainnc     &
+                ,HFX=grid%hfx   ,SFCEVP=grid%sfcevp    ,LH=grid%lh   &
+                ,DT=grid%dt      ,SBW=config_flags%spec_bdy_width    &
+                ,XTIME=grid%xtime   ,T2=grid%t2                      &
+           ,ACSWUPT=grid%acswupt    ,ACSWUPTC=grid%acswuptc          &
+           ,ACSWDNT=grid%acswdnt    ,ACSWDNTC=grid%acswdntc          &
+           ,ACSWUPB=grid%acswupb    ,ACSWUPBC=grid%acswupbc          &
+           ,ACSWDNB=grid%acswdnb    ,ACSWDNBC=grid%acswdnbc          &
+           ,ACLWUPT=grid%aclwupt    ,ACLWUPTC=grid%aclwuptc          &
+           ,ACLWDNT=grid%aclwdnt    ,ACLWDNTC=grid%aclwdntc          &
+           ,ACLWUPB=grid%aclwupb    ,ACLWUPBC=grid%aclwupbc          &
+           ,ACLWDNB=grid%aclwdnb    ,ACLWDNBC=grid%aclwdnbc          &
+         ,I_ACSWUPT=grid%i_acswupt  ,I_ACSWUPTC=grid%i_acswuptc      &
+         ,I_ACSWDNT=grid%i_acswdnt  ,I_ACSWDNTC=grid%i_acswdntc      &
+         ,I_ACSWUPB=grid%i_acswupb  ,I_ACSWUPBC=grid%i_acswupbc      &
+         ,I_ACSWDNB=grid%i_acswdnb  ,I_ACSWDNBC=grid%i_acswdnbc      &
+         ,I_ACLWUPT=grid%i_aclwupt  ,I_ACLWUPTC=grid%i_aclwuptc      &
+         ,I_ACLWDNT=grid%i_aclwdnt  ,I_ACLWDNTC=grid%i_aclwdntc      &
+         ,I_ACLWUPB=grid%i_aclwupb  ,I_ACLWUPBC=grid%i_aclwupbc      &
+         ,I_ACLWDNB=grid%i_aclwdnb  ,I_ACLWDNBC=grid%i_aclwdnbc      &
+      ! Selection flag
+                ,DIAG_PRINT=config_flags%diag_print                  &
+                ,dfi_stage=grid%dfi_stage                            &
+                ,BUCKET_MM=config_flags%bucket_mm                    &
+                ,BUCKET_J =config_flags%bucket_J                     &
+                ,MPHYSICS_OPT=config_flags%mp_physics                &  !  gthompsn
+                ,GSFCGCE_HAIL=config_flags%gsfcgce_hail              &  !  gthompsn
+                ,GSFCGCE_2ICE=config_flags%gsfcgce_2ice              &  !  gthompsn
+                ,MPUSE_HAIL=config_flags%hail_opt                    &  !  gthompsn
+                ,NSSL_ALPHAH=config_flags%nssl_alphah                &  !  gthompsn
+                ,NSSL_ALPHAHL=config_flags%nssl_alphahl              &  !  gthompsn
+                ,NSSL_CNOH=config_flags%nssl_cnoh                    &  !  gthompsn
+                ,NSSL_CNOHL=config_flags%nssl_cnohl                  &  !  gthompsn
+                ,NSSL_RHO_QH=config_flags%nssl_rho_qh                &  !  gthompsn
+                ,NSSL_RHO_QHL=config_flags%nssl_rho_qhl              &  !  gthompsn
+                ,SFCRUNOFF=grid%sfcrunoff,UDRUNOFF=grid%udrunoff     &
+                ,ACRUNOFF=grid%acrunoff                              &
+                ,SNOWNCV=grid%snowncv, SNOW_ACC_NC=grid%snow_acc_nc  &
+                ,GRAUPELNCV=grid%graupelncv                          &
+                ,ACSNOW=grid%acsnow                                  &
+                ,PREC_ACC_C=grid%prec_acc_c                          &
+                ,PREC_ACC_NC=grid%prec_acc_nc                        &
+                ,PREC_ACC_DT=config_flags%prec_acc_dt                &
+                ,CURR_SECS2=curr_secs2                               &
+                ,DIAGFLAG=diag_flag                                  &
+                ,HISTORY_INTERVAL=grid%history_interval              &
+                ,ITIMESTEP=grid%itimestep                            &
+                ,U10=grid%u10,V10=grid%v10,W=grid%w_2                &
+                ,T=grid%t_2,U_PHY=grid%u_phy,V_PHY=grid%v_phy        & !joe-wfip
+                ,P=grid%p,PB=grid%pb                                 &
+                ,WSPD10MAX=grid%wspd10max                            &
+                ,WSPD10=grid%wspd10,WSPD80=grid%wspd80               & !joe-wfip
+                ,LWP=grid%lwp2d,IWP=grid%iwp2d                       & !joe-wfip
+                ,MAXCLDFRA=grid%maxcldfra                            & !joe-wfip
+                ,UP_HELI_MAX=grid%up_heli_max                        &
+                ,W_UP_MAX=grid%w_up_max,W_DN_MAX=grid%w_dn_max       &
+                ,ZNW=grid%znw,W_COLMEAN=grid%w_colmean               &
+                ,W_MEAN=grid%w_mean                                  &
+                ,GRPL_MAX=grid%grpl_max,GRPL_COLINT=grid%grpl_colint &
+                ,REFD_MAX=grid%refd_max                              &
+                ,refl_10cm=grid%refl_10cm                            &
+                ,MSFT=grid%msft                                      &
+                ,REFL_10CM_1KM=grid%refl_10cm_1km                    & ! dcd
+                ,REFL_10CM_4KM=grid%refl_10cm_4km                    & ! dcd
+                ,COMPOSITE_REFL_10CM=grid%composite_refl_10cm        & ! dcd
+                ,HT=grid%ht                                          & ! dcd
+                ,HAIL_MAXK1=grid%hail_maxk1,HAIL_MAX2D=grid%hail_max2d &  !  gthompsn
+                ,QG_CURR=moist(ims,kms,jms,P_QG)                     &
+                ,QS_CURR=moist(ims,kms,jms,P_QS)                     &
+                ,QR_CURR=moist(ims,kms,jms,P_QR)                     &  !  gthompsn
+                ,NR_CURR=scalar(ims,kms,jms,P_QNR)                   &  !  gthompsn
+                ,QC_CURR=moist(ims,kms,jms,P_QC)                     & !joe-wfip
+                ,QI_CURR=moist(ims,kms,jms,P_QI)                     & !joe-wfip
+                ,RHO=grid%rho,PH=grid%ph_2,PHB=grid%phb,G=g          &
+                ,CLDFRA=grid%cldfra                                  & !joe-wfip
+                ,icloud_bl=config_flags%icloud_bl                    & !joe-wfip
+                ,CLDFRA_BL=grid%cldfra_bl                            & !joe-wfip
+                ,QC_BL=grid%qc_bl,QI_BL=grid%qi_bl                   & !joe-wfip
+      ! Dimension arguments
+                ,IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde   &
+                ,IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme   &
+                ,IPS=ips,IPE=ipe, JPS=jps,JPE=jpe, KPS=kps,KPE=kpe   &
+                ,I_START=grid%i_start,I_END=min(grid%i_end, ide-1)   &
+                ,J_START=grid%j_start,J_END=min(grid%j_end, jde-1)   &
+                ,KTS=k_start, KTE=min(k_end,kde-1)                   &
+                ,NUM_TILES=grid%num_tiles                            &
+                                                                     )                                                                                                                    
+   END SELECT select_mp
+   END IF HRRR_DIAGS
 
 
    END SUBROUTINE diagnostics_driver
