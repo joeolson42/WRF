@@ -14,14 +14,13 @@ MODULE module_diag_hrrr
       PRIVATE :: GAMMLN
 CONTAINS
 
-   SUBROUTINE hrrr_refl_first_time_step(                                &    
+   SUBROUTINE hrrr_refl_first_time_step(                               &    
                      ims,ime, jms,jme, kms,kme, kts,kte                &    
                     ,i_start,i_end,j_start,j_end,num_tiles             &    
                     ,mp_physics, th, pii, p, rho_curr, qv_curr         &    
                     ,qc_curr, qnr_curr, qr_curr, qs_curr, qg_curr      &    
-!                    ,refl_10cm, vt_dbz_wt                              &    
                     ,refl_10cm                                         & 
-                                                                      )    
+                                                                       )    
 !----------------------------------------------------------------------
 
   USE module_state_description, ONLY : THOMPSON,THOMPSONAERO
@@ -264,7 +263,7 @@ CONTAINS
 !                     ,ntimesteps                                      &
                      ,t,u10,v10,w,u_phy,v_phy,p,pb                    & !JOE
                      ,wspd10max                                       &
-                     ,wspd10,wspd80,LWP,IWP,maxcldfra                 & !JOE: Optional - hrrr_diagnostics =1
+                     ,wspd10,wspd80,LWP,IWP,SWP,maxcldfra             & !JOE: Optional - hrrr_diagnostics =1
                      ,up_heli_max                                     & ! Optional - hrrr_diagnostics =1 
                      ,w_up_max,w_dn_max                               & ! Optional - hrrr_diagnostics =1
                      ,znw,w_colmean                                   &
@@ -505,7 +504,7 @@ CONTAINS
                                                       ,refd_max  &
                ,refl_10cm_1km,refl_10cm_4km,composite_refl_10cm  &  ! dcd
                                                             ,ht  &  ! dcd
-                                         ,wspd10,wspd80,LWP,IWP  &
+                                     ,wspd10,wspd80,LWP,IWP,SWP  &
                                                      ,maxcldfra
 
    INTEGER ::           ntimesteps
@@ -557,8 +556,8 @@ CONTAINS
       DOUBLE PRECISION:: lamr, N0min
       REAL:: mvd_r, xslw1, ygra1, zans1
       INTEGER:: ng, n
-      REAL :: dp,sum1,sum2,sum3,zm,zm0,wt1,ter,u100,v100,t100, &
-              qctotal,qitotal,dumy1,dumy2 !JOE
+      REAL :: dp,sum1,sum2,sum3,sum4,zm,zm0,wt1,ter,u100,v100,t100, &
+              qctotal,qitotal,qstotal
 
 !-----------------------------------------------------------------
 ! Handle accumulations with buckets to prevent round-off truncation in long runs
@@ -844,6 +843,7 @@ CONTAINS
          WSPD80(i,j)=-99.
          LWP(i,j)=0.
          IWP(i,j)=0.
+         SWP(i,j)=0.
          MAXCLDFRA(i,j)=0.
        ENDDO
        ENDDO
@@ -1107,6 +1107,7 @@ CONTAINS
        sum1=0.
        sum2=0.
        sum3=0.
+       sum4=0.
 
        DO k=kms,kme-1
           !Note: ph & phb are defined at the layer interface, so we average to
@@ -1143,7 +1144,7 @@ CONTAINS
              ENDIF
           ENDIF
 
-          !JOE -add LWP & IWP & MAXCLDFRA; use temp (abs temperature in kelvin)
+          !JOE -add LWP, IWP & sWP & MAXCLDFRA; use temp (abs temperature in kelvin)
           dp=p8w(i,k,j)-p8w(i,k+1,j)
           IF (icloud_bl>0 .AND. PRESENT(QC_BL) .AND. &
              PRESENT(CLDFRA_BL) .AND. qc_curr(i,k,j)<1E-6 .AND. &
@@ -1153,23 +1154,25 @@ CONTAINS
           ELSE
              qctotal = QC_CURR(i,k,j)
           ENDIF
-          dumy1 = qi_curr(i,k,j) + qs_curr(i,k,j)
           IF (icloud_bl>0 .AND. PRESENT(QI_BL) .AND. &
-             PRESENT(CLDFRA_BL) .AND. dumy1<1E-8 .AND. &
+             PRESENT(CLDFRA_BL) .AND. qi_curr(i,k,j)<1E-8 .AND. &
              CLDFRA_BL(i,k,j)>0.01) THEN
              !already temp-dependent sorted, and now grid mean, so dont multiply by CF
              qitotal = QI_BL(i,k,j)
           ELSE
-             qitotal = dumy1 !total frozen water
+             qitotal = qi_curr(i,k,j)
           ENDIF
+          qstotal = qs_curr(i,k,j) !ther ecurrently is no sgs snow...
           sum1 = sum1 + MAX((dp/g)*qctotal,0.0)
           sum2 = sum2 + MAX((dp/g)*qitotal,0.0)
-          sum3 = MAX(sum3,CLDFRA_BL(i,k,j))
+          sum3 = sum3 + MAX((dp/g)*qstotal,0.0)
+          sum4 = MAX(sum4,CLDFRA_BL(i,k,j))
        ENDDO
 
        LWP(i,j)=sum1*1000. ! kg m-2  --> g m-2
        IWP(i,j)=sum2*1000.
-       MAXCLDFRA(i,j)=sum3
+       SWP(i,j)=sum3*1000.
+       MAXCLDFRA(i,j)=sum4
 
      ENDDO
      ENDDO

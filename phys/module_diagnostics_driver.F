@@ -1279,9 +1279,8 @@ END IF ! JOE: use hrrr_diagnostics OR nwp diags, not both
       first_time_step = (grid%itimestep .eq. 1)
       IF (first_time_step .and. (config_flags%do_radar_ref .eq. 1)) THEN
         ! dcd  compute reflectivity and fall speed needed for the wrfout at t=0
-        CALL hrrr_refl_first_time_step(                                 &
+        CALL hrrr_refl_first_time_step(                                &
                  REFL_10CM=grid%refl_10cm                              &
-!                ,VT_DBZ_WT=grid%vt_dbz_wt                              &
                 ,MP_PHYSICS=config_flags%mp_physics                    &
                 ,QV_CURR=moist(ims,kms,jms,P_QV)                       &
                 ,QC_CURR=moist(ims,kms,jms,P_QC)                       &
@@ -1361,7 +1360,7 @@ END IF ! JOE: use hrrr_diagnostics OR nwp diags, not both
                 ,P=grid%p,PB=grid%pb                                 &
                 ,WSPD10MAX=grid%wspd10max                            &
                 ,WSPD10=grid%wspd10,WSPD80=grid%wspd80               & !joe-wfip
-                ,LWP=grid%lwp2d,IWP=grid%iwp2d                       & !joe-wfip
+                ,LWP=grid%lwp2d,IWP=grid%iwp2d,SWP=grid%swp2d        & !joe-wfip
                 ,MAXCLDFRA=grid%maxcldfra                            & !joe-wfip
                 ,UP_HELI_MAX=grid%up_heli_max                        &
                 ,W_UP_MAX=grid%w_up_max,W_DN_MAX=grid%w_dn_max       &

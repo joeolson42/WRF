@@ -389,6 +389,7 @@ state    real   WSPD80           ij     misc        1         -     irh      "WS
 state    real   MAXCLDFRA        ij     misc        1         -     irh      "MAXCLDFRA"             "MAX CLOUD FRACTION"            "0 to 1"
 state    real   lwp2d            ij     misc        1         -     irh      "LWP"                   "TIME-STEP Liquid water path"   "g/m2"
 state    real   iwp2d            ij     misc        1         -     irh      "IWP"                   "TIME-STEP ice water path"      "g/m2"
+state    real   swp2d            ij     misc        1         -     irh      "SWP"                   "TIME-STEP snow water path"     "g/m2"
 state    real   composite_refl_10cm  ij  misc       1         -     ihdu     "composite_refl_10cm"   "Composite reflectivity"        "dBZ"
 state    real   refl_10cm_1km    ij     misc        1         -     ihdu     "refl_10cm_1km"         "Reflectivity at 1 km AGL"      "dBZ"
 state    real   refl_10cm_4km    ij     misc        1         -     ihdu     "refl_10cm_4km"         "Reflectivity at 4 km AGL"      "dBZ"
@@ -3238,8 +3239,8 @@ package   wenopd_scalar  moist_adv_opt==4            -             -
 
 package   maxmin_output  output_diagnostics==1            -    state:t2min,t2max,tt2min,tt2max,t2mean,t2std,q2min,q2max,tq2min,tq2max,q2mean,q2std,skintempmin,skintempmax,tskintempmin,tskintempmax,skintempmean,skintempstd,u10max,v10max,spduv10max,tspduv10max,u10mean,v10mean,spduv10mean,u10std,v10std,spduv10std,raincvmax,rainncvmax,traincvmax,trainncvmax,raincvmean,rainncvmean,raincvstd,rainncvstd
 package   nwp_output     nwp_diagnostics==1            -       state:wspd10max,w_up_max,w_dn_max,up_heli_max,w_mean,grpl_max,hail_maxk1,hail_max2d
-package   hrrr_diags_rt  hrrr_diagnostics==1           -       state:wspd10max,w_up_max,w_dn_max,up_heli_max,w_mean,grpl_max,hail_maxk1,hail_max2d,lwp2d,iwp2d,WSPD10,WSPD80,MAXCLDFRA
-package   hrrr_diags_res hrrr_diagnostics==2           -       state:wspd10max,w_up_max,w_dn_max,up_heli_max,w_mean,grpl_max,hail_maxk1,hail_max2d,lwp2d,iwp2d,WSPD10,WSPD80,MAXCLDFRA
+package   hrrr_diags_rt  hrrr_diagnostics==1           -       state:wspd10max,w_up_max,w_dn_max,up_heli_max,w_mean,grpl_max,hail_maxk1,hail_max2d,lwp2d,iwp2d,swp2d,WSPD10,WSPD80,MAXCLDFRA
+package   hrrr_diags_res hrrr_diagnostics==2           -       state:wspd10max,w_up_max,w_dn_max,up_heli_max,w_mean,grpl_max,hail_maxk1,hail_max2d,lwp2d,iwp2d,swp2d,WSPD10,WSPD80,MAXCLDFRA
 
 package   dfi_setup      dfi_stage==0                -             -
 package   dfi_bck        dfi_stage==1                -             -
