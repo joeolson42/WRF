@@ -307,6 +307,14 @@ CONTAINS
       jtf=MIN0(jte,jde-1)
       ktf=MIN0(kte,kde-1)
 
+      IF (debug_code) THEN
+        write(0,*)"======= printing of constants:"
+        write(0,*)"cp=",   cp," g=",      g
+        write(0,*)"Rd=",    R," ep1=",    ep1
+        write(0,*)"xlv=", XLV," karman=", karman
+        write(0,*)"ep2=", ep2
+      ENDIF
+
       DO J=jts,jte
         DO i=its,ite
            dz8w1d(I) = dz8w(i,kts,j)
@@ -330,7 +338,7 @@ CONTAINS
         IF (itimestep==1) THEN
            DO i=its,ite
               UST(i,j)=MAX(0.04*SQRT(U1D(i)*U1D(i) + V1D(i)*V1D(i)),0.001)
-              MOL(i,j)=0.     ! Tstar
+              MOL(i,j)=0.         ! Tstar
               QSFC(i,j)=QV3D(i,kts,j)/(1.+QV3D(i,kts,j))
               qstar(i,j)=0.0
            ENDDO
@@ -496,7 +504,7 @@ CONTAINS
 
 !-------------------------------------------------------------------
 
-      DO I=its,ite
+      do i=its,ite
          ! CONVERT GROUND & LOWEST LAYER TEMPERATURE TO POTENTIAL TEMPERATURE:
          ! PSFC cmb
          PSFC(I)=PSFCPA(I)/1000.
@@ -552,7 +560,7 @@ CONTAINS
          CPM(I)=CP*(1.+0.84*QV1D(I))
       ENDDO
 
-      DO I=its,ite
+      do i=its,ite
          WSPD(I)=SQRT(U1D(I)*U1D(I)+V1D(I)*V1D(I))     
 
          !TGS:THVGB(I)=THGB(I)*(1.+EP1*QSFC(I)*MAVAIL(I)) 
@@ -602,9 +610,23 @@ CONTAINS
          ! IF PREVIOUSLY UNSTABLE, DO NOT LET INTO REGIMES 1 AND 2 (STABLE)
          !if (itimestep .GT. 1) THEN
          !    IF(MOL(I).LT.0.)BR(I)=MIN(BR(I),0.0)
-         !ENDIF
-     
+         !ENDIF     
       ENDDO
+
+      IF (debug_code) THEN
+        DO i=its,ite
+           write(0,*)"===important input to mynnsfclay: i=",i," ITIME=",ITIMESTEP
+           write(0,*)"xland=",xland(i)," pblh=",pblh(i)," tsk=",tsk(i),&
+             " th1=", th1d(i)," qsfc=", qsfc(i)," znt=", znt(i),       &
+             " ust=", ust(i)," snowh=", snowh(i)," psfcpa=",PSFCPA(i), &
+             " fluxc=",fluxc," qfx=",qfx(i)," hfx=",hfx(i),            &
+             " u1=",u1d(i)," v1=",v1d(i)," qv1=",qvsh(i),              &
+             " rho=",rho1d(i)," w*=",wstar(i)," dz1=",za(i),           &
+             " br=",br(i)," THVGB=",THVGB(i)," DTHVDZ=",DTHVDZ,        &
+             " psim_stab=",psim_stab(1)," psim_unstab=",psim_stab(1),  &
+             " psih_stab=",psih_stab(1)," psih_unstab=",psih_unstab(1)
+        ENDDO
+      ENDIF
 
  1006   format(A,F7.3,A,f9.4,A,f9.5,A,f9.4)
  1007   format(A,F2.0,A,f6.2,A,f7.3,A,f7.2)
@@ -2036,12 +2058,13 @@ END SUBROUTINE SFCLAY1D_mynn
       enddo
 
       if (n==nmax .and. abs(zolold - zolrib) > 0.01 ) then
-         !print*,"iter FAIL, n=",n," Ri=",ri," z/L=",zolri
          !if convergence fails, use approximate values:
          CALL Li_etal_2010(zolrib, ri, za/z0, z0/zt)
-         !zLhux(n)=zolri
-         !print*,"FAILED, n=",n," Ri=",ri," zt=",zt
-         !print*,"z/L=",zLhux(1:nmax)
+         if (debug_code) then
+            print*,"iter FAIL, n=",n," Ri=",ri," z/L=",zolrib
+            !zLhux(n)=zolri
+            print*," zt=",zt," psit=",psit2," psix=",psix2
+         endif
       else
          !print*,"SUCCESS,n=",n," Ri=",ri," z/L=",zolrib
       endif
@@ -2081,6 +2104,14 @@ END SUBROUTINE SFCLAY1D_mynn
           psim_unstab(n)=psim_unstable_full_gfs(zolf)
           psih_unstab(n)=psih_unstable_full_gfs(zolf)
        ENDDO
+    endif
+
+    !simple test to see if initialization worked:                                                                                                                
+    if (psim_stab(1) < 0. .and. psih_stab(1) < 0. .and. &
+        psim_unstab(1) > 0. .and. psih_unstab(1) > 0.) then
+       print*,'in psi_init, psi tables have been initialized'
+    else
+       print*,'error in psi_init: problem initializing psi tables'
     endif
 
    END SUBROUTINE psi_init
