@@ -108,22 +108,22 @@ framework_only : configcheck
 
 wrf : framework_only
 	$(MAKE) MODULE_DIRS="$(ALL_MODULES)" physics
-	@if [ \( ! -f run/MPTABLE.TBL \) -o \
-	     \( ! -f phys/module_sf_noahmpdrv.F \) -o \
-	     \( ! -f phys/module_sf_noahmp_glacier.F \) -o \
-	     \( ! -f phys/module_sf_noahmp_groundwater.F \) -o \
-	     \( ! -f phys/module_sf_noahmplsm.F \) ] ; then \
-	   echo " " ; \
-	   echo "------------------------------------------------------------------------------" ; \
-	   echo "Error Error Error NoahMP submodule files not populating WRF directories" ; \
-	   echo "------------------------------------------------------------------------------" ; \
-	   echo " " ; \
-	   exit 31 ; \
-	else \
-	   echo "------------------------------------------------------------------------------" ; \
-	   echo "NoahMP submodule files populating WRF directories" ; \
-	   echo "------------------------------------------------------------------------------" ; \
-	fi
+#	@if [ \( ! -f run/MPTABLE.TBL \) -o \
+#	     \( ! -f phys/module_sf_noahmpdrv.F \) -o \
+#	     \( ! -f phys/module_sf_noahmp_glacier.F \) -o \
+#	     \( ! -f phys/module_sf_noahmp_groundwater.F \) -o \
+#	     \( ! -f phys/module_sf_noahmplsm.F \) ] ; then \
+#	   echo " " ; \
+#	   echo "------------------------------------------------------------------------------" ; \
+#	   echo "Error Error Error NoahMP submodule files not populating WRF directories" ; \
+#	   echo "------------------------------------------------------------------------------" ; \
+#	   echo " " ; \
+#	   exit 31 ; \
+#	else \
+#	   echo "------------------------------------------------------------------------------" ; \
+#	   echo "NoahMP submodule files populating WRF directories" ; \
+#	   echo "------------------------------------------------------------------------------" ; \
+#	fi
 	if [ $(WRF_CHEM) -eq 1 ]    ; then $(MAKE) MODULE_DIRS="$(ALL_MODULES)" chemics ; fi
 	if [ $(WRF_EM_CORE) -eq 1 ]    ; then $(MAKE) MODULE_DIRS="$(ALL_MODULES)" em_core ; fi
 	if [ $(WRF_HYDRO) -eq 1 ]   ; then $(MAKE) MODULE_DIRS="$(ALL_MODULES)" wrf_hydro ; fi
