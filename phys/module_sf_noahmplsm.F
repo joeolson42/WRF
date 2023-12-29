@@ -4057,11 +4057,11 @@ ENDIF   ! CROPTYPE == 0
 !            Z0H  = Z0M    !* EXP(-CZIL*0.4*258.2*SQRT(FV*Z0M))
 !            Z0HG = Z0MG   !* EXP(-CZIL*0.4*258.2*SQRT(FV*Z0MG))
 !       END IF
-write(0,*)"========before thermalz0 ==== iter=",iter
-write(0,*)"fveg=",fveg,"z0m=",z0m,"z0mg=",z0mg,"zpd=",zpd, &
-          "vaie=",vaie,"ur=",ur,"csigf0=",csigmaf0,"csigf1=",csigmaf1, &
-          "temptrs=",temptrs,"z0mo=",z0mo,"z0hg=",z0hg,"vegtyp=",vegtyp
-write(0,*)"==============================================="
+!write(0,*)"========before thermalz0 ==== iter=",iter
+!write(0,*)"fveg=",fveg,"z0m=",z0m,"z0mg=",z0mg,"zpd=",zpd, &
+!          "vaie=",vaie,"ur=",ur,"csigf0=",csigmaf0,"csigf1=",csigmaf1, &
+!          "temptrs=",temptrs,"z0mo=",z0mo,"z0hg=",z0hg,"vegtyp=",vegtyp
+!write(0,*)"==============================================="
       call thermalz0(parameters,fveg,z0m,z0mg,zlvl,zpd,zpd,ustarx,          & !in
                        vegtyp,vaie,ur,csigmaf0,csigmaf1,temptrs,temptrs,temptrs,0, & !in
                        z0mo,z0hg)
@@ -4069,11 +4069,11 @@ write(0,*)"==============================================="
       call thermalz0(parameters,fveg,z0m,z0mg,zlvl,zpd,zpd,ustarx,          & !in
                        vegtyp,vaie,ur,csigmaf0,csigmaf1,temptrs,temptrs,temptrs,1, & !in
                        z0mo,z0h)
-write(0,*)"========after thermalz0 ======================"
-write(0,*)"fveg=",fveg,"z0m=",z0m,"z0mg=",z0mg,"zpd=",zpd, &
-          "vaie=",vaie,"ur=",ur,"csigf0=",csigmaf0,"csigf1=",csigmaf1, &
-          "temptrs=",temptrs,"z0mo=",z0mo,"z0hg=",z0hg,"z0h=",z0h
-write(0,*)"==============================================="
+!write(0,*)"========after thermalz0 ======================"
+!write(0,*)"fveg=",fveg,"z0m=",z0m,"z0mg=",z0mg,"zpd=",zpd, &
+!          "vaie=",vaie,"ur=",ur,"csigf0=",csigmaf0,"csigf1=",csigmaf1, &
+!          "temptrs=",temptrs,"z0mo=",z0mo,"z0hg=",z0hg,"z0h=",z0h
+!write(0,*)"==============================================="
 ! aerodyn resistances between heights zlvl and d+z0v
 
        IF(OPT_SFC == 1) THEN
@@ -4139,16 +4139,16 @@ write(0,*)"==============================================="
 ! aerodyn resistance between heights z0g and d+z0v, RAG, and leaf
 ! boundary layer resistance, RB
 
-write(0,*)"vaie=",vaie,"rho=",rhoair,"hg=",hg,"zpd=",zpd, &
-          "z0mg=",z0mg,"z0hg=",z0hg,"hcan=",hcan,"uc=",uc, &
-          "z0h=",z0h,"cwp=",cwp,"vegtyp=",vegtyp,"mpe=",mpe,&
-          "tv=",tv,"mozg=",mozg,"fhg=",fhg,"ramg=",ramg
+!write(0,*)"vaie=",vaie,"rho=",rhoair,"hg=",hg,"zpd=",zpd, &
+!          "z0mg=",z0mg,"z0hg=",z0hg,"hcan=",hcan,"uc=",uc, &
+!          "z0h=",z0h,"cwp=",cwp,"vegtyp=",vegtyp,"mpe=",mpe,&
+!          "tv=",tv,"mozg=",mozg,"fhg=",fhg,"ramg=",ramg
        CALL RAGRB(parameters,ITER   ,VAIE   ,RHOAIR ,HG     ,TAH    , & !in
                   ZPD    ,Z0MG   ,Z0HG   ,HCAN   ,UC     , & !in
                   Z0H    ,FV     ,CWP    ,VEGTYP ,MPE    , & !in
                   TV     ,MOZG   ,FHG    ,ILOC   ,JLOC   , & !inout
                   RAMG   ,RAHG   ,RAWG   ,RB     )           !out
-write(0,*)"rahc=",rahc,"rahg=",rahg,"rb=",rb,"ramc=",ramc
+!write(0,*)"rahc=",rahc,"rahg=",rahg,"rb=",rb,"ramc=",ramc
 
 ! es and d(es)/dt evaluated at tv
 
@@ -4243,8 +4243,8 @@ write(0,*)"rahc=",rahc,"rahg=",rahg,"rb=",rb,"ramc=",ramc
         CVH  = 2.0*VAIE/RB
         CGH  = 1.0/RAHG
         COND = CAH + CVH + CGH
-write(0,*)"sfctmp=",sfctmp,"cah=",cah,"tg=",tg,"cgh=",cgh,&
-           "cond=",cond,"cvh=",cvh
+!write(0,*)"sfctmp=",sfctmp,"cah=",cah,"tg=",tg,"cgh=",cgh,&
+!           "cond=",cond,"cvh=",cvh
         ATA  = (SFCTMP*CAH + TG*CGH) / COND
         BTA  = CVH/COND
         CSH  = (1.0-BTA)*RHOAIR*CPAIR*CVH
@@ -4268,7 +4268,7 @@ write(0,*)"sfctmp=",sfctmp,"cah=",cah,"tg=",tg,"cgh=",cgh,&
         CTR  = (1.0-BEA)*CTW*RHOAIR*CPAIR/GAMMAV
 
 ! evaluate surface fluxes with current temperature and solve for dts
-write(0,*)"tah=",tah,"ata=",ata,"bta=",bta,"tv=",tv
+!write(0,*)"tah=",tah,"ata=",ata,"bta=",bta,"tv=",tv
         TAH = ATA + BTA*TV               ! canopy air T.
         EAH = AEA + BEA*ESTV             ! canopy air e
 
@@ -4304,8 +4304,8 @@ write(0,*)"tah=",tah,"ata=",ata,"bta=",bta,"tv=",tv
         HG = RHOAIR*CPAIR*(TG  - TAH)   /RAHG
 
 ! consistent specific humidity from canopy air vapor pressure
-write(0,*)"qsfc=",qsfc,"eah=",eah,"sfcprs=",sfcprs
-        QSFC = (0.622*EAH)/(SFCPRS-0.378*EAH)
+!write(0,*)"qsfc=",qsfc,"eah=",eah,"sfcprs=",sfcprs
+!        QSFC = (0.622*EAH)/(SFCPRS-0.378*EAH)
 
 !mynn
         if ( opt_sfc == 4 ) then
@@ -4698,11 +4698,11 @@ write(0,*)"qsfc=",qsfc,"eah=",eah,"sfcprs=",sfcprs
 !mynn
         if (opt_sfc == 4) then
 
-           write(0,*)"======== before sfcdif4 ===================="
-           write(0,*)"iter=",iter," sfctmp=",sfctmp," tah=", tah, &
-                     " qair=",qair," qsfc=",qsfc," sfcprs=",sfcprs, &
-                     " psfc=",psfc
-           write(0,*)"============================================"
+           !write(0,*)"======== before sfcdif4 ===================="
+           !write(0,*)"iter=",iter," sfctmp=",sfctmp," tah=", tah, &
+           !          " qair=",qair," qsfc=",qsfc," sfcprs=",sfcprs, &
+           !          " psfc=",psfc
+           !write(0,*)"============================================"
            call sfcdif4(iloc  ,jloc  ,iter  ,                &
                        uu     ,vv    ,sfctmp,                &
                        sfcprs ,psfc  ,pblhx ,gdx   ,z0m    , &
@@ -4713,12 +4713,12 @@ write(0,*)"qsfc=",qsfc,"eah=",eah,"sfcprs=",sfcprs
                        cq2b   ,moz   ,ustarx,rb1b  ,fm ,fh , &
                        stress1b,fm10 ,fh2   ,wspdb ,flhcb  ,flqcb)
            fv=ustarx
-           write(0,*)"======== after sfcdif4 ===================="
-           write(0,*)"iter=",iter," sfctmp=",sfctmp," tah=", tah, &
-                     " qair=",qair," qsfc=",qsfc," sfcprs=",sfcprs, &
-                     " psfc=",psfc," hfx=",h,"qfx=",qfx,            &
-                     " cm=",cm," ch=",ch," fm=",fm," fh=",fh
-           write(0,*)"============================================"
+           !write(0,*)"======== after sfcdif4 ===================="
+           !write(0,*)"iter=",iter," sfctmp=",sfctmp," tah=", tah, &
+           !          " qair=",qair," qsfc=",qsfc," sfcprs=",sfcprs, &
+           !          " psfc=",psfc," hfx=",h,"qfx=",qfx,            &
+           !          " cm=",cm," ch=",ch," fm=",fm," fh=",fh
+           !write(0,*)"============================================"
 
            ! Undo the multiplication by windspeed that SFCDIF4
            ! applies to exchange coefficients CH and CM:
