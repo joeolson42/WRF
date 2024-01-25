@@ -16,7 +16,7 @@
 ! For MPAS:
 ! use mpas_kind_types,only: kind_phys => RKIND
 ! For CCPP:
-!  use machine,  only : kind_phys
+  use ccpp_kind_types,  only : kind_phys
 ! For WRF
 !  use module_gfs_machine,  only : kind_phys
 
@@ -60,7 +60,7 @@
 ! Define single & double precision
  integer, parameter :: sp = selected_real_kind(6, 37)
  integer, parameter :: dp = selected_real_kind(15, 307)
- integer, parameter :: kind_phys = selected_real_kind(6, 37)
+! integer, parameter :: kind_phys = sp
  real(kind_phys),parameter:: zero   = 0.0
  real(kind_phys),parameter:: half   = 0.5
  real(kind_phys),parameter:: one    = 1.0
@@ -97,6 +97,5 @@
 ! xlscp  = (xlv+xlf)/cp
 ! xlvcp  = xlv/cp
 ! g_inv  = 1./grav
-
 
  end module module_bl_mynn_common
