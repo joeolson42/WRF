@@ -28,7 +28,7 @@
 ! *        diagnostically.                                             *
 ! *     5. dmp_mf                                                      *
 ! *        Calls the (nonlocal) mass-flux component                    *
-! *     6. ddmf_jpl                                                    *
+! *     6. ddmp_mf                                                     *
 ! *        Calls the downdraft mass-flux component                     *
 ! *    (-) mym_level2      (called in the other subroutines)           *
 ! *        calculates the stability functions at Level 2.              *
@@ -48,7 +48,7 @@
 ! *             call scale_aware       |                               *
 ! *             call mym_condensation  |                               *
 ! *             call dmp_mf            |                               *
-! *             call ddmf_jpl          |                               *
+! *             call ddmp_mf           |                               *
 ! *             call mym_turbulence    |                               *
 ! *             call mym_predict       |                               *
 ! *                  |                 |                               *
@@ -327,7 +327,7 @@ MODULE module_bl_mynn
   !>Adding top-down diffusion driven by cloud-top radiative cooling
   integer, parameter :: bl_mynn_topdown = 0
   !>Option to activate downdrafts, from Elynn Wu (0: deactive, 1: active)
-  integer, parameter :: bl_mynn_edmf_dd = 0
+  integer, parameter :: bl_mynn_edmf_dd = 1
 
   !>Option to activate heating due to dissipation of TKE (to activate, set to 1.0)
   integer, parameter :: dheat_opt = 1
@@ -341,7 +341,7 @@ MODULE module_bl_mynn
 
   !option to print out more stuff for debugging purposes
   logical, parameter :: debug_code = .false.
-  integer, parameter :: idbg = 23 !specific i-point to write out
+  integer, parameter :: idbg = 20 !specific i-point to write out
 
   ! Used in WRF-ARW module_physics_init.F
   integer :: mynn_level
@@ -485,9 +485,6 @@ CONTAINS
          & edmf_a,edmf_w,edmf_qt,edmf_thl,edmf_ent,edmf_qc,                     &
          & sub_thl3D,sub_sqv3D,det_thl3D,det_sqv3D
 
-!   real, dimension(ims:ime,kms:kme)   ::                                       &
-!         & edmf_a_dd,edmf_w_dd,edmf_qt_dd,edmf_thl_dd,edmf_ent_dd,edmf_qc_dd
-
     real(kind_phys), dimension(ims:ime), intent(inout) :: pblh
     real(kind_phys), dimension(ims:ime), intent(inout) :: rmol
 
@@ -534,7 +531,7 @@ CONTAINS
          &el, dfm, dfh, dfq, tcd, qcd, pdk, pdt, pdq, pdc,  &
          &vt, vq, sgm, kzero
     real(kind_phys), dimension(kts:kte) ::                  &
-         &thetav,sh,sm,u1,v1,w1,p1,                         &
+         &thv,thlv,sh,sm,u1,v1,w1,p1,                       &
          &ex1,dz1,th1,tk1,rho1,qke1,tsq1,qsq1,cov1,         &
          &sqv,sqi,sqc,sqs,                                  &
          &du1,dv1,dth1,dqv1,dqc1,dqi1,dqs1,ozone1,          &
@@ -560,7 +557,9 @@ CONTAINS
          &s_awqnbca1
     real(kind_phys), dimension(kts:kte+1) ::                &
          &sd_aw1,sd_awthl1,sd_awqt1,                        &
-         &sd_awqv1,sd_awqc1,sd_awu1,sd_awv1,sd_awqke1
+         &sd_awqv1,sd_awqc1,sd_awu1,sd_awv1,sd_awqke1,      &
+         &sd_awqi1,sd_awqnc1,sd_awqni1,                     &
+         &sd_awqnwfa1,sd_awqnifa1
 
     real(kind_phys), dimension(kts:kte+1) :: zw
     real(kind_phys) :: cpm,sqcg,flt,fltv,flq,flqv,flqc,     &
@@ -624,7 +623,7 @@ CONTAINS
     ITF=ITE
     KTF=KTE
 
-    IF (bl_mynn_output > 0) THEN !research mode
+    IF (bl_mynn_output .gt. 0) THEN !research mode
        edmf_a(its:ite,kts:kte)=0.
        edmf_w(its:ite,kts:kte)=0.
        edmf_qt(its:ite,kts:kte)=0.
@@ -635,13 +634,6 @@ CONTAINS
        sub_sqv3D(its:ite,kts:kte)=0.
        det_thl3D(its:ite,kts:kte)=0.
        det_sqv3D(its:ite,kts:kte)=0.
-
-       !edmf_a_dd(its:ite,kts:kte)=0.
-       !edmf_w_dd(its:ite,kts:kte)=0.
-       !edmf_qt_dd(its:ite,kts:kte)=0.
-       !edmf_thl_dd(its:ite,kts:kte)=0.
-       !edmf_ent_dd(its:ite,kts:kte)=0.
-       !edmf_qc_dd(its:ite,kts:kte)=0.
     ENDIF
     ktop_plume(its:ite)=0   !int
     ztop_plume(its:ite)=0.
@@ -753,7 +745,7 @@ CONTAINS
                 rho1(k)=rho(i,k)
                 sqc(k)=sqc3D(i,k) !/(1.+qv(i,k))
                 sqv(k)=sqv3D(i,k) !/(1.+qv(i,k))
-                thetav(k)=th(i,k)*(1.+p608*sqv(k))
+                thv(k)=th(i,k)*(1.+p608*sqv(k))
                 !keep snow out for now - increases ceiling bias
                 sqw(k)=sqv(k)+sqc(k)+sqi(k)!+sqs(k)
                 thl(k)=th1(k) - xlvcp/ex1(k)*sqc(k) &
@@ -762,7 +754,7 @@ CONTAINS
                 !suggested min temperature to improve accuracy.
                 !thl(k)=th(i,k)*(1.- xlvcp/MAX(tk1(k),TKmin)*sqc(k) &
                 !    &               - xlscp/MAX(tk1(k),TKmin)*sqi(k))
-
+                thlv(k)=thl(k)*(1.+p608*sqv(k))
                 IF (k==kts) THEN
                    zw(k)=0.
                 ELSE
@@ -793,7 +785,7 @@ CONTAINS
              zw(kte+1)=zw(kte)+dz(i,kte)
 
 !>  - Call get_pblh() to calculate hybrid (\f$\theta_{v}-TKE\f$) PBL height.
-             CALL GET_PBLH(KTS,KTE,PBLH(i),thetav,&
+             CALL GET_PBLH(KTS,KTE,PBLH(i),thv,&
                &  Qke1,zw,dz1,xland(i),KPBL(i))
              
 !>  - Call scale_aware() to calculate similarity functions for scale-adaptive control
@@ -814,7 +806,8 @@ CONTAINS
                   &kts,kte,xland(i),              &
                   &dz1, dx(i), zw,                &
                   &u1, v1, thl, sqv,              &
-                  &PBLH(i), th1, thetav, sh, sm,  &
+                  &PBLH(i), th1, thv, thlv,       &
+                  &sh, sm,                        &
                   &ust(i), rmol(i),               &
                   &el, Qke1, Tsq1, Qsq1, Cov1,    &
                   &Psig_bl(i), cldfra_bl1D,       &
@@ -985,6 +978,11 @@ CONTAINS
        sd_awqt1   =0.0
        sd_awqv1   =0.0
        sd_awqc1   =0.0
+       sd_awqi1   =0.0
+       sd_awqnc1  =0.0
+       sd_awqni1  =0.0
+       sd_awqnwfa1=0.0
+       sd_awqnifa1=0.0
        sd_awu1    =0.0
        sd_awv1    =0.0
        sd_awqke1  =0.0
@@ -1012,7 +1010,7 @@ CONTAINS
           !suggested min temperature to improve accuracy.
           !thl(k)=th(i,k)*(1.- xlvcp/MAX(tk1(k),TKmin)*sqc(k) &
           !    &               - xlscp/MAX(tk1(k),TKmin)*sqi(k))
-          thetav(k)=th1(k)*(1.+p608*sqv(k))
+          thv(k)=th1(k)*(1.+p608*sqv(k))
        enddo ! end k
        zw(kte+1)=zw(kte)+dz(i,kte)
 
@@ -1040,7 +1038,7 @@ CONTAINS
 
 !>  - Call get_pblh() to calculate the hybrid \f$\theta_{v}-TKE\f$
 !! PBL height diagnostic.
-       CALL GET_PBLH(KTS,KTE,PBLH(i),thetav,&
+       CALL GET_PBLH(KTS,KTE,PBLH(i),thv,&
        & Qke1,zw,dz1,xland(i),KPBL(i))
 
 !>  - Call scale_aware() to calculate the similarity functions,
@@ -1117,11 +1115,11 @@ CONTAINS
        if (bl_mynn_topdown.eq.1) then
           call topdown_cloudrad(kts,kte,dz1,zw,fltv,     &
                &xland(i),kpbl(i),PBLH(i),                &
-               &sqc,sqi,sqw,thl,th1,ex1,p1,rho1,thetav,  &
+               &sqc,sqi,sqw,thl,th1,ex1,p1,rho1,thv,     &
                &cldfra_bl1D,rthraten(i,:),               &
                &maxKHtopdown(i),KHtopdown,TKEprodTD      )
        else
-          maxKHtopdown(i)  = 0.0
+          maxKHtopdown(i)    = 0.0
           KHtopdown(kts:kte) = 0.0
           TKEprodTD(kts:kte) = 0.0
        endif
@@ -1133,7 +1131,7 @@ CONTAINS
                &bl_mynn_edmf_mom,                        &
                &bl_mynn_edmf_tke,                        &
                &bl_mynn_mixscalars,                      &
-               &u1,v1,w1,th1,thl,thetav,tk1,             &
+               &u1,v1,w1,th1,thl,thv,tk1,                &
                &sqw,sqv,sqc,qke1,                        &
                &qnc1,qni1,qnwfa1,qnifa1,qnbca1,          &
                &ex1,Vt,Vq,sgm,                           &
@@ -1170,18 +1168,23 @@ CONTAINS
        endif
 
        if (bl_mynn_edmf_dd == 1) then
-          call DDMF_JPL(kts,kte,delt,zw,dz1,p1,          &
-               &u1,v1,th1,thl,thetav,tk1,                &
-               &sqw,sqv,sqc,rho1,ex1,                    &
-               &ust(i),flt,flq,                          &
-               &PBLH(i),KPBL(i),                         &
+          call ddmp_mf(kts,kte,delt,dx(i),zw,dz1,p1,     &
+               &u1,v1,th1,thl,thv,tk1,                   &
+               &sqw,sqv,sqc,sqi,qnc1,qni1,qnwfa1,qnifa1, &
+               &qke1,rho1,ex1,                           &
+               &qc_bl1d,qi_bl1d,cldfra_bl1d,             &
+               &ust(i),flt,flq,fltv,                     &
+               &pblh(i),kpbl(i),                         &
                &edmf_a_dd1,edmf_w_dd1,edmf_qt_dd1,       &
                &edmf_thl_dd1,edmf_ent_dd1,               &
                &edmf_qc_dd1,                             &
                &sd_aw1,sd_awthl1,sd_awqt1,               &
-               &sd_awqv1,sd_awqc1,sd_awu1,sd_awv1,       &
+               &sd_awqv1,sd_awqc1,sd_awqi1,              &
+               &sd_awqnc1,sd_awqni1,                     &
+               &sd_awqnwfa1,sd_awqnifa1,                 &
+               &sd_awu1,sd_awv1,                         &
                &sd_awqke1,                               &
-               &qc_bl1d,cldfra_bl1d,                     &
+               &tkeprodtd,el,                            &
                &rthraten(i,:)                            )
        endif
 
@@ -1189,10 +1192,18 @@ CONTAINS
        !do nsub = 1,2
        delt2 = delt !*0.5    !only works if topdown=0
 
+       !thlv with updated subgrid clouds
+       do k=kts,kte
+          thlv(k)=(th1(k) - xlvcp/ex1(k)*max(qc_bl1D(k),sqc(k))         &
+                  &       - xlscp/ex1(k)*max(qi_bl1D(k),sqi(k)+sqs(k))) &
+                  &       * (1.+p608*sqv(k))
+       enddo
+
        call mym_turbulence(                              & 
                &kts,kte,xland(i),closure,                &
                &dz1, DX(i), zw,                          &
-               &u1, v1, thl, thetav, sqc, sqw,           &
+               &u1, v1, thl, thv, thlv,                  &
+               &sqc, sqw,                                &
                &qke1, tsq1, qsq1, cov1,                  &
                &vt, vq,                                  &
                &rmol(i), flt, fltv, flq,                 &
@@ -1257,7 +1268,9 @@ CONTAINS
                &s_awqnc1,s_awqni1,                       &
                &s_awqnwfa1,s_awqnifa1,s_awqnbca1,        &
                &sd_aw1,sd_awthl1,sd_awqt1,               &
-               &sd_awqv1,sd_awqc1,                       &
+               &sd_awqv1,sd_awqc1,sd_awqi1,              &
+               &sd_awqnc1,sd_awqni1,                     &
+               &sd_awqnwfa1,sd_awqnifa1,                 &
                &sd_awu1,sd_awv1,                         &
                &sub_thl,sub_sqv,                         &
                &sub_u,sub_v,                             &
@@ -1378,8 +1391,8 @@ CONTAINS
        endif
 
        !update updraft/downdraft properties
-       if (bl_mynn_output > 0) then !research mode == 1
-          if (bl_mynn_edmf > 0) then
+       if (bl_mynn_output > 0) then !research mode == 1 or 2
+          if (bl_mynn_edmf > 0 .and. bl_mynn_output == 1) then
              edmf_a(i,kts:kte)   =edmf_a1(kts:kte)
              edmf_w(i,kts:kte)   =edmf_w1(kts:kte)
              edmf_qt(i,kts:kte)  =edmf_qt1(kts:kte)
@@ -1391,14 +1404,18 @@ CONTAINS
              det_thl3D(i,kts:kte)=det_thl(kts:kte)
              det_sqv3D(i,kts:kte)=det_sqv(kts:kte)
           endif
-          !if (bl_mynn_edmf_dd > 0) THEN
-          !   edmf_a_dd(i,kts:kte)  =edmf_a_dd1(kts:kte)
-          !   edmf_w_dd(i,kts:kte)  =edmf_w_dd1(kts:kte)
-          !   edmf_qt_dd(i,kts:kte) =edmf_qt_dd1(kts:kte)
-          !   edmf_thl_dd(i,kts:kte)=edmf_thl_dd1(kts:kte)
-          !   edmf_ent_dd(i,kts:kte)=edmf_ent_dd1(kts:kte)
-          !   edmf_qc_dd(i,kts:kte) =edmf_qc_dd1(kts:kte)
-          !endif
+          if (bl_mynn_edmf_dd > 0 .and. bl_mynn_output == 2) then
+             edmf_a(i,kts:kte)   =edmf_a_dd1(kts:kte)
+             edmf_w(i,kts:kte)   =edmf_w_dd1(kts:kte)
+             edmf_qt(i,kts:kte)  =edmf_qt_dd1(kts:kte)
+             edmf_thl(i,kts:kte) =edmf_thl_dd1(kts:kte)
+             edmf_ent(i,kts:kte) =edmf_ent_dd1(kts:kte)
+             edmf_qc(i,kts:kte)  =edmf_qc_dd1(kts:kte)
+             sub_thl3D(i,kts:kte)=sub_thl(kts:kte)
+             sub_sqv3D(i,kts:kte)=sub_sqv(kts:kte)
+             det_thl3D(i,kts:kte)=det_thl(kts:kte)
+             det_sqv3D(i,kts:kte)=det_sqv(kts:kte)
+          endif
        endif
 
        !***  Begin debug prints
@@ -1516,7 +1533,7 @@ CONTAINS
        &            dz, dx, zw,                               &
        &            u, v, thl, qw,                            &
 !       &            ust, rmo, pmz, phh, flt, flq,             &
-       &            zi, theta, thetav, sh, sm,                &
+       &            zi, theta, thv, thlv, sh, sm,             &
        &            ust, rmo, el,                             &
        &            Qke, Tsq, Qsq, Cov, Psig_bl, cldfra_bl1D, &
        &            bl_mynn_mixlength,                        &
@@ -1535,7 +1552,7 @@ CONTAINS
     real(kind_phys), dimension(kts:kte),   intent(in) :: dz
     real(kind_phys), dimension(kts:kte+1), intent(in) :: zw
     real(kind_phys), dimension(kts:kte),   intent(in) :: u,v,thl,&
-         &qw,cldfra_bl1D,edmf_w1,edmf_a1
+         &thlv,qw,cldfra_bl1D,edmf_w1,edmf_a1
     real(kind_phys), dimension(kts:kte),   intent(out) :: tsq,qsq,cov
     real(kind_phys), dimension(kts:kte),   intent(inout) :: el,qke
     real(kind_phys), dimension(kts:kte) ::                       &
@@ -1544,7 +1561,7 @@ CONTAINS
     integer :: k,l,lmax
     real(kind_phys):: phm,vkz,elq,elv,b1l,b2l,pmz=1.,phh=1.,     &
          &flt=0.,fltv=0.,flq=0.,tmpq
-    real(kind_phys), dimension(kts:kte) :: theta,thetav
+    real(kind_phys), dimension(kts:kte) :: theta,thv
     real(kind_phys), dimension(kts:kte) :: rstoch_col
     integer ::spp_pbl
 
@@ -1558,7 +1575,7 @@ CONTAINS
 !> - Call mym_level2() to calculate the stability functions at level 2.
     CALL mym_level2 ( kts,kte,                      &
          &            dz,                           &
-         &            u, v, thl, thetav, qw,        &
+         &            u, v, thl, thv, thlv, qw,     &
          &            ql, vt, vq,                   &
          &            dtl, dqw, dtv, gm, gh, sm, sh )
 !
@@ -1717,8 +1734,8 @@ CONTAINS
 !! @ {
   SUBROUTINE  mym_level2 (kts,kte,                &
        &            dz,                           &
-       &            u, v, thl, thetav, qw,        &
-       &            ql, vt, vq,                   &
+       &            u, v, thl, thv, thlv,         &
+       &            qw, ql, vt, vq,               &
        &            dtl, dqw, dtv, gm, gh, sm, sh )
 !
 !-------------------------------------------------------------------
@@ -1732,7 +1749,7 @@ CONTAINS
 
     real(kind_phys), dimension(kts:kte), intent(in)  :: dz
     real(kind_phys), dimension(kts:kte), intent(in)  :: u,v, &
-         &thl,qw,ql,vt,vq,thetav
+         &thl,qw,ql,vt,vq,thv,thlv
     real(kind_phys), dimension(kts:kte), intent(out) ::      &
          &dtl,dqw,dtv,gm,gh,sm,sh
 
@@ -1774,9 +1791,9 @@ CONTAINS
 !
        vtt =  1.0 +vt(k)*abk +vt(k-1)*afk  ! Beta-theta in NN09, Eq. 39
        vqq =  tv0 +vq(k)*abk +vq(k-1)*afk  ! Beta-q
-       dtq =  vtt*dtz +vqq*dqz
-       !Alternatively, use theta-v without the SGS clouds
-       !dtq = ( thetav(k)-thetav(k-1) )/( dzk )
+       !dtq =  vtt*dtz +vqq*dqz
+       !Alternatively, use theta-l-v with the SGS clouds
+       dtq = ( thlv(k)-thlv(k-1) )/( dzk )
 !
        dtl(k) =  dtz
        dqw(k) =  dqz
@@ -2076,7 +2093,7 @@ CONTAINS
            IF ( rmo .GT. 0.0 ) THEN
               els  = karman*zwk/(1.0+cns*MIN( zwk*rmo, zmax ))
            ELSE
-              els  =  karman*zwk*( 1.0 - alp4* zwk*rmo )**0.2
+              els  = karman*zwk*( 1.0 - alp4* zwk*rmo )**0.2
            END IF
 
            !   ** NOW BLEND THE MIXING LENGTH SCALES:
@@ -2089,7 +2106,7 @@ CONTAINS
            !el(k) = SQRT( els**2/(1. + (els**2/elt**2) +(els**2/elb**2)))
            el(k) = sqrt( els**2/(1. + (els**2/elt**2)))
            el(k) = min(el(k), elb)
-           el(k) = MIN (el(k), elf)
+           el(k) = min(el(k), elf)
            el(k) = el(k)*(1.-wt) + alp5*elBLavg(k)*wt
 
            ! include scale-awareness, except for original MYNN
@@ -2104,7 +2121,7 @@ CONTAINS
         cns  = 3.5 !JOE-test  * (1.0 - MIN(MAX(Ugrid - Uonset, 0.0)/10.0, 1.0))
         alp1 = 0.22
         alp2 = 0.30
-        alp3 = 2.0
+        alp3 = 2.5
         alp4 = 5.0
         alp5 = alp2 !like alp2, but for free atmosphere
         alp6 = 50.0 !used for MF mixing length
@@ -2619,7 +2636,7 @@ CONTAINS
     &            kts,kte,                                     &
     &            xland,closure,                               &
     &            dz, dx, zw,                                  &
-    &            u, v, thl, thetav, ql, qw,                   &
+    &            u, v, thl, thv, thlv, ql, qw,                &
     &            qke, tsq, qsq, cov,                          &
     &            vt, vq,                                      &
     &            rmo, flt, fltv, flq,                         &
@@ -2650,8 +2667,8 @@ CONTAINS
     real(kind_phys), dimension(kts:kte+1), intent(in) :: zw
     real(kind_phys), intent(in)       :: rmo,flt,fltv,flq,                 &
          &Psig_bl,Psig_shcu,xland,dx,zi
-    real(kind_phys), dimension(kts:kte), intent(in) :: u,v,thl,thetav,qw,  & 
-         &ql,vt,vq,qke,tsq,qsq,cov,cldfra_bl1D,edmf_w1,edmf_a1,            &
+    real(kind_phys), dimension(kts:kte), intent(in) :: u,v,thl,thv,        &
+         &thlv,qw,ql,vt,vq,qke,tsq,qsq,cov,cldfra_bl1D,edmf_w1,edmf_a1,    &
          &TKEprodTD
 
     real(kind_phys), dimension(kts:kte), intent(out) :: dfm,dfh,dfq,       &
@@ -2703,8 +2720,8 @@ CONTAINS
 
     CALL mym_level2 (kts,kte,                   &
     &            dz,                            &
-    &            u, v, thl, thetav, qw,         &
-    &            ql, vt, vq,                    &
+    &            u, v, thl, thv, thlv,          &
+    &            qw, ql, vt, vq,                &
     &            dtl, dqw, dtv, gm, gh, sm, sh  )
 !
     CALL mym_length (                           &
@@ -3279,6 +3296,10 @@ CONTAINS
        kqdz(k) = MAX(kqdz(k), -0.5*(s_aw(k)-s_aw(k+1)))
        kmdz(k) = MAX(kmdz(k),  0.5* s_aw(k))
        kmdz(k) = MAX(kmdz(k), -0.5*(s_aw(k)-s_aw(k+1)))
+!       kqdz(k) = max(kqdz(k),  0.5*(s_aw(k)+sd_aw(k)))
+!       kqdz(k) = max(kqdz(k), -0.5*(s_aw(k)-s_aw(k+1)) -0.5*(sd_aw(k)-sd_aw(k+1)) )
+!       kmdz(k) = max(kmdz(k),  0.5*(s_aw(k)+sd_aw(k)))
+!       kmdz(k) = max(kmdz(k), -0.5*(s_aw(k)-s_aw(k+1)) -0.5*(sd_aw(k)-sd_aw(k+1)) )
     ENDDO
     !end conservation mods
 
@@ -4043,7 +4064,10 @@ CONTAINS
        &s_awqnc,s_awqni,                      &
        &s_awqnwfa,s_awqnifa,s_awqnbca,        &
        &sd_aw,sd_awthl,sd_awqt,sd_awqv,       &
-       &sd_awqc,sd_awu,sd_awv,                &
+       &sd_awqc,sd_awqi,                      &
+       &sd_awqnc,sd_awqni,                    &
+       &sd_awqnwfa,sd_awqnifa,                &
+       &sd_awu,sd_awv,                        &
        &sub_thl,sub_sqv,                      &
        &sub_u,sub_v,                          &
        &det_thl,det_sqv,det_sqc,              &
@@ -4083,7 +4107,8 @@ CONTAINS
     real(kind_phys), dimension(kts:kte+1), intent(in) :: s_aw,            &
          &s_awthl,s_awqt,s_awqnc,s_awqni,s_awqv,s_awqc,s_awu,s_awv,       &
          &s_awqnwfa,s_awqnifa,s_awqnbca,                                  &
-         &sd_aw,sd_awthl,sd_awqt,sd_awqv,sd_awqc,sd_awu,sd_awv
+         &sd_aw,sd_awthl,sd_awqt,sd_awqv,sd_awqc,sd_awqi,                 &
+         &sd_awqnc,sd_awqni,sd_awqnwfa,sd_awqnifa,sd_awu,sd_awv
 ! tendencies from mass-flux environmental subsidence and detrainment
     real(kind_phys), dimension(kts:kte), intent(in) :: sub_thl,sub_sqv,   &
          &sub_u,sub_v,det_thl,det_sqv,det_sqc,det_u,det_v
@@ -4162,10 +4187,12 @@ CONTAINS
 
     !stability criteria for mf
     DO k=kts+1,kte-1
-       khdz(k) = MAX(khdz(k),  0.5*s_aw(k))
-       khdz(k) = MAX(khdz(k), -0.5*(s_aw(k)-s_aw(k+1)))
-       kmdz(k) = MAX(kmdz(k),  0.5*s_aw(k))
-       kmdz(k) = MAX(kmdz(k), -0.5*(s_aw(k)-s_aw(k+1)))
+       khdz(k) = max(khdz(k),  0.5*(s_aw(k) +sd_aw(k)))
+       khdz(k) = max(khdz(k), -0.5*(s_aw(k) -s_aw(k+1))  &
+                              -0.5*(sd_aw(k)-sd_aw(k+1)) )
+       kmdz(k) = max(kmdz(k),  0.5*(s_aw(k) +sd_aw(k)))
+       kmdz(k) = max(kmdz(k), -0.5*(s_aw(k) -s_aw(k+1))  &
+                              -0.5*(sd_aw(k)-sd_aw(k+1)) )
     ENDDO
 
     ustdrag = MIN(ust*ust,0.99)/wspd  ! limit at ~ 20 m/s
@@ -4299,40 +4326,35 @@ CONTAINS
 !!============================================
     k=kts
 
-!    a(k)=0.
-!    b(k)=1.+dtz(k)*dfh(k+1) - 0.5*dtz(k)*s_aw(k+1)
-!    c(k)=  -dtz(k)*dfh(k+1) - 0.5*dtz(k)*s_aw(k+1)
-!    d(k)=thl(k) + dtz(k)*flt + tcd(k)*delt &
-!        & -dtz(k)*s_awthl(kts+1) + diss_heat(k)*delt + &
-!        & sub_thl(k)*delt + det_thl(k)*delt
-!
-!    DO k=kts+1,kte-1
-!       a(k)=  -dtz(k)*dfh(k)            + 0.5*dtz(k)*s_aw(k)
-!       b(k)=1.+dtz(k)*(dfh(k)+dfh(k+1)) + 0.5*dtz(k)*(s_aw(k)-s_aw(k+1))
-!       c(k)=  -dtz(k)*dfh(k+1)          - 0.5*dtz(k)*s_aw(k+1)
-!       d(k)=thl(k) + tcd(k)*delt + dtz(k)*(s_awthl(k)-s_awthl(k+1)) &
-!           &       + diss_heat(k)*delt + &
-!           &         sub_thl(k)*delt + det_thl(k)*delt
-!    ENDDO
-
-!rho-weighted: rhosfc*X*rhoinv(k)
+!rho-weighted: rhosfc*x*rhoinv(k)
     a(k)=  -dtz(k)*khdz(k)*rhoinv(k)
-    b(k)=1.+dtz(k)*(khdz(k+1)+khdz(k))*rhoinv(k) - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1) - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
-    c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k)           - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1) - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
-    d(k)=thl(k)  + dtz(k)*rhosfc*flt*rhoinv(k) + tcd(k)*delt &
-       & - dtz(k)*rhoinv(k)*s_awthl(k+1) -dtz(k)*rhoinv(k)*sd_awthl(k+1) + &
-       & diss_heat(k)*delt + sub_thl(k)*delt + det_thl(k)*delt
+    b(k)=1.+dtz(k)*(khdz(k+1)+khdz(k))*rhoinv(k)        &
+       &   - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)             &
+       &   - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
+    c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k)                  &
+       &   - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)             &
+       &   - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
+    d(k)=thl(k) + dtz(k)*rhosfc*flt*rhoinv(k) + tcd(k)*delt &
+       &   - dtz(k)*rhoinv(k)*s_awthl(k+1)              &
+       &   + dtz(k)*rhoinv(k)*sd_awthl(k+1)             &
+       & + diss_heat(k)*delt + sub_thl(k)*delt + det_thl(k)*delt
 
-    DO k=kts+1,kte-1
-       a(k)=  -dtz(k)*khdz(k)*rhoinv(k)     + 0.5*dtz(k)*rhoinv(k)*s_aw(k) + 0.5*dtz(k)*rhoinv(k)*sd_aw(k)
-       b(k)=1.+dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k) + &
-           &   0.5*dtz(k)*rhoinv(k)*(s_aw(k)-s_aw(k+1)) + 0.5*dtz(k)*rhoinv(k)*(sd_aw(k)-sd_aw(k+1))
-       c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k) - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1) - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
-       d(k)=thl(k) + tcd(k)*delt + &
-          & dtz(k)*rhoinv(k)*(s_awthl(k)-s_awthl(k+1)) + dtz(k)*rhoinv(k)*(sd_awthl(k)-sd_awthl(k+1)) + &
-          &       diss_heat(k)*delt + &
-          &       sub_thl(k)*delt + det_thl(k)*delt
-    ENDDO
+    do k=kts+1,kte-1
+       a(k)= -dtz(k)*khdz(k)*rhoinv(k)                  &
+       &    + 0.5*dtz(k)*rhoinv(k)*s_aw(k)              &
+       &    + 0.5*dtz(k)*rhoinv(k)*sd_aw(k)
+       b(k)=1.+dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k)     &
+       &  + 0.5*dtz(k)*rhoinv(k)*(s_aw(k)-s_aw(k+1))    &
+       &  + 0.5*dtz(k)*rhoinv(k)*(sd_aw(k)-sd_aw(k+1))
+       c(k)= -dtz(k)*khdz(k+1)*rhoinv(k)                &
+       &  - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)              &
+       &  - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
+       d(k)=thl(k) + tcd(k)*delt                        &
+       & + dtz(k)*rhoinv(k)*(s_awthl(k)-s_awthl(k+1))   &
+       & - dtz(k)*rhoinv(k)*(sd_awthl(k)-sd_awthl(k+1)) &
+       & +     diss_heat(k)*delt                        &
+       & +     sub_thl(k)*delt + det_thl(k)*delt
+    enddo
 
 !! no flux at the top
 !    a(kte)=-1.
@@ -4372,32 +4394,32 @@ IF (bl_mynn_mixqt > 0) THEN
 
     k=kts
 
-!    a(k)=0.
-!    b(k)=1.+dtz(k)*dfh(k+1) - 0.5*dtz(k)*s_aw(k+1)
-!    c(k)=  -dtz(k)*dfh(k+1) - 0.5*dtz(k)*s_aw(k+1)
-!    !rhs= qcd(k) !+ (gfluxp - gfluxm)/dz(k)&
-!    d(k)=sqw(k) + dtz(k)*flq + qcd(k)*delt - dtz(k)*s_awqt(k+1)
-!
-!    DO k=kts+1,kte-1
-!       a(k)=  -dtz(k)*dfh(k)            + 0.5*dtz(k)*s_aw(k)
-!       b(k)=1.+dtz(k)*(dfh(k)+dfh(k+1)) + 0.5*dtz(k)*(s_aw(k)-s_aw(k+1))
-!       c(k)=  -dtz(k)*dfh(k+1)          - 0.5*dtz(k)*s_aw(k+1)
-!       d(k)=sqw(k) + qcd(k)*delt + dtz(k)*(s_awqt(k)-s_awqt(k+1))
-!    ENDDO
-
 !rho-weighted:
     a(k)=  -dtz(k)*khdz(k)*rhoinv(k)
-    b(k)=1.+dtz(k)*(khdz(k+1)+khdz(k))*rhoinv(k) - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1) - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
-    c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k)           - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1) - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
-    d(k)=sqw(k)  + dtz(k)*rhosfc*flq*rhoinv(k) + qcd(k)*delt - dtz(k)*rhoinv(k)*s_awqt(k+1) - dtz(k)*rhoinv(k)*sd_awqt(k+1)
+    b(k)=1.+dtz(k)*(khdz(k+1)+khdz(k))*rhoinv(k)      &
+       & - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)             &
+       & - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
+    c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k)                &
+       & - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)             &
+       & - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
+    d(k)=sqw(k)  + dtz(k)*rhosfc*flq*rhoinv(k) + qcd(k)*delt &
+       &  - dtz(k)*rhoinv(k)*s_awqt(k+1)              &
+       &  + dtz(k)*rhoinv(k)*sd_awqt(k+1)
 
-    DO k=kts+1,kte-1
-       a(k)=  -dtz(k)*khdz(k)*rhoinv(k)     + 0.5*dtz(k)*rhoinv(k)*s_aw(k) + 0.5*dtz(k)*rhoinv(k)*sd_aw(k)
-       b(k)=1.+dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k) + &
-           &    0.5*dtz(k)*rhoinv(k)*(s_aw(k)-s_aw(k+1)) + 0.5*dtz(k)*rhoinv(k)*(sd_aw(k)-sd_aw(k+1))
-       c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k) - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1) - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
-       d(k)=sqw(k) + qcd(k)*delt + dtz(k)*rhoinv(k)*(s_awqt(k)-s_awqt(k+1)) + dtz(k)*rhoinv(k)*(sd_awqt(k)-sd_awqt(k+1))
-    ENDDO
+    do k=kts+1,kte-1
+       a(k)=  -dtz(k)*khdz(k)*rhoinv(k)               &
+       & + 0.5*dtz(k)*rhoinv(k)*s_aw(k)               &
+       & + 0.5*dtz(k)*rhoinv(k)*sd_aw(k)
+       b(k)=1.+dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k)   &
+       & + 0.5*dtz(k)*rhoinv(k)*(s_aw(k)-s_aw(k+1))   &
+       & + 0.5*dtz(k)*rhoinv(k)*(sd_aw(k)-sd_aw(k+1))
+       c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k)             &
+       & - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)             &
+       & - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
+       d(k)=sqw(k) + qcd(k)*delt                      &
+       & + dtz(k)*rhoinv(k)*(s_awqt(k)-s_awqt(k+1))   &
+       & - dtz(k)*rhoinv(k)*(sd_awqt(k)-sd_awqt(k+1))
+    enddo
 
 !! no flux at the top
 !    a(kte)=-1.
@@ -4436,36 +4458,34 @@ IF (bl_mynn_mixqt == 0) THEN
 
     k=kts
 
-!    a(k)=0.
-!    b(k)=1.+dtz(k)*dfh(k+1) - 0.5*dtz(k)*s_aw(k+1)
-!    c(k)=  -dtz(k)*dfh(k+1) - 0.5*dtz(k)*s_aw(k+1)
-!    d(k)=sqc(k) + dtz(k)*flqc + qcd(k)*delt - &
-!         dtz(k)*s_awqc(k+1)  + det_sqc(k)*delt
-!
-!    DO k=kts+1,kte-1
-!       a(k)=  -dtz(k)*dfh(k)            + 0.5*dtz(k)*s_aw(k)
-!       b(k)=1.+dtz(k)*(dfh(k)+dfh(k+1)) + 0.5*dtz(k)*(s_aw(k)-s_aw(k+1))
-!       c(k)=  -dtz(k)*dfh(k+1)          - 0.5*dtz(k)*s_aw(k+1)
-!       d(k)=sqc(k) + qcd(k)*delt + dtz(k)*(s_awqc(k)-s_awqc(k+1)) + &
-!            det_sqc(k)*delt
-!    ENDDO
-
 !rho-weighted:
     a(k)=  -dtz(k)*khdz(k)*rhoinv(k)
-    b(k)=1.+dtz(k)*(khdz(k+1)+khdz(k))*rhoinv(k) - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1) - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
-    c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k)           - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1) - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
+    b(k)=1.+dtz(k)*(khdz(k+1)+khdz(k))*rhoinv(k)      &
+    &  - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)               &
+    &  - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
+    c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k)                &
+    &  - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)               &
+    &  - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
     d(k)=sqc(k)  + dtz(k)*rhosfc*flqc*rhoinv(k) + qcd(k)*delt &
-       &  - dtz(k)*rhoinv(k)*s_awqc(k+1) - dtz(k)*rhoinv(k)*sd_awqc(k+1) + &
-       &  det_sqc(k)*delt
+    &  - dtz(k)*rhoinv(k)*s_awqc(k+1)                 &
+    &  + dtz(k)*rhoinv(k)*sd_awqc(k+1)                &
+    &  + det_sqc(k)*delt
 
-    DO k=kts+1,kte-1
-       a(k)=  -dtz(k)*khdz(k)*rhoinv(k)     + 0.5*dtz(k)*rhoinv(k)*s_aw(k) + 0.5*dtz(k)*rhoinv(k)*sd_aw(k)
-       b(k)=1.+dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k) + &
-           &    0.5*dtz(k)*rhoinv(k)*(s_aw(k)-s_aw(k+1)) + 0.5*dtz(k)*rhoinv(k)*(sd_aw(k)-sd_aw(k+1))
-       c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k) - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1) - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
-       d(k)=sqc(k) + qcd(k)*delt + dtz(k)*rhoinv(k)*(s_awqc(k)-s_awqc(k+1)) + dtz(k)*rhoinv(k)*(sd_awqc(k)-sd_awqc(k+1)) + &
-          & det_sqc(k)*delt
-    ENDDO
+    do k=kts+1,kte-1
+       a(k)=  -dtz(k)*khdz(k)*rhoinv(k)               &
+       & + 0.5*dtz(k)*rhoinv(k)*s_aw(k)               &
+       & + 0.5*dtz(k)*rhoinv(k)*sd_aw(k)
+       b(k)=1.+dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k)   &
+       & + 0.5*dtz(k)*rhoinv(k)*(s_aw(k)-s_aw(k+1))   &
+       & + 0.5*dtz(k)*rhoinv(k)*(sd_aw(k)-sd_aw(k+1))
+       c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k)             &
+       & - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)             &
+       & - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
+       d(k)=sqc(k) + qcd(k)*delt                      &
+       & + dtz(k)*rhoinv(k)*(s_awqc(k)-s_awqc(k+1))   &
+       & - dtz(k)*rhoinv(k)*(sd_awqc(k)-sd_awqc(k+1)) &
+       & + det_sqc(k)*delt
+    enddo
 
 ! prescribed value
     a(kte)=0.
@@ -4494,20 +4514,6 @@ IF (bl_mynn_mixqt == 0) THEN
 
     k=kts
 
-!    a(k)=0.
-!    b(k)=1.+dtz(k)*dfh(k+1) - 0.5*dtz(k)*s_aw(k+1)
-!    c(k)=  -dtz(k)*dfh(k+1) - 0.5*dtz(k)*s_aw(k+1)
-!    d(k)=sqv(k) + dtz(k)*flqv + qcd(k)*delt - dtz(k)*s_awqv(k+1) + &
-!       & sub_sqv(k)*delt + det_sqv(k)*delt
-!
-!    DO k=kts+1,kte-1
-!       a(k)=  -dtz(k)*dfh(k)            + 0.5*dtz(k)*s_aw(k)
-!       b(k)=1.+dtz(k)*(dfh(k)+dfh(k+1)) + 0.5*dtz(k)*(s_aw(k)-s_aw(k+1))
-!       c(k)=  -dtz(k)*dfh(k+1)          - 0.5*dtz(k)*s_aw(k+1)
-!       d(k)=sqv(k) + qcd(k)*delt + dtz(k)*(s_awqv(k)-s_awqv(k+1)) + &
-!          & sub_sqv(k)*delt + det_sqv(k)*delt
-!    ENDDO
-
     !limit unreasonably large negative fluxes:
     qvflux = flqv
     if (qvflux < 0.0) then
@@ -4515,22 +4521,34 @@ IF (bl_mynn_mixqt == 0) THEN
        qvflux = max(qvflux, (min(0.9*sqv(kts) - 1e-8, 0.0)/dtz(kts)))
     endif
 
-!rho-weighted:  rhosfc*X*rhoinv(k)
+!rho-weighted:
     a(k)=  -dtz(k)*khdz(k)*rhoinv(k)
-    b(k)=1.+dtz(k)*(khdz(k+1)+khdz(k))*rhoinv(k) - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1) - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
-    c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k)           - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1) - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
+    b(k)=1.+dtz(k)*(khdz(k+1)+khdz(k))*rhoinv(k)      &
+    & - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)                &
+    & - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
+    c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k)                &
+    & - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)                &
+    & - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
     d(k)=sqv(k)  + dtz(k)*rhosfc*qvflux*rhoinv(k) + qcd(k)*delt &
-       &  - dtz(k)*rhoinv(k)*s_awqv(k+1) - dtz(k)*rhoinv(k)*sd_awqv(k+1) + &
-       & sub_sqv(k)*delt + det_sqv(k)*delt
+    & - dtz(k)*rhoinv(k)*s_awqv(k+1)                  &
+    & + dtz(k)*rhoinv(k)*sd_awqv(k+1)                 &
+    & + sub_sqv(k)*delt + det_sqv(k)*delt
 
-    DO k=kts+1,kte-1
-       a(k)=  -dtz(k)*khdz(k)*rhoinv(k)     + 0.5*dtz(k)*rhoinv(k)*s_aw(k) + 0.5*dtz(k)*rhoinv(k)*sd_aw(k)
-       b(k)=1.+dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k) + &
-           &    0.5*dtz(k)*rhoinv(k)*(s_aw(k)-s_aw(k+1)) + 0.5*dtz(k)*rhoinv(k)*(sd_aw(k)-sd_aw(k+1))
-       c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k) - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1) - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
-       d(k)=sqv(k) + qcd(k)*delt + dtz(k)*rhoinv(k)*(s_awqv(k)-s_awqv(k+1)) + dtz(k)*rhoinv(k)*(sd_awqv(k)-sd_awqv(k+1)) + &
-          & sub_sqv(k)*delt + det_sqv(k)*delt
-    ENDDO
+    do k=kts+1,kte-1
+       a(k)=  -dtz(k)*khdz(k)*rhoinv(k)               &
+       & + 0.5*dtz(k)*rhoinv(k)*s_aw(k)               &
+       & + 0.5*dtz(k)*rhoinv(k)*sd_aw(k)
+       b(k)=1.+dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k)   &
+       & + 0.5*dtz(k)*rhoinv(k)*(s_aw(k)-s_aw(k+1))   &
+       & + 0.5*dtz(k)*rhoinv(k)*(sd_aw(k)-sd_aw(k+1))
+       c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k)             &
+       & - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)             &
+       & - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
+       d(k)=sqv(k) + qcd(k)*delt                      &
+       & + dtz(k)*rhoinv(k)*(s_awqv(k)-s_awqv(k+1))   &
+       & - dtz(k)*rhoinv(k)*(sd_awqv(k)-sd_awqv(k+1)) &
+       & + sub_sqv(k)*delt + det_sqv(k)*delt
+    enddo
 
 ! no flux at the top
 !    a(kte)=-1.
@@ -4568,18 +4586,32 @@ ENDIF
 IF (bl_mynn_cloudmix > 0 .AND. FLAG_QI) THEN
 
     k=kts
-!rho-weighted:
-    a(k)=  -dtz(k)*khdz(k)*rhoinv(k)
-    b(k)=1.+dtz(k)*(khdz(k+1)+khdz(k))*rhoinv(k)
-    c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k)
-    d(k)=sqi(k)
 
-    DO k=kts+1,kte-1
-       a(k)=  -dtz(k)*khdz(k)*rhoinv(k)
-       b(k)=1.+dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k)
-       c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k)
-       d(k)=sqi(k)
-    ENDDO
+    a(k)=  -dtz(k)*khdz(k)*rhoinv(k)
+    b(k)=1.+dtz(k)*(khdz(k+1)+khdz(k))*rhoinv(k)      &
+!    &  - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)               &
+    &  - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
+    c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k)                &
+!    &  - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)               &
+    &  - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
+    d(k)=sqi(k)                                       &
+!    &  - dtz(k)*rhoinv(k)*s_awqi(k+1)                 &
+    &  + dtz(k)*rhoinv(k)*sd_awqi(k+1)
+
+    do k=kts+1,kte-1
+       a(k)=  -dtz(k)*khdz(k)*rhoinv(k)               &
+!       & + 0.5*dtz(k)*rhoinv(k)*s_aw(k)               &
+       & + 0.5*dtz(k)*rhoinv(k)*sd_aw(k)
+       b(k)=1.+dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k)   &
+!       & + 0.5*dtz(k)*rhoinv(k)*(s_aw(k)-s_aw(k+1))   &
+       & + 0.5*dtz(k)*rhoinv(k)*(sd_aw(k)-sd_aw(k+1))
+       c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k)             &
+!       & - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)             &
+       & - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
+       d(k)=sqi(k)                                    &
+!       & + dtz(k)*rhoinv(k)*(s_awqi(k)-s_awqi(k+1))   &
+       & - dtz(k)*rhoinv(k)*(sd_awqi(k)-sd_awqi(k+1))
+    enddo
 
 !! no flux at the top
 !    a(kte)=-1.       
@@ -4657,17 +4689,30 @@ IF (bl_mynn_cloudmix > 0 .AND. FLAG_QNI .AND. &
     k=kts
 
     a(k)=  -dtz(k)*khdz(k)*rhoinv(k)
-    b(k)=1.+dtz(k)*(khdz(k+1)+khdz(k))*rhoinv(k) - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)*nonloc
-    c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k) - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)*nonloc
-    d(k)=qni(k)  - dtz(k)*rhoinv(k)*s_awqni(k+1)*nonloc
+    b(k)=1.+dtz(k)*(khdz(k+1)+khdz(k))*rhoinv(k)      &
+    &  - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)               &
+    &  - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
+    c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k)                &
+    &  - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)               &
+    &  - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
+    d(k)=qni(k)                                       &
+    &  - dtz(k)*rhoinv(k)*s_awqni(k+1)                &
+    &  + dtz(k)*rhoinv(k)*sd_awqni(k+1)
 
-    DO k=kts+1,kte-1
-       a(k)=  -dtz(k)*khdz(k)*rhoinv(k)     + 0.5*dtz(k)*rhoinv(k)*s_aw(k)*nonloc
-       b(k)=1.+dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k) + &
-           &    0.5*dtz(k)*rhoinv(k)*(s_aw(k)-s_aw(k+1))*nonloc
-       c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k) - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)*nonloc
-       d(k)=qni(k) + dtz(k)*rhoinv(k)*(s_awqni(k)-s_awqni(k+1))*nonloc
-    ENDDO
+    do k=kts+1,kte-1
+       a(k)=  -dtz(k)*khdz(k)*rhoinv(k)               &
+       & + 0.5*dtz(k)*rhoinv(k)*s_aw(k)               &
+       & + 0.5*dtz(k)*rhoinv(k)*sd_aw(k)
+       b(k)=1.+dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k)   &
+       & + 0.5*dtz(k)*rhoinv(k)*(s_aw(k)-s_aw(k+1))   &
+       & + 0.5*dtz(k)*rhoinv(k)*(sd_aw(k)-sd_aw(k+1))
+       c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k)             &
+       & - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)             &
+       & - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
+       d(k)=qni(k)                                    &
+       & + dtz(k)*rhoinv(k)*(s_awqni(k)-s_awqni(k+1)) &
+       & - dtz(k)*rhoinv(k)*(sd_awqni(k)-sd_awqni(k+1))
+    enddo
 
 !! prescribed value
     a(kte)=0.
@@ -4698,17 +4743,30 @@ ENDIF
     k=kts
 
     a(k)=  -dtz(k)*khdz(k)*rhoinv(k)
-    b(k)=1.+dtz(k)*(khdz(k+1)+khdz(k))*rhoinv(k) - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)*nonloc
-    c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k)           - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)*nonloc
-    d(k)=qnc(k)  - dtz(k)*rhoinv(k)*s_awqnc(k+1)*nonloc
+    b(k)=1.+dtz(k)*(khdz(k+1)+khdz(k))*rhoinv(k)      &
+    &  - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)               &
+    &  - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
+    c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k)                &
+    &  - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)               &
+    &  - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
+    d(k)=qnc(k)                                       &
+    &  - dtz(k)*rhoinv(k)*s_awqnc(k+1)                &
+    &  + dtz(k)*rhoinv(k)*sd_awqnc(k+1)
 
-    DO k=kts+1,kte-1
-       a(k)=  -dtz(k)*khdz(k)*rhoinv(k)     + 0.5*dtz(k)*rhoinv(k)*s_aw(k)*nonloc
-       b(k)=1.+dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k) + &
-           &    0.5*dtz(k)*rhoinv(k)*(s_aw(k)-s_aw(k+1))*nonloc
-       c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k) - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)*nonloc
-       d(k)=qnc(k) + dtz(k)*rhoinv(k)*(s_awqnc(k)-s_awqnc(k+1))*nonloc
-    ENDDO
+    do k=kts+1,kte-1
+       a(k)=  -dtz(k)*khdz(k)*rhoinv(k)               &
+       & + 0.5*dtz(k)*rhoinv(k)*s_aw(k)               &
+       & + 0.5*dtz(k)*rhoinv(k)*sd_aw(k)
+       b(k)=1.+dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k)   &
+       & + 0.5*dtz(k)*rhoinv(k)*(s_aw(k)-s_aw(k+1))   &
+       & + 0.5*dtz(k)*rhoinv(k)*(sd_aw(k)-sd_aw(k+1))
+       c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k)             &
+       & - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)             &
+       & - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
+       d(k)=qnc(k)                                    &
+       & + dtz(k)*rhoinv(k)*(s_awqnc(k)-s_awqnc(k+1)) &
+       & - dtz(k)*rhoinv(k)*(sd_awqnc(k)-sd_awqnc(k+1))
+    enddo
 
 !! prescribed value
     a(kte)=0.
@@ -4738,18 +4796,30 @@ IF (bl_mynn_cloudmix > 0 .AND. FLAG_QNWFA .AND. &
     k=kts
 
     a(k)=  -dtz(k)*khdz(k)*rhoinv(k)
-    b(k)=1.+dtz(k)*(khdz(k) + khdz(k+1))*rhoinv(k) - &
-           &    0.5*dtz(k)*rhoinv(k)*s_aw(k+1)*nonloc
-    c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k) - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)*nonloc
-    d(k)=qnwfa(k)  - dtz(k)*rhoinv(k)*s_awqnwfa(k+1)*nonloc
+    b(k)=1.+dtz(k)*(khdz(k+1)+khdz(k))*rhoinv(k)      &
+    &  - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)               &
+    &  - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
+    c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k)                &
+    &  - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)               &
+    &  - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
+    d(k)=qnwfa(k)                                     &
+    &  - dtz(k)*rhoinv(k)*s_awqnwfa(k+1)              &
+    &  + dtz(k)*rhoinv(k)*sd_awqnwfa(k+1)
 
-    DO k=kts+1,kte-1
-       a(k)=  -dtz(k)*khdz(k)*rhoinv(k)     + 0.5*dtz(k)*rhoinv(k)*s_aw(k)*nonloc
-       b(k)=1.+dtz(k)*(khdz(k) + khdz(k+1))*rhoinv(k) + &
-           &    0.5*dtz(k)*rhoinv(k)*(s_aw(k)-s_aw(k+1))*nonloc
-       c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k) - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)*nonloc
-       d(k)=qnwfa(k) + dtz(k)*rhoinv(k)*(s_awqnwfa(k)-s_awqnwfa(k+1))*nonloc
-    ENDDO
+    do k=kts+1,kte-1
+       a(k)=  -dtz(k)*khdz(k)*rhoinv(k)               &
+       & + 0.5*dtz(k)*rhoinv(k)*s_aw(k)               &
+       & + 0.5*dtz(k)*rhoinv(k)*sd_aw(k)
+       b(k)=1.+dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k)   &
+       & + 0.5*dtz(k)*rhoinv(k)*(s_aw(k)-s_aw(k+1))   &
+       & + 0.5*dtz(k)*rhoinv(k)*(sd_aw(k)-sd_aw(k+1))
+       c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k)             &
+       & - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)             &
+       & - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
+       d(k)=qnwfa(k)                                  &
+       & + dtz(k)*rhoinv(k)*(s_awqnwfa(k)-s_awqnwfa(k+1)) &
+       & - dtz(k)*rhoinv(k)*(sd_awqnwfa(k)-sd_awqnwfa(k+1))
+    enddo
 
 ! prescribed value
     a(kte)=0.
@@ -4780,18 +4850,30 @@ IF (bl_mynn_cloudmix > 0 .AND. FLAG_QNIFA .AND. &
    k=kts
 
     a(k)=  -dtz(k)*khdz(k)*rhoinv(k)
-    b(k)=1.+dtz(k)*(khdz(k) + khdz(k+1))*rhoinv(k) - &
-           &    0.5*dtz(k)*rhoinv(k)*s_aw(k+1)*nonloc
-    c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k) - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)*nonloc
-    d(k)=qnifa(k)  - dtz(k)*rhoinv(k)*s_awqnifa(k+1)*nonloc
+    b(k)=1.+dtz(k)*(khdz(k+1)+khdz(k))*rhoinv(k)      &
+    &  - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)               &
+    &  - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
+    c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k)                &
+    &  - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)               &
+    &  - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
+    d(k)=qnifa(k)                                     &
+    &  - dtz(k)*rhoinv(k)*s_awqnifa(k+1)              &
+    &  + dtz(k)*rhoinv(k)*sd_awqnifa(k+1)
 
-    DO k=kts+1,kte-1
-       a(k)=  -dtz(k)*khdz(k)*rhoinv(k)     + 0.5*dtz(k)*rhoinv(k)*s_aw(k)*nonloc
-       b(k)=1.+dtz(k)*(khdz(k) + khdz(k+1))*rhoinv(k) + &
-           &    0.5*dtz(k)*rhoinv(k)*(s_aw(k)-s_aw(k+1))*nonloc
-       c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k) - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)*nonloc
-       d(k)=qnifa(k) + dtz(k)*rhoinv(k)*(s_awqnifa(k)-s_awqnifa(k+1))*nonloc
-    ENDDO
+    do k=kts+1,kte-1
+       a(k)=  -dtz(k)*khdz(k)*rhoinv(k)               &
+       & + 0.5*dtz(k)*rhoinv(k)*s_aw(k)               &
+       & + 0.5*dtz(k)*rhoinv(k)*sd_aw(k)
+       b(k)=1.+dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k)   &
+       & + 0.5*dtz(k)*rhoinv(k)*(s_aw(k)-s_aw(k+1))   &
+       & + 0.5*dtz(k)*rhoinv(k)*(sd_aw(k)-sd_aw(k+1))
+       c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k)             &
+       & - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)             &
+       & - 0.5*dtz(k)*rhoinv(k)*sd_aw(k+1)
+       d(k)=qnifa(k)                                  &
+       & + dtz(k)*rhoinv(k)*(s_awqnifa(k)-s_awqnifa(k+1)) &
+       & - dtz(k)*rhoinv(k)*(sd_awqnifa(k)-sd_awqnifa(k+1))
+    enddo
 
 ! prescribed value
     a(kte)=0.
@@ -4822,18 +4904,21 @@ IF (bl_mynn_cloudmix > 0 .AND. FLAG_QNBCA .AND. &
    k=kts
 
     a(k)=  -dtz(k)*khdz(k)*rhoinv(k)
-    b(k)=1.+dtz(k)*(khdz(k) + khdz(k+1))*rhoinv(k) - &
-           &    0.5*dtz(k)*rhoinv(k)*s_aw(k+1)*nonloc
-    c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k) - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)*nonloc
+    b(k)=1.+dtz(k)*(khdz(k) + khdz(k+1))*rhoinv(k)   &
+    & - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)*nonloc
+    c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k)               &
+    & - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)*nonloc
     d(k)=qnbca(k)  - dtz(k)*rhoinv(k)*s_awqnbca(k+1)*nonloc
 
-    DO k=kts+1,kte-1
-       a(k)=  -dtz(k)*khdz(k)*rhoinv(k)     + 0.5*dtz(k)*rhoinv(k)*s_aw(k)*nonloc
-       b(k)=1.+dtz(k)*(khdz(k) + khdz(k+1))*rhoinv(k) + &
-           &    0.5*dtz(k)*rhoinv(k)*(s_aw(k)-s_aw(k+1))*nonloc
-       c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k) - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)*nonloc
+    do k=kts+1,kte-1
+       a(k)=  -dtz(k)*khdz(k)*rhoinv(k)              &
+       & + 0.5*dtz(k)*rhoinv(k)*s_aw(k)*nonloc
+       b(k)=1.+dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k)  &
+       & + 0.5*dtz(k)*rhoinv(k)*(s_aw(k)-s_aw(k+1))*nonloc
+       c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k)            &
+       & - 0.5*dtz(k)*rhoinv(k)*s_aw(k+1)*nonloc
        d(k)=qnbca(k) + dtz(k)*rhoinv(k)*(s_awqnbca(k)-s_awqnbca(k+1))*nonloc
-    ENDDO
+    enddo
 
 ! prescribed value
     a(kte)=0.
@@ -5514,7 +5599,7 @@ ENDIF
 !!value could be found to work best in all conditions.
 !>\section gen_get_pblh  GSD get_pblh General Algorithm
 !> @{
-  SUBROUTINE GET_PBLH(KTS,KTE,zi,thetav1D,qke1D,zw1D,dz1D,landsea,kzi)
+  SUBROUTINE GET_PBLH(KTS,KTE,zi,thv1D,qke1D,zw1D,dz1D,landsea,kzi)
 
     !---------------------------------------------------------------
     !             NOTES ON THE PBLH FORMULATION
@@ -5542,7 +5627,7 @@ ENDIF
 
     real(kind_phys), intent(out) :: zi
     real(kind_phys), intent(in) :: landsea
-    real(kind_phys), dimension(kts:kte), intent(in) :: thetav1D, qke1D, dz1D
+    real(kind_phys), dimension(kts:kte), intent(in) :: thv1D, qke1D, dz1D
     real(kind_phys), dimension(kts:kte+1), intent(in) :: zw1D
     !LOCAL VARS
     real(kind_phys)::  PBLH_TKE,qtke,qtkem1,wt,maxqke,TKEeps,minthv
@@ -5560,8 +5645,8 @@ ENDIF
     minthv = 9.E9
     DO WHILE (zw1D(k) .LE. 200.)
     !DO k=kts+1,kte-1
-       IF (minthv > thetav1D(k)) then
-           minthv = thetav1D(k)
+       IF (minthv > thv1D(k)) then
+           minthv = thv1D(k)
            kthv = k
        ENDIF
        k = k+1
@@ -5583,10 +5668,10 @@ ENDIF
     k = kthv+1
 !    DO WHILE (zi .EQ. 0.) 
     DO k=kts+1,kte-1
-       IF (thetav1D(k) .GE. (minthv + delt_thv))THEN
+       IF (thv1D(k) .GE. (minthv + delt_thv))THEN
           zi = zw1D(k) - dz1D(k-1)* &
-             & MIN((thetav1D(k)-(minthv + delt_thv))/ &
-             & MAX(thetav1D(k)-thetav1D(k-1),1E-6),1.0)
+             & MIN((thv1D(k)-(minthv + delt_thv))/ &
+             & MAX(thv1D(k)-thv1D(k-1),1E-6),1.0)
        ENDIF
        !k = k+1
        IF (k .EQ. kte-1) zi = zw1D(kts+1) !EXIT SAFEGUARD
@@ -6043,7 +6128,7 @@ if ( fltv2 > 0.002 .AND. (maxwidth > minwidth) .AND. superadiabatic) then
     dl = (maxwidth - minwidth)/real(nup-1,kind=kind_phys)
     do i=1,NUP
        ! diameter of plume
-       l = minwidth + dl*real(i-1)
+       l = minwidth + dl*real(i-1,kind=kind_phys)
        cn = cn + l**d * (l*l)/(dx*dx) * dl  ! sum fractional area of each plume
     enddo
     C = Atot/cn   !Normalize C according to the defined total fraction (Atot)
@@ -6108,7 +6193,7 @@ if ( fltv2 > 0.002 .AND. (maxwidth > minwidth) .AND. superadiabatic) then
     exc_fac = exc_fac * ac_wsp
 
     !Note: sigmaW is typically about 0.5*wstar
-    sigmaW =csigma*wstar*(z0/pblh)**(onethird)*(1 - 0.8*z0/pblh)
+    sigmaW =csigma*wstar*(z0/pblh)**(onethird)*(1. - 0.8*z0/pblh)
     sigmaQT=csigma*qstar*(z0/pblh)**(onethird)
     sigmaTH=csigma*thstar*(z0/pblh)**(onethird)
 
@@ -6886,6 +6971,80 @@ real(kind_phys):: diff,exn,t,th,qs,qcold
 end subroutine condensation_edmf
 
 !===============================================================
+subroutine condensation_ddmf(qt,thl,p,zagl,thv,qc,qi,debug_dd)
+!
+! zero or one condensation for edmf: calculates thv, qc, and qi
+!
+real(kind_phys),intent(in)   :: qt,thl,p,zagl
+real(kind_phys),intent(inout):: thv,qc,qi
+
+integer :: niter,i,debug_dd
+real(kind_phys):: diff,exn,t,th,qs,qx,qxold,frac_ice,frac_liq,thvin
+
+! number of iterations
+  niter=50
+! minimum difference (usually converges in < 8 iterations with diff = 2e-5)
+  diff=1.e-6
+
+  if ((qi+qc) .gt. 0.0) then
+     frac_ice = qi/(qi+qc)
+     frac_liq = 1.0 - frac_ice
+  else
+     frac_ice = 0.0
+     frac_liq = 0.0
+  endif
+
+  if (debug_dd == 1) then
+     thvin = thv
+     print*,"------- in consensation_ddmf-------------"
+     print*,"input qc=",qc," qi=",qi," frac_liq=",frac_liq
+  endif
+
+  exn=(p/p1000mb)**rcp
+  do i=1,niter
+     t=exn*thl + xlvcp*qc + xlscp*qi
+     qs=qsat_blend(t,p)
+     qxold=qc+qi
+     qx=qc+qi
+     qx=0.5*qx + 0.5*max((qt-qs),0.)
+     qc=frac_liq*qx
+     qi=frac_ice*qx
+     if (abs(qx-qxold)<diff) exit
+  enddo
+
+  t=exn*thl + xlvcp*qc + xlscp*qi
+  qs=qsat_blend(t,p)
+  qx=max(qt-qs,0.)
+  qc=frac_liq*qx
+  qi=frac_ice*qx
+
+  !thv=(thl+xlv/cp*qc).*(1+(1-rvovrd)*(qt-qc)-qc)
+!was this: thv=(thl+xlvcp*qc)*(1.+qt*(rvovrd-1.)-rvovrd*qc)
+  !thv=(thl + xlvcp*qc + xlscp*qi)*(1. + qt*(rvovrd-1.)-rvovrd*qc)
+  thv=(thl + xlvcp*qc + xlscp*qi)*(1. + p608*(qt-qx))
+
+!  if (qc > 0.0) then
+!    print*,"edmf sat, p:",p," iterations:",i
+!    print*," t=",t," thl=",thl," thv=",thv
+!    print*," qs=",qs," qt=",qt," qc=",qc,"ratio=",qc/qs
+!  endif
+
+  !this basically give the same result as the previous line
+  !th = thl + xlv/cp/exn*qc
+  !thv= th*(1. + p608*qt)
+
+  !print *,'t,p,qt,qs,qc'
+  !print *,t,p,qt,qs,qc
+
+  if (debug_dd == 1) then
+     print*,"output qc=",qc," qi=",qi," frac_liq=",frac_liq
+     print*,"input thv=",thvin," out thv=",thv," diff=",thv-thvin
+     print*,"------- exiting consensation_ddmf----------"
+  endif
+
+end subroutine condensation_ddmf
+
+!===============================================================
 
 subroutine condensation_edmf_r(QT,THL,P,zagl,THV,QC)
 !                                                                                                
@@ -6923,100 +7082,129 @@ real(kind_phys):: diff,exn,t,th,qs,qcold
 end subroutine condensation_edmf_r
 
 !===============================================================
-! ===================================================================
-! This is the downdraft mass flux scheme - analogus to edmf_JPL but  
-! flipped updraft to downdraft. This scheme is currently only tested 
-! for Stratocumulus cloud conditions. For a detailed desctiption of the
-! model, see paper.
+! ddmp_mf is a downdraft mass flux scheme - analogous to the updrafts but
+! flipped upsidedown and revised to be more specific for turbulence
+! driven by radiative cooling at cloud tops. this scheme has been primarily
+! designed for stratocumulus cloud conditions. This is based off of a
+! combination of the original scheme [Wu et al. (2020, MWR)] but several
+! modifications were made to better fit it in the MYNN-EDMF and to
+! help the coupling to the Thompson microphysics scheme. Some of the
+! primary design changes include:
+!                                                                                                                                                                      
+! 1) the spectral plume design, similar to the MYNNs updraft scheme
+! 2) generalized to any cloud, not just PBL-topped clouds
+! 3) always initialized at the cloud top
+! 4) can penetrate all the way to the surface
+! 5) generalized for mixed-phase clouds
+! 6) mixes number concentration for double moment schemes
+! 7) mixes aerosols
+! 8) revised the conection to the solver
 
-SUBROUTINE DDMF_JPL(kts,kte,dt,zw,dz,p,              &
-              &u,v,th,thl,thv,tk,qt,qv,qc,           &
-              &rho,exner,                            &
-              &ust,wthl,wqt,pblh,kpbl,               &
+subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
+              &u,v,th,thl,thv,tk,qt,qv,qc,qi,        &
+              &qnc,qni,qnwfa,qnifa,                  &
+              &qke,rho,exner,                        &
+              &qc_bl,qi_bl,cldfra_bl,                &
+              &ust,flt,flq,fltv,pblh,kpbl,           &
               &edmf_a_dd,edmf_w_dd, edmf_qt_dd,      &
               &edmf_thl_dd,edmf_ent_dd,edmf_qc_dd,   &
               &sd_aw,sd_awthl,sd_awqt,               &
-              &sd_awqv,sd_awqc,sd_awu,sd_awv,        &
-              &sd_awqke,                             &
-              &qc_bl1d,cldfra_bl1d,                  &
+              &sd_awqv,sd_awqc,sd_awqi,              &
+              &sd_awqnc,sd_awqni,                    &
+              &sd_awqnwfa,sd_awqnifa,                &
+              &sd_awu,sd_awv,sd_awqke,               &
+              &tkeprodtd,el,                         &
               &rthraten                              )
 
-        integer, intent(in) :: KTS,KTE,KPBL
+        integer, intent(in) :: kts,kte,kpbl
         real(kind_phys), dimension(kts:kte), intent(in) ::            &
-            U,V,TH,THL,TK,QT,QV,QC,THV,P,rho,exner,dz
+            u,v,th,thl,tk,qt,qv,qc,qi,thv,p,qke,rho,exner,            &
+            qnc,qni,qnwfa,qnifa,dz,qc_bl,qi_bl,cldfra_bl,el
         real(kind_phys), dimension(kts:kte), intent(in) :: rthraten
         ! zw .. heights of the downdraft levels (edges of boxes)
-        real(kind_phys), dimension(kts:kte+1), intent(in) :: ZW
-        real(kind_phys), intent(in)  :: WTHL,WQT
-        real(kind_phys), intent(in)  :: dt,ust,pblh
+        real(kind_phys), dimension(kts:kte+1), intent(in) :: zw
+        real(kind_phys), intent(in)  :: flt,flq,fltv
+        real(kind_phys), intent(in)  :: dt,dx,ust,pblh
   ! outputs - downdraft properties
         real(kind_phys), dimension(kts:kte), intent(out) ::           &
             edmf_a_dd,edmf_w_dd,                                      &
-            edmf_qt_dd,edmf_thl_dd, edmf_ent_dd,edmf_qc_dd
+            edmf_qt_dd,edmf_thl_dd, edmf_ent_dd,edmf_qc_dd,tkeprodtd
 
   ! outputs - variables needed for solver (sd_aw - sum ai*wi, sd_awphi - sum ai*wi*phii)
         real(kind_phys), dimension(kts:kte+1) ::                      &
-            sd_aw, sd_awthl, sd_awqt, sd_awu,                         &
-            sd_awv, sd_awqc, sd_awqv, sd_awqke, sd_aw2
+            sd_aw, sd_awthl, sd_awu, sd_awv,                          &
+            sd_awqt, sd_awqc, sd_awqv, sd_awqi, sd_awqnc, sd_awqni,   &
+            sd_awqnwfa, sd_awqnifa, sd_awqke, sd_aw2
 
-        real(kind_phys), dimension(kts:kte), intent(in) ::            &
-            qc_bl1d, cldfra_bl1d
-
-        integer, parameter:: ndown = 5
-  ! draw downdraft starting height randomly between cloud base and cloud top
-        integer,         dimension(1:NDOWN) :: DD_initK
-        real(kind_phys), dimension(1:NDOWN) :: randNum
-  ! downdraft properties
-        real(kind_phys), dimension(kts:kte+1,1:NDOWN) ::              &
-            DOWNW,DOWNTHL,DOWNQT,DOWNQC,DOWNA,DOWNU,DOWNV,DOWNTHV
-
+   !downdraft properties
+        integer, parameter::                                          &
+            & ndd    = 5,               &  !number of downdrafts
+            & kmin   = 3                   !lowest k-level where downdrafts can start
+        real(kind_phys),parameter ::                                  &
+            & minddd = 400.,            &  !min downdraft diameter (m)
+            & maxddd = 1000,            &  !max downdraft diameter (m)
+            & zmin   = 50.                 !lowest height where downdrafts can start
+        real(kind_phys)::                                             &
+            & maxdd2,                   &  !variable max downdraft diameter (m)
+            &    ddd,                   &  !downdraft diameter
+            &     dl,                   &  !diameter increment
+            &    add,                   &  !total area of downdrafts
+            & minexc,                   &  !minimum init downdraft temp pert
+            & maxexc                       !maximum init downdraft temp pert
+  ! k-index of downdraft starting height
+        integer,         dimension(1:ndd) :: dd_initk
+  ! downdraft column properties
+        real(kind_phys), dimension(kts:kte+1,1:ndd) ::                &
+            downw,downthl,downqt,downqc,downa,downu,downv,downthv,    &
+            downqi,downqnc,downqni,downqnwfa,downqnifa
   ! entrainment variables
-        real(kind_phys), dimension(KTS+1:KTE+1,1:NDOWN) :: ENT,ENTf
-        integer,         dimension(KTS+1:KTE+1,1:NDOWN) :: ENTi
-
+        real(kind_phys), dimension(kts:kte+1,1:ndd) :: ent
   ! internal variables
-        integer :: K,I,ki, kminrad, qlTop, p700_ind, qlBase
-        real(kind_phys):: wthv,wstar,qstar,thstar,sigmaW,sigmaQT,     &
-            sigmaTH,z0,pwmin,pwmax,wmin,wmax,wlv,wtv,went,mindownw
-        real(kind_phys):: B,QTn,THLn,THVn,QCn,Un,Vn,QKEn,Wn2,Wn,      &
-            THVk,Pk,EntEXP,EntW,beta_dm,EntExp_M,rho_int
-        real(kind_phys):: jump_thetav, jump_qt, jump_thetal,          &
-                refTHL, refTHV, refQT
-  ! DD specific internal variables
-        real(kind_phys):: minrad,zminrad, radflux, F0, wst_rad, wst_dd
+        integer :: k,i,ki,qltop,p700_ind,qlbase
+        real(kind_phys):: wstar,qstar,thstar,sigmaw,sigmaqt,          &
+            sigmath,z0,pwmin,pwmax,wmin,wmax,went,mindownw
+        real(kind_phys):: qtn,thln,thvn,qcn,un,vn,qken,wn2,wn,        &
+            qin,qncn,qnin,qnwfan,qnifan,                              &
+            thvk,pk,entexp,entw,beta_dm,entexm,rho_int
+        real(kind_phys):: jump_thv,jump_qt,jump_thetal,               &
+            refthl,refthv,refthlv,refqt,refqc,refqi,refqnc,refqni,    &
+            refqnwfa,refqnifa,refu,refv,refqke,refqt2,reftk,refp,     &
+            qx_k,qx_km1,refthvm1,cftop,ac_wsp,wspd_pbl
+
+  ! dd specific internal variables
+        real(kind_phys):: radflux, f0, wst_rad, wst_dd
         logical :: cloudflg
+        logical :: singlelayer             !check for single or multi-layer clouds
         real(kind_phys):: sigq,xl,rsl,cpm,a,mf_cf,diffqt,             &
-               Fng,qww,alpha,beta,bb,f,pt,t,q2p,b9,satvp,rhgrid
+            fng,qww,alpha,beta,bb,f,pt,t,q2p,b9,satvp,rhgrid,         &
+            def_th,def_qt,frac_liq,frac_ice,qs1,qs2
 
   ! w parameters
         real(kind_phys),parameter ::                                  &
-            &Wa=1., Wb=1.5, Z00=100., BCOEFF=0.2
-  ! entrainment parameters
-        real(kind_phys),parameter ::                                  &
-            &L0=80, ENT0=0.2
-   !downdraft properties
-        real(kind_phys)::                                             &
-            & dp,                    &   !diameter of plume
-            & dl,                    &   !diameter increment
-            & Adn                        !total area of downdrafts
-   !additional printouts for debugging 
-        integer, parameter :: debug_mf=0
+            &wa=1., wb=1.5, z00=100.
+        real(kind_phys) :: buoy,bcoeff,ecoeff
 
-   dl = (1000.-500.)/real(ndown) 
-   pwmin=-3. ! drawing from the negative tail -3sigma to -1sigma
-   pwmax=-1.
+  ! additional printouts for debugging
+        integer, parameter :: debug_dd=0
 
+  ! =================================================================
   ! initialize downdraft properties
-   DOWNW=0.
-   DOWNTHL=0.
-   DOWNTHV=0.
-   DOWNQT=0.
-   DOWNA=0.
-   DOWNU=0.
-   DOWNV=0.
-   DOWNQC=0.
-   ENT=0.
-   DD_initK=0
+   downw      =0.
+   downthl    =0.
+   downthv    =0.
+   downqt     =0.
+   downa      =0.
+   downu      =0.
+   downv      =0.
+   downqc     =0.
+   downqi     =0.
+   downqnc    =0.
+   downqni    =0.
+   downqnwfa  =0.
+   downqnifa  =0.
+   ent        =0.
+   tkeprodtd  =0.
+   dd_initk   =0
 
    edmf_a_dd  =0.
    edmf_w_dd  =0.
@@ -7025,290 +7213,394 @@ SUBROUTINE DDMF_JPL(kts,kte,dt,zw,dz,p,              &
    edmf_ent_dd=0.
    edmf_qc_dd =0.
 
-   sd_aw=0.
-   sd_awthl=0.
-   sd_awqt=0.
-   sd_awqv=0.
-   sd_awqc=0.
-   sd_awu=0.
-   sd_awv=0.
-   sd_awqke=0.
+   sd_aw      =0.
+   sd_awthl   =0.
+   sd_awqt    =0.
+   sd_awqv    =0.
+   sd_awqc    =0.
+   sd_awqi    =0.
+   sd_awqnc   =0.
+   sd_awqni   =0.
+   sd_awqnwfa =0.
+   sd_awqnifa =0.
+   sd_awu     =0.
+   sd_awv     =0.
+   sd_awqke   =0.
 
-  ! FIRST, CHECK FOR STRATOCUMULUS-TOPPED BOUNDARY LAYERS
-   cloudflg=.false.
-   minrad=100.
-   kminrad=kpbl
-   zminrad=PBLH
-   qlTop = 1 !initialize at 0
-   qlBase = 1
-   wthv=wthl+svp1*wqt
-   do k = MAX(3,kpbl-2),kpbl+3
-      if (qc(k).gt. 1.e-6 .AND. cldfra_bl1D(k).gt.0.5) then
-          cloudflg=.true. ! found Sc cloud
-          qlTop = k       ! index for Sc cloud top
+  ! determine maximum downdraft width and increments
+   maxdd2     =min(maxddd, 1.2*dx)
+   dl         =max(maxdd2-minddd, 0.0)/real(ndd-1)
+
+  ! first, check for stratocumulus-topped pbl with cooling at the cloud top.
+   cloudflg   =.false.
+   singlelayer=.false.
+   qltop      =1     !initialize
+   qlbase     =1     !initialize
+   do k = max(kmin+1,kpbl-2),kpbl+10
+      qx_k    =max(qt(k)  , qc_bl(k)  +qi_bl(k))   !total clouds at k
+      qx_km1  =max(qt(k-1), qc_bl(k-1)+qi_bl(k-1)) !total clouds at k-1
+!      if (qx_k  .lt. 1.e-6 .and. cldfra_bl(k-1).lt.0.1 .and. &
+!          qx_km1.gt. 1.e-6 .and. cldfra_bl(k)  .gt.0.5 .and. &
+       !---------------------------------criteria for downdraft activation
+      if ((cldfra_bl(k-1).gt.0.5       ) .and. & !1) stratocumulus exists
+          (cldfra_bl(k)  .lt.0.1       ) .and. & !2) clear above
+          (rthraten(k-1) .lt. -0.000025) .and. & !3) radiative cooling
+          (           dl .gt.0.0       )) then   !4) widest downdraft > thinnest
+         cloudflg =.true. ! found sc cloud
+         qltop    =k-1    ! index for sc cloud top
+         cftop    =cldfra_bl(k-1)
+         if (cldfra_bl(k-2).lt.0.1)singlelayer=.true.
       endif
    enddo
 
-   do k = qlTop, kts, -1
-      if (qc(k) .gt. 1E-6) then
-         qlBase = k ! index for Sc cloud base
-      endif
-   enddo
-   qlBase = (qlTop+qlBase)/2 ! changed base to half way through the cloud
-
-!   call init_random_seed_1()
-!   call RANDOM_NUMBER(randNum)
-   do i=1,NDOWN
-      ! downdraft starts somewhere between cloud base to cloud top
-      ! the probability is equally distributed
-      DD_initK(i) = qlTop ! nint(randNum(i)*real(qlTop-qlBase)) + qlBase
-   enddo
-
-   ! LOOP RADFLUX
-   F0 = 0.
-   do k = 1, qlTop ! Snippet from YSU, YSU loops until qlTop - 1
-      radflux = rthraten(k) * exner(k) ! Converts theta/s to temperature/s
-      radflux = radflux * cp / grav * ( p(k) - p(k+1) ) ! Converts K/s to W/m^2
-      if ( radflux < 0.0 ) F0 = abs(radflux) + F0
-   enddo
-   F0 = max(F0, 1.0)
-
-   !Allow the total fractional area of the downdrafts to be proportional 
-   !to the radiative forcing:
-   !for  50 W/m2, Adn = 0.10
-   !for 100 W/m2, Adn = 0.15
-   !for 150 W/m2, Adn = 0.20
-   Adn = min( 0.05 + F0*0.001, 0.3)
-
-   !found Sc cloud and cloud not at surface, trigger downdraft
+   !found sc cloud, trigger downdrafts
    if (cloudflg) then
-
-!      !get entrainent coefficient
-!      do i=1,NDOWN
-!         do k=kts+1,kte
-!            ENTf(k,i)=(ZW(k+1)-ZW(k))/L0
-!         enddo
-!      enddo
-!
-!      ! get Poisson P(dz/L0)
-!      call Poisson(1,NDOWN,kts+1,kte,ENTf,ENTi)
-
-
-!      ! entrainent: Ent=Ent0/dz*P(dz/L0)
-!      do i=1,NDOWN
-!         do k=kts+1,kte
-!!            ENT(k,i)=real(ENTi(k,i))*Ent0/(ZW(k+1)-ZW(k))
-!            ENT(k,i) = 0.002
-!            ENT(k,i) = min(ENT(k,i),0.9/(ZW(k+1)-ZW(k)))
-!         enddo
-!      enddo
-
-      !!![EW: INVJUMP] find 700mb height then subtract trpospheric lapse rate!!!
-      p700_ind = MINLOC(ABS(p-70000),1)!p1D is 70000
-      jump_thetav = thv(p700_ind) - thv(1) - (thv(p700_ind)-thv(qlTop+3))/(ZW(p700_ind)-ZW(qlTop+3))*(ZW(p700_ind)-ZW(qlTop))
-      jump_qt = qc(p700_ind) + qv(p700_ind) - qc(1) - qv(1)
-      jump_thetal = thl(p700_ind) - thl(1) - (thl(p700_ind)-thl(qlTop+3))/(ZW(p700_ind)-ZW(qlTop+3))*(ZW(p700_ind)-ZW(qlTop))
-
-      refTHL = thl(qlTop) !sum(thl(1:qlTop)) / (qlTop) ! avg over BL for now or just at qlTop
-      refTHV = thv(qlTop) !sum(thv(1:qlTop)) / (qlTop)
-      refQT  = qt(qlTop)  !sum(qt(1:qlTop))  / (qlTop)
-
-      ! wstar_rad, following Lock and MacVean (1999a)
-      wst_rad = ( grav * zw(qlTop) * F0 / (refTHL * rho(qlTop) * cp) ) ** (0.333)
-      wst_rad = max(wst_rad, 0.1)
-      wstar   = max(0.,(grav/thv(1)*wthv*pblh)**(onethird))
-      went    = thv(1) / ( grav * jump_thetav * zw(qlTop) ) * &
-                (0.15 * (wstar**3 + 5*ust**3) + 0.35 * wst_rad**3 )
-      qstar  = abs(went*jump_qt/wst_rad)
-      thstar = F0/rho(qlTop)/cp/wst_rad - went*jump_thetav/wst_rad
-      !wstar_dd = mixrad + surface wst
-      wst_dd = (0.15 * (wstar**3 + 5*ust**3) + 0.35 * wst_rad**3 ) ** (0.333)
-
-      print*,"qstar=",qstar," thstar=",thstar," wst_dd=",wst_dd
-      print*,"F0=",F0," wst_rad=",wst_rad," jump_thv=",jump_thetav
-      print*,"entrainment velocity=",went
-
-      sigmaW  = 0.2*wst_dd  ! 0.8*wst_dd !wst_rad tuning parameter ! 0.5 was good
-      sigmaQT = 40  * qstar ! 50 was good
-      sigmaTH = 1.0 * thstar! 0.5 was good
-
-      wmin=sigmaW*pwmin
-      wmax=sigmaW*pwmax
-      !print*,"sigw=",sigmaW," wmin=",wmin," wmax=",wmax
-
-      do I=1,NDOWN !downdraft now starts at different height
-         ki = DD_initK(I)
-
-         wlv=wmin+(wmax-wmin)/real(NDOWN)*(i-1)
-         wtv=wmin+(wmax-wmin)/real(NDOWN)*i
-
-         !DOWNW(ki,I)=0.5*(wlv+wtv)
-         DOWNW(ki,I)=wlv
-         !multiply downa by cloud fraction, so it's impact will diminish if 
-         !clouds are mixed away over the course of the longer radiation time step
-         !DOWNA(ki,I)=0.5*ERF(wtv/(sqrt(2.)*sigmaW))-0.5*ERF(wlv/(sqrt(2.)*sigmaW))
-         DOWNA(ki,I)=Adn/real(NDOWN)
-         DOWNU(ki,I)=(u(ki-1)*DZ(ki) + u(ki)*DZ(ki-1)) /(DZ(ki)+DZ(ki-1))
-         DOWNV(ki,I)=(v(ki-1)*DZ(ki) + v(ki)*DZ(ki-1)) /(DZ(ki)+DZ(ki-1))
-
-         !reference now depends on where dd starts
-!         refTHL = 0.5 * (thl(ki) + thl(ki-1))
-!         refTHV = 0.5 * (thv(ki) + thv(ki-1))
-!         refQT  = 0.5 * (qt(ki)  + qt(ki-1) )
-
-         refTHL = (thl(ki-1)*DZ(ki) + thl(ki)*DZ(ki-1)) /(DZ(ki)+DZ(ki-1))
-         refTHV = (thv(ki-1)*DZ(ki) + thv(ki)*DZ(ki-1)) /(DZ(ki)+DZ(ki-1))
-         refQT  = (qt(ki-1)*DZ(ki)  + qt(ki)*DZ(ki-1))  /(DZ(ki)+DZ(ki-1))
-
-         !DOWNQC(ki,I) = 0.0
-         DOWNQC(ki,I) = (qc(ki-1)*DZ(ki) + qc(ki)*DZ(ki-1)) /(DZ(ki)+DZ(ki-1))
-         DOWNQT(ki,I) = refQT  !+ 0.5  *DOWNW(ki,I)*sigmaQT/sigmaW
-         DOWNTHV(ki,I)= refTHV + 0.01 *DOWNW(ki,I)*sigmaTH/sigmaW
-         DOWNTHL(ki,I)= refTHL + 0.01 *DOWNW(ki,I)*sigmaTH/sigmaW
-
-         !input :: QT,THV,P,zagl,  output :: THL, QC
-!         Pk  =(P(ki-1)*DZ(ki)+P(ki)*DZ(ki-1))/(DZ(ki)+DZ(ki-1))
-!         call condensation_edmf_r(DOWNQT(ki,I),   &
-!              &        DOWNTHL(ki,I),Pk,ZW(ki),   &
-!              &     DOWNTHV(ki,I),DOWNQC(ki,I)    )
-
+      do k = qltop, kts, -1
+         qx_k    =max(qt(k)  , qc_bl(k)  +qi_bl(k))   !total clouds at k
+         if (qx_k .gt. 1e-6) then
+            qlbase = k ! index for sc cloud base
+         endif
       enddo
 
-      !print*, " Begin integration of downdrafts:"
-      DO I=1,NDOWN
-         dp = 500. + dl*real(I)  ! diameter of plume (meters)
-         !print *, "Plume # =", I,"======================="
-         DO k=DD_initK(I)-1,KTS+1,-1
+      do i=1,ndd
+         ! downdraft starts at the first layer interface below the cloud top
+         dd_initk(i) = qltop
+      enddo
 
-            !Entrainment from Tian and Kuang (2016), with constraints
-            wmin = 0.3 + dp*0.0005
-            ENT(k,i) = 0.33/(MIN(MAX(-1.0*DOWNW(k+1,I),wmin),0.9)*dp)
+      ! loop radflux
+      f0 = 0.0
+      do k = kmin, qltop
+         radflux = rthraten(k) * exner(k) ! converts theta/s to temperature/s
+         radflux = radflux * cp / grav * ( p(k) - p(k+1) ) ! converts k/s to w/m^2
+         if ( radflux < 0.0 ) f0 = abs(radflux) + f0
+      enddo
+      f0 = min(max(f0, 1.0), 200.)  !total radiative cooling (w/m2)
+
+      !allow the total fractional area of the downdrafts to be proportional
+      !to the radiative forcing:
+      !for  50 w/m2, add = 0.20
+      !for 100 w/m2, add = 0.30
+      !for 150 w/m2, add = 0.40
+      add = min( 0.1 + f0*0.002, 0.4)
+      !taper off area for high wind speeds
+      wspd_pbl=SQRT(MAX(u(kts)**2 + v(kts)**2, 0.01_kind_phys))
+      if (wspd_pbl .le. 10.) then
+         ac_wsp = 1.0
+      else
+         ac_wsp = 1.0 - min((wspd_pbl - 10.0)/15., 1.0)
+      endif
+      add  = add * ac_wsp
+
+      ![ew: invjump] find 700mb height then subtract trpospheric lapse rate
+      p700_ind = minloc(abs(p-70000),1)!p (or p1d) is in pa
+      !to prevent numerical issure, make sure p700_ind > qltop+3
+      if (p700_ind .le. qltop+3) p700_ind=qltop+4
+      jump_thv = thv(p700_ind) - thv(1) - (thv(p700_ind)-thv(qltop+3))/(zw(p700_ind)-zw(qltop+3))*(zw(p700_ind)-zw(qltop))
+      jump_qt = qc(p700_ind) + qv(p700_ind) - qc(1) - qv(1)
+      jump_thetal = thl(p700_ind) - thl(1) - (thl(p700_ind)-thl(qltop+3))/(zw(p700_ind)-zw(qltop+3))*(zw(p700_ind)-zw(qltop))
+
+      ki = qltop
+      if (singlelayer) then
+         refthl  = thl(ki) !sum(thl(1:ki)) / (ki) ! avg over bl for now or just at qltop
+         refthlv = refthl*(1.+p608*qv(ki))
+         refthv  = thv(ki)
+         refthvm1= thv(ki-1)
+         reftk   = tk(ki)
+         refqt   = qt(ki)  !sum(qt(1:ki))  / (ki)
+         refqc   = qc(ki)
+         refqi   = qi(ki)
+         refqnc  = qnc(ki)
+         refqni  = qni(ki)
+         refqnwfa= qnwfa(ki)
+         refqnifa= qnifa(ki)
+         refu    = u(ki)
+         refv    = v(ki)
+         refqke  = qke(ki)
+         refp    = p(ki)
+      else
+         refthl  = (thl(ki-1)*dz(ki) + thl(ki)*dz(ki-1)) /(dz(ki)+dz(ki-1))
+         refthlv = refthl*(1.+p608*(qv(ki-1)*dz(ki) + qv(ki)*dz(ki-1)) /(dz(ki)+dz(ki-1)))
+         refthv  = (thv(ki-1)*dz(ki) + thv(ki)*dz(ki-1)) /(dz(ki)+dz(ki-1))
+         refthvm1= (thv(ki-2)*dz(ki-1) + thv(ki-1)*dz(ki-2)) /(dz(ki-1)+dz(ki-2)) 
+         reftk   = (tk(ki-1)*dz(ki)  + tk(ki)*dz(ki-1))  /(dz(ki)+dz(ki-1))
+         refqt   = (qt(ki-1)*dz(ki)  + qt(ki)*dz(ki-1))  /(dz(ki)+dz(ki-1))
+         refqc   = (qc(ki-1)*dz(ki)  + qc(ki)*dz(ki-1))  /(dz(ki)+dz(ki-1))
+         refqi   = (qi(ki-1)*dz(ki)  + qi(ki)*dz(ki-1))  /(dz(ki)+dz(ki-1))
+         refqnc  = (qnc(ki-1)*dz(ki) + qnc(ki)*dz(ki-1)) /(dz(ki)+dz(ki-1))
+         refqni  = (qni(ki-1)*dz(ki) + qni(ki)*dz(ki-1)) /(dz(ki)+dz(ki-1))
+         refqnwfa= (qnwfa(ki-1)*dz(ki) + qnwfa(ki)*dz(ki-1)) /(dz(ki)+dz(ki-1))
+         refqnifa= (qnifa(ki-1)*dz(ki) + qnifa(ki)*dz(ki-1)) /(dz(ki)+dz(ki-1))
+         refu    = (u(ki-1)*dz(ki)   + u(ki)*dz(ki-1))   /(dz(ki)+dz(ki-1))
+         refv    = (v(ki-1)*dz(ki)   + v(ki)*dz(ki-1))   /(dz(ki)+dz(ki-1))
+         refqke  = (qke(ki-1)*dz(ki) + qke(ki)*dz(ki-1)) /(dz(ki)+dz(ki-1))
+         refp    = (p(ki-1)*dz(ki)   + p(ki)*dz(ki-1))   /(dz(ki)+dz(ki-1))
+      endif
+
+      ! wstar_rad, following lock and macvean (1999a)
+      wst_rad = ( grav * zw(ki) * f0 / (refthl * rho(ki) * cp) ) **onethird
+      wst_rad = max(wst_rad, 0.1)
+      wstar   = (grav/thv(1)*max(fltv,0.0)*pblh)**(onethird)
+      went    = thv(1) / ( grav * jump_thv * zw(ki) ) * &
+                (0.15 * (wstar**3 + 5*ust**3) + 0.35 * wst_rad**3 )
+      qstar   = abs(went*jump_qt/wst_rad)
+      thstar  = f0/rho(ki)/cp/wst_rad - went*jump_thv/wst_rad
+      !wstar_dd= mixrad + surface wst
+      wst_dd  = (0.15 * (wstar**3 + 5*ust**3) + 0.35 * wst_rad**3 ) **onethird
+
+      sigmaw  = 0.3 * wst_dd ! 0.8*wst_dd !wst_rad tuning parameter ! 0.5 was good
+      sigmaqt = 40  * qstar  ! 50 was good
+      sigmath = 1.0 * thstar ! 0.5 was good
+
+      pwmin      =-1. ! drawing from the negative tail -3sigma to -1sigma
+      pwmax      =-3.
+      wmin    = max(min(sigmaw*pwmin, -0.1), -0.2)
+      wmax    = max(min(sigmaw*pwmax, -0.2), -0.5)
+
+      !initialize downdraft temperature deficit def_th
+      minexc = min(-0.05     , 0.5*(refthvm1 - refthv)) !increase prob to go down 1 level
+      maxexc = min(minexc-0.1, -0.5          )
+      maxexc = max(maxexc    , thv(1) - refthlv)  !init parcel temp >= thv_sfc
+      def_th = max(min(0.05*(-0.3)*sigmath/sigmaw, minexc), maxexc)
+
+      !initialize downdraft moisture deficit def_qt (consistent with def_th)
+      qs1    = qsat_blend(reftk       ,refp)
+      qs2    = qsat_blend(reftk+def_th,refp)
+      refqt2 = refqt*qs2/qs1
+      !def_qt = min(refqt2 - refqt, 0.0) !small negative moisture perturbation
+      def_qt = min(qs2 - qs1,  -0.33*(refqc+refqi)) !small negative moisture perturbation
+      !def_qt = 0.5*(-0.3)*sigmaqt/sigmaw
+
+      if (refqc+refqi > 0.0) then
+         frac_liq = refqc/(refqc+refqi)
+         frac_ice = 1.0 - frac_liq
+      else
+         frac_liq = 0.0
+         frac_ice = 0.0
+      endif
+
+      if (debug_dd .eq. 1) then
+         print*,"found conditions for downdraft mixing"
+         print*,"qltop=",qltop," qlbase=",qlbase," wst_rad=",wst_rad
+         print*,"qstar=",qstar," thstar=",thstar," went=",went
+         print*,"f0=",f0," w*=",wstar," jump_thv=",jump_thv
+         print*,"u*=",ust," jump_qt=",jump_qt," fltv=",fltv
+         print*,"grav=",grav," pblh=",pblh," thv(1)=",thv(1)
+         print*,"p(1)=",p(1)," p700_ind=",p700_ind," jump_thetal=",jump_thetal
+         print*,"sigmaw=",sigmaw," wmin=",wmin," wmax=",wmax
+      endif
+
+      !intialize downdrafts
+      !as of now, all downdrafts start at the same height
+      do i=1,ndd
+         ki = dd_initk(i)
+
+         !initialize a negative (downward) vertical velocity
+         downw(ki,i)=wmin-(abs(wmax)-abs(wmin))/real(ndd-1)*(i-1)
+
+         !perhaps multiply downa by cloud fraction, so it's impact will diminish if
+         !clouds are mixed away over the course of the longer radiation time step(?)
+         downa(ki,i)     = add/real(ndd)
+         downu(ki,i)     = refu
+         downv(ki,i)     = refv
+         downqc(ki,i)    = max(refqc + def_qt*frac_liq, 0.0)
+         downqi(ki,i)    = max(refqi + def_qt*frac_ice, 0.0)
+         downqnc(ki,i)   = refqnc
+         downqni(ki,i)   = refqni
+         downqnwfa(ki,i) = refqnwfa
+         downqnifa(ki,i) = refqnifa
+         downqt(ki,i)    = refqt  + def_qt
+         downthv(ki,i)   = refthv + def_th*real(i)/real(ndd)
+         downthl(ki,i)   = refthl + def_th*real(i)/real(ndd)
+
+         !input :: qt,thv,p,zagl,  output :: thl, qc
+!         pk  =(p(ki-1)*dz(ki)+p(ki)*dz(ki-1))/(dz(ki)+dz(ki-1))
+!         call condensation_edmf_r(downqt(ki,i),   &
+!              &        downthl(ki,i),pk,zw(ki),   &
+!              &     downthv(ki,i),downqc(ki,i)    )
+      enddo
+
+      if (debug_dd .eq.1) then
+         print*,"=====initialized downdraft properties===="
+         print*,"downw=",downw(ki,:)
+         print*,"downa=",downa(ki,:)
+         print*,"downthv=",downthv(ki,:)
+         print*,"def_qt=",def_qt," def_th=",def_th," tot area=",add
+         print*,"begin integration of downdrafts (smallest to largest):"
+      endif
+
+      do i=1,ndd
+         ddd  = minddd + dl*real(i-1) !downdraft diameter
+         !initialize input into condensation routine
+         thvn = downthv(ki,i)
+         qcn  = downqc(ki,i)
+         qin  = downqi(ki,i)
+         do k=dd_initk(i)-1,kts+1,-1
+            !entrainment from tian and kuang (2016), with constraints
+            wmin = 0.1 + ddd*0.0005
+            !ent(k,i) = 0.33/(min(max(abs(downw(k+1,i)),wmin),0.9)*ddd)
+            ent(k,i) = 0.53/(min(max(abs(downw(k+1,i)),wmin),0.6)*ddd)
+
+            !minimum background entrainment and 1/z enhancement near surface
+            ent(k,i) = max(ent(k,i),0.0003)
+            ent(k,i) = max(ent(k,i),0.06/zw(k))
+            ent(k,i) = min(ent(k,i),0.9/dz(k)) ! liberal check for numerical stability
 
             !starting at the first interface level below cloud top
-            !EntExp=exp(-ENT(K,I)*dz(k))
-            !EntExp_M=exp(-ENT(K,I)/3.*dz(k))
-            EntExp  =ENT(K,I)*dz(k)        !for all scalars
-            EntExp_M=ENT(K,I)*0.333*dz(k)  !test for momentum
+            !entexp=exp(-ent(k,i)*dz(k))
+            !entexp_m=exp(-ent(k,i)/3.*dz(k))
+            entexp  =ent(k,i)*dz(k)        !for all scalars
+            entexm  =ent(k,i)*dz(k)*0.5    !test for momentum
 
-            QTn =DOWNQT(k+1,I) *(1.-EntExp) + QT(k)*EntExp
-            THLn=DOWNTHL(k+1,I)*(1.-EntExp) + THL(k)*EntExp
-            Un  =DOWNU(k+1,I)  *(1.-EntExp) + U(k)*EntExp_M
-            Vn  =DOWNV(k+1,I)  *(1.-EntExp) + V(k)*EntExp_M
-            !QKEn=DOWNQKE(k-1,I)*(1.-EntExp) + QKE(k)*EntExp
+            qtn     =downqt(k+1,i) *(1.-entexp) + qt(k)*entexp
+            thln    =downthl(k+1,i)*(1.-entexp) + thl(k)*entexp
+            qncn    =downqnc(k+1,i) *(1.-entexp) + qnc(k)*entexp
+            qnin    =downqni(k+1,i) *(1.-entexp) + qni(k)*entexp
+            qnwfan  =downqnwfa(k+1,i) *(1.-entexp) + qnwfa(k)*entexp
+            qnifan  =downqnifa(k+1,i) *(1.-entexp) + qnifa(k)*entexp
+            un      =downu(k+1,i)  *(1.-entexm) + u(k)*entexm
+            vn      =downv(k+1,i)  *(1.-entexm) + v(k)*entexm
+            !qken=downqke(k-1,i)*(1.-entexp) + qke(k)*entexp
+!            qtn =downqt(k+1,i) +(qt(k) -downqt(k+1,i)) *(1.-entexp)
+!            thln=downthl(k+1,i)+(thl(k)-downthl(k+1,i))*(1.-entexp)
+!            un  =downu(k+1,i)  +(u(k)  -downu(k+1,i))*(1.-entexp_m)
+!            vn  =downv(k+1,i)  +(v(k)  -downv(k+1,i))*(1.-entexp_m)
 
-!            QTn =DOWNQT(K+1,I) +(QT(K) -DOWNQT(K+1,I)) *(1.-EntExp)
-!            THLn=DOWNTHL(K+1,I)+(THL(K)-DOWNTHL(K+1,I))*(1.-EntExp)
-!            Un  =DOWNU(K+1,I)  +(U(K)  -DOWNU(K+1,I))*(1.-EntExp_M)
-!            Vn  =DOWNV(K+1,I)  +(V(K)  -DOWNV(K+1,I))*(1.-EntExp_M)
+            ! given new p & z, solve for thvn, qcn, and qin
+            pk  =(p(k-1)*dz(k)+p(k)*dz(k-1))/(dz(k)+dz(k-1))
+            call condensation_ddmf(qtn,thln,pk,zw(k),thvn,qcn,qin,debug_dd)
 
-            ! given new p & z, solve for thvn & qcn
-            Pk  =(P(k-1)*DZ(k)+P(k)*DZ(k-1))/(DZ(k)+DZ(k-1))
-            call condensation_edmf(QTn,THLn,Pk,ZW(k),THVn,QCn)
-!            B=grav*(0.5*(THVn+DOWNTHV(k+1,I))/THV(k)-1.)
-            THVk  =(THV(k-1)*DZ(k)+THV(k)*DZ(k-1))/(DZ(k)+DZ(k-1))
-            B=grav*(THVn/THVk - 1.0)
-!            Beta_dm = 2*Wb*ENT(K,I) + 0.5/(ZW(k)-dz(k)) * &
-!                 &    max(1. - exp((ZW(k) -dz(k))/Z00 - 1. ) , 0.)
-!            EntW=exp(-Beta_dm * dz(k))
-            EntW=EntExp
-!            if (Beta_dm >0) then
-!               Wn2=DOWNW(K+1,I)**2*EntW - Wa*B/Beta_dm * (1. - EntW)
+            !calculate buoyancy
+            thvk =(thv(k-1)*dz(k)+thv(k)*dz(k-1))/(dz(k)+dz(k-1))
+            buoy =grav*(thvn/thvk - 1.0)
+            !downdraft decelleration to limit large tendencies at the surface
+            if (buoy > 0.0) then
+               bcoeff =  0.2  !0.15 = same as in updrafts
+               ecoeff = -2.0
+            else
+               bcoeff = 0.2*min(zw(k)/pblh, 1.0)
+               ecoeff = -2.0 - max(0.5*pblh-zw(k), 0.0)/(0.5*pblh)
+               buoy   = buoy*min(zw(k)/pblh, 1.0)
+            endif
+            if (k==kts+2) buoy=max(buoy,0.01)
+            if (k==kts+1) buoy=max(buoy,0.05)
+
+!            beta_dm = 2*wb*ent(k,i) + 0.5/(zw(k)-dz(k)) * &
+!                 &    max(1. - exp((zw(k) -dz(k))/z00 - 1. ) , 0.)
+!            entw=exp(-beta_dm * dz(k))
+!            entw=entexp
+!            if (beta_dm >0) then
+!               wn2=downw(k+1,i)**2*entw - wa*buoy/beta_dm * (1. - entw)
 !            else
-!               Wn2=DOWNW(K+1,I)**2      - 2.*Wa*B*dz(k)
+!               wn2=downw(k+1,i)**2      - 2.*wa*buoy*dz(k)
 !            end if
 
-            mindownw = MIN(DOWNW(K+1,I),-0.2)
-            Wn = DOWNW(K+1,I) + (-2.*ENT(K,I)*DOWNW(K+1,I) - &
-                    BCOEFF*B/mindownw)*MIN(dz(k), 250.)
+            mindownw = min(downw(k+1,i),-0.2)
+            wn = downw(k+1,i) + (ecoeff*ent(k,i)*downw(k+1,i)        &
+                              - bcoeff*buoy/mindownw)*min(dz(k), 250.)
 
-            !Do not allow a parcel to accelerate more than 1.25 m/s over 200 m.
-            !Add max acceleration of -2.0 m/s for coarse vertical resolution.
-            IF (Wn < DOWNW(K+1,I) - MIN(1.25*dz(k)/200., -2.0))THEN
-                Wn = DOWNW(K+1,I) - MIN(1.25*dz(k)/200., -2.0)
-            ENDIF
-            !Add symmetrical max decrease in velocity (less negative)
-            IF (Wn > DOWNW(K+1,I) + MIN(1.25*dz(k)/200., 2.0))THEN
-                Wn = DOWNW(K+1,I) + MIN(1.25*dz(k)/200., 2.0)
-            ENDIF
-            Wn = MAX(MIN(Wn,0.0), -3.0)
+            !do not allow a parcel to accelerate more than 1.25 m/s over 200 m.
+            !add max acceleration of -2.0 m/s for coarse vertical resolution.
+            if (wn < downw(k+1,i) - min(1.25*dz(k)/200., 2.0))then
+                wn = downw(k+1,i) - min(1.25*dz(k)/200., 2.0)
+            endif
+            !add symmetrical max decrease in velocity (less negative)
+            if (wn > downw(k+1,i) + min(1.25*dz(k)/200., 2.0))then
+                wn = downw(k+1,i) + min(1.25*dz(k)/200., 2.0)
+            endif
+            wn = max(min(wn,0.0), -3.0)
 
-            !print *, "  k       =",      k,      " z    =", ZW(k)
-            !print *, "  entw    =",ENT(K,I),     " Bouy =", B
-            !print *, "  downthv =",   THVn,      " thvk =", thvk
-            !print *, "  downthl =",   THLn,      " thl  =", thl(k)
-            !print *, "  downqt  =",   QTn ,      " qt   =", qt(k)
-            !print *, "  downw+1 =",DOWNW(K+1,I), " Wn2  =", Wn
+            if (debug_dd .eq.1) then
+               print *, "downdraft #:", i," diameter:",ddd,"==========="
+               print *, "  k       =",      k,      " z    =", zw(k)
+               print *, "  ent     =",ent(k,i),     " bouy =", buoy
+               print *, "  downthv =",   thvn,      " thvk =", thvk
+               print *, "  downthl =",   thln,      " thl  =", thl(k)
+               print *, "  downqt  =",   qtn ,      " qt   =", qt(k)
+               print *, "  downqc  =",   qcn ,      " qc   =", qc(k)
+               print *, "  downw+1 =",downw(k+1,i), " wn2  =", wn
+            endif
 
-            IF (Wn .lt. 0.) THEN !terminate when velocity is too small
-               DOWNW(K,I)  = Wn !-sqrt(Wn2)
-               DOWNTHV(K,I)= THVn
-               DOWNTHL(K,I)= THLn
-               DOWNQT(K,I) = QTn
-               DOWNQC(K,I) = QCn
-               DOWNU(K,I)  = Un
-               DOWNV(K,I)  = Vn
-               DOWNA(K,I)  = DOWNA(K+1,I)
-            ELSE
-               !plumes must go at least 2 levels
-               if (DD_initK(I) - K .lt. 2) then
-                  DOWNW(:,I)  = 0.0
-                  DOWNTHV(:,I)= 0.0
-                  DOWNTHL(:,I)= 0.0
-                  DOWNQT(:,I) = 0.0
-                  DOWNQC(:,I) = 0.0
-                  DOWNU(:,I)  = 0.0
-                  DOWNV(:,I)  = 0.0
-               endif
+            if (wn .lt. 0.) then !terminate when velocity is too small
+               downw(k,i)  = wn !-sqrt(wn2)
+               downthv(k,i)   = thvn
+               downthl(k,i)   = thln
+               downqt(k,i)    = qtn
+               downqc(k,i)    = qcn
+               downqi(k,i)    = qin
+               downqnc(k,i)   = qncn
+               downqni(k,i)   = qnin
+               downqnwfa(k,i) = qnwfan
+               downqnifa(k,i) = qnifan
+               downu(k,i)     = un
+               downv(k,i)     = vn
+               downa(k,i)     = downa(k+1,i)
+            else
+               !downdrafts must go at least 2 levels
+!               if (dd_initk(i) - k .lt. 2) then
+!                  downw(:,i)  = 0.0
+!                  downthv(:,i)= 0.0
+!                  downthl(:,i)= 0.0
+!                  downqt(:,i) = 0.0
+!                  downqc(:,i) = 0.0
+!                  downu(:,i)  = 0.0
+!                  downv(:,i)  = 0.0
+!               endif
                exit
-            ENDIF
-         ENDDO
-      ENDDO
+            endif
+         enddo
+      enddo
    endif ! end cloud flag
 
-   DOWNW(1,:) = 0. !make sure downdraft does not go to the surface
-   DOWNA(1,:) = 0.
-
-   ! Combine both moist and dry plume, write as one averaged plume
-   ! Even though downdraft starts at different height, average all up to qlTop
-   DO k=qlTop,KTS,-1
-      DO I=1,NDOWN
-         edmf_a_dd(K)  =edmf_a_dd(K)  +DOWNA(K-1,I)
-         edmf_w_dd(K)  =edmf_w_dd(K)  +DOWNA(K-1,I)*DOWNW(K-1,I)
-         edmf_qt_dd(K) =edmf_qt_dd(K) +DOWNA(K-1,I)*DOWNQT(K-1,I)
-         edmf_thl_dd(K)=edmf_thl_dd(K)+DOWNA(K-1,I)*DOWNTHL(K-1,I)
-         edmf_ent_dd(K)=edmf_ent_dd(K)+DOWNA(K-1,I)*ENT(K-1,I)
-         edmf_qc_dd(K) =edmf_qc_dd(K) +DOWNA(K-1,I)*DOWNQC(K-1,I)
-      ENDDO
-
-      IF (edmf_a_dd(k) >0.) THEN
-          edmf_w_dd(k)  =edmf_w_dd(k)  /edmf_a_dd(k)
-          edmf_qt_dd(k) =edmf_qt_dd(k) /edmf_a_dd(k)
-          edmf_thl_dd(k)=edmf_thl_dd(k)/edmf_a_dd(k)
-          edmf_ent_dd(k)=edmf_ent_dd(k)/edmf_a_dd(k)
-          edmf_qc_dd(k) =edmf_qc_dd(k) /edmf_a_dd(k)
-      ENDIF
-   ENDDO
+   downw(1,:) = 0. !make sure downdrafts do not penetrate the surface
+   downa(1,:) = 0.
 
    !
-   ! computing variables needed for solver
+   ! combine all downdrafts into one averaged downdraft
    !
+   do k=qltop,kts,-1
+      do i=1,ndd
+         edmf_a_dd(k)  =edmf_a_dd(k)  +downa(k,i)
+         edmf_w_dd(k)  =edmf_w_dd(k)  +downa(k,i)*downw(k,i)
+         edmf_qt_dd(k) =edmf_qt_dd(k) +downa(k,i)*downqt(k,i)
+         edmf_thl_dd(k)=edmf_thl_dd(k)+downa(k,i)*downthl(k,i)
+         edmf_ent_dd(k)=edmf_ent_dd(k)+downa(k,i)*ent(k,i)
+         edmf_qc_dd(k) =edmf_qc_dd(k) +downa(k,i)*downqc(k,i)
+      enddo
 
-   DO k=KTS,qlTop
-      rho_int = (rho(k)*DZ(k+1)+rho(k+1)*DZ(k))/(DZ(k+1)+DZ(k))
-      DO I=1,NDOWN
-         sd_aw(k)   =sd_aw(k)   +rho_int*DOWNA(k,i)*DOWNW(k,i)
-         sd_awthl(k)=sd_awthl(k)+rho_int*DOWNA(k,i)*DOWNW(k,i)*DOWNTHL(k,i)
-         sd_awqt(k) =sd_awqt(k) +rho_int*DOWNA(k,i)*DOWNW(k,i)*DOWNQT(k,i)
-         sd_awqc(k) =sd_awqc(k) +rho_int*DOWNA(k,i)*DOWNW(k,i)*DOWNQC(k,i)
-         sd_awu(k)  =sd_awu(k)  +rho_int*DOWNA(k,i)*DOWNW(k,i)*DOWNU(k,i)
-         sd_awv(k)  =sd_awv(k)  +rho_int*DOWNA(k,i)*DOWNW(k,i)*DOWNV(k,i)
-      ENDDO
-      sd_awqv(k) = sd_awqt(k)  - sd_awqc(k)
-   ENDDO
+      if (edmf_a_dd(k) > 0.) then
+         edmf_w_dd(k)  =edmf_w_dd(k)  /edmf_a_dd(k)
+         edmf_qt_dd(k) =edmf_qt_dd(k) /edmf_a_dd(k)
+         edmf_thl_dd(k)=edmf_thl_dd(k)/edmf_a_dd(k)
+         edmf_ent_dd(k)=edmf_ent_dd(k)/edmf_a_dd(k)
+         edmf_qc_dd(k) =edmf_qc_dd(k) /edmf_a_dd(k)
+      endif
+      !instead of dTKE/dt = 1/2 w^3, multiply by 2 for QKE.
+      tkeprodtd(k)=(abs(edmf_w_dd(k))**3)*edmf_a_dd(k)/(b1*max(el(k),0.1))
+   enddo
 
-END SUBROUTINE DDMF_JPL
-!===============================================================
+   !
+   ! compute variables needed for solver
+   !
+   do k=kts,qltop
+      rho_int = (rho(k)*dz(k+1)+rho(k+1)*dz(k))/(dz(k+1)+dz(k))
+      do i=1,ndd
+         sd_aw(k)   =sd_aw(k)   +rho_int*downa(k,i)*abs(downw(k,i))
+         sd_awthl(k)=sd_awthl(k)+rho_int*downa(k,i)*downw(k,i)*downthl(k,i)
+         sd_awqt(k) =sd_awqt(k) +rho_int*downa(k,i)*downw(k,i)*downqt(k,i)
+         sd_awqc(k) =sd_awqc(k) +rho_int*downa(k,i)*downw(k,i)*downqc(k,i)
+         sd_awqi(k) =sd_awqi(k) +rho_int*downa(k,i)*downw(k,i)*downqi(k,i)
+         sd_awqnc(k)=sd_awqnc(k)+rho_int*downa(k,i)*downw(k,i)*downqnc(k,i)
+         sd_awqni(k)=sd_awqni(k)+rho_int*downa(k,i)*downw(k,i)*downqni(k,i)
+         sd_awqnwfa(k)=sd_awqnwfa(k)+rho_int*downa(k,i)*downw(k,i)*downqnwfa(k,i)
+         sd_awqnifa(k)=sd_awqnifa(k)+rho_int*downa(k,i)*downw(k,i)*downqnifa(k,i)
+         sd_awu(k)  =sd_awu(k)  +rho_int*downa(k,i)*downw(k,i)*downu(k,i)
+         sd_awv(k)  =sd_awv(k)  +rho_int*downa(k,i)*downw(k,i)*downv(k,i)
+      enddo
+      sd_awqv(k) = sd_awqt(k)  - sd_awqc(k) - sd_awqi(k)
+   enddo
 
+end subroutine ddmp_mf
+!=============================================================== 
 
 SUBROUTINE SCALE_AWARE(dx,PBL1,Psig_bl,Psig_shcu)
 
@@ -7626,14 +7918,14 @@ END FUNCTION phih
 ! ==================================================================
  SUBROUTINE topdown_cloudrad(kts,kte,                         &
                &dz1,zw,fltv,xland,kpbl,PBLH,                  &
-               &sqc,sqi,sqw,thl,th1,ex1,p1,rho1,thetav,       &
+               &sqc,sqi,sqw,thl,th1,ex1,p1,rho1,thv,          &
                &cldfra_bl1D,rthraten,                         &
                &maxKHtopdown,KHtopdown,TKEprodTD              )
 
     !input
     integer,         intent(in) :: kte,kts
     real(kind_phys), dimension(kts:kte), intent(in) :: dz1,sqc,sqi,sqw,&
-          thl,th1,ex1,p1,rho1,thetav,cldfra_bl1D
+          thl,th1,ex1,p1,rho1,thv,cldfra_bl1D
     real(kind_phys), dimension(kts:kte), intent(in) :: rthraten
     real(kind_phys), dimension(kts:kte+1), intent(in) :: zw
     real(kind_phys), intent(in) :: pblh,fltv
@@ -7712,10 +8004,10 @@ END FUNCTION phih
        endif
 
        !entrainment from PBL top thermals
-       wm3    = grav/thetav(k)*bfx0*MIN(pblh,1500.) ! this is wstar3(i)
+       wm3    = grav/thv(k)*bfx0*MIN(pblh,1500.) ! this is wstar3(i)
        wm2    = wm2 + wm3**twothirds
        bfxpbl = - ent_eff * bfx0
-       dthvx  = max(thetav(k+1)-thetav(k),0.1)
+       dthvx  = max(thv(k+1)-thv(k),0.1)
        we     = max(bfxpbl/dthvx,-sqrt(wm3**twothirds))
 
        DO kk = kts,kpbl+3
