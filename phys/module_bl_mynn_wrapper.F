@@ -205,17 +205,17 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
       real(kind_phys), dimension(ims:ime,kms:kme,jms:jme), optional, intent(inout) ::  &
      &       qv,qc,qi,qs,qnc,qni,qnwfa,qnifa,qnbca!,o3
 
-!optional 2D arrays for passing into module_bl_myn.F
-      real(kind_phys), allocatable, dimension(:,:) ::                                  &
-     &       qc_bl2d, qi_bl2d, cldfra_bl2d, pattern_spp_pbl2d
-      real(kind_phys), allocatable, dimension(:,:) ::                                  &
-     &       edmf_a2d,edmf_w2d,edmf_qt2d,                                              &
-     &       edmf_thl2d,edmf_ent2d,edmf_qc2d,                                          &
-     &       sub_thl2d,sub_sqv2d,det_thl2d,det_sqv2d
-      real(kind_phys), allocatable, dimension(:,:) ::                                  &
-     &       dqke2d,qWT2d,qSHEAR2d,qBUOY2d,qDISS2d
-      real(kind_phys), allocatable, dimension(:,:) ::                                  &
-     &       qc2d,qi2d,qs2d,qnc2d,qni2d,qnwfa2d,qnifa2d,qnbca2d!,o32d
+!non-optional 1D arrays
+      real(kind_phys), dimension(kms:kme)  ::                                          &
+     &       edmf_a1,edmf_w1,edmf_qt1,edmf_thl1,edmf_ent1,edmf_qc1,                    &
+     &       sub_thl1,sub_sqv1,det_thl1,det_sqv1
+!optional 1D arrays for passing into module_bl_myn.F
+      real(kind_phys), allocatable, dimension(:) ::                                    &
+     &       qc_bl1, qi_bl1, cldfra_bl1, pattern_spp_pbl1
+      real(kind_phys), allocatable, dimension(:) ::                                    &
+     &       dqke1,qWT1,qSHEAR1,qBUOY1,qDISS1
+      real(kind_phys), allocatable, dimension(:) ::                                    &
+     &       qc1,qi1,qs1,qnc1,qni1,qnwfa1,qnifa1,qnbca1!,o31
 
 !smoke/chem arrays - no if-defs in module_bl_mynn.F, so must define arrays
 #if (WRF_CHEM == 1)
@@ -240,7 +240,7 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
      &        kpbl,ktop_plume
 
 !Local
-      real(kind_phys), dimension(ims:ime,kms:kme)         :: delp,sqv,sqc,sqi,sqs,ikzero
+      real(kind_phys), dimension(kms:kme)                 :: delp,sqv1,sqc1,sqi1,sqs1,ikzero
       real(kind_phys), dimension(ims:ime)                 :: dx
       logical, parameter                                  :: debug = .false.
       real(kind_phys), dimension(ims:ime,kms:kme,jms:jme) :: ozone,rO3blten
@@ -261,152 +261,121 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
 
    !Allocate any arrays being used
    if (icloud_bl > 0) then
-      allocate(qc_bl2d(ims:ime,kms:kme))
-      allocate(qi_bl2d(ims:ime,kms:kme))
-      allocate(cldfra_bl2d(ims:ime,kms:kme))
-      qc_bl2d=0.0
-      qi_bl2d=0.0
-      cldfra_bl2d=0.0
+      allocate(qc_bl1(kms:kme))
+      allocate(qi_bl1(kms:kme))
+      allocate(cldfra_bl1(kms:kme))
+      qc_bl1=0.0
+      qi_bl1=0.0
+      cldfra_bl1=0.0
    endif
    if (spp_pbl > 0) then
-      allocate(pattern_spp_pbl2d(ims:ime,kms:kme))
-   endif
-   if (bl_mynn_output > 0) then
-      allocate(edmf_a2d(ims:ime,kms:kme))
-      allocate(edmf_w2d(ims:ime,kms:kme))
-      allocate(edmf_qt2d(ims:ime,kms:kme))
-      allocate(edmf_thl2d(ims:ime,kms:kme))
-      allocate(edmf_ent2d(ims:ime,kms:kme))
-      allocate(edmf_qc2d(ims:ime,kms:kme))
-      allocate(sub_thl2d(ims:ime,kms:kme))
-      allocate(sub_sqv2d(ims:ime,kms:kme))
-      allocate(det_thl2d(ims:ime,kms:kme))
-      allocate(det_sqv2d(ims:ime,kms:kme))
+      allocate(pattern_spp_pbl1(kms:kme))
    endif
    if (tke_budget .eq. 1) then
-      allocate(dqke2d(ims:ime,kms:kme))
-      allocate(qWT2d(ims:ime,kms:kme))
-      allocate(qSHEAR2d(ims:ime,kms:kme))
-      allocate(qBUOY2d(ims:ime,kms:kme))
-      allocate(qDISS2d(ims:ime,kms:kme))
-      dqke2d  =0.0
-      qWT2d   =0.0
-      qSHEAR2d=0.0
-      qBUOY2d =0.0
-      qDISS2d =0.0
+      allocate(dqke1(kms:kme))
+      allocate(qWT1(kms:kme))
+      allocate(qSHEAR1(kms:kme))
+      allocate(qBUOY1(kms:kme))
+      allocate(qDISS1(kms:kme))
+      dqke1  =0.0
+      qWT1   =0.0
+      qSHEAR1=0.0
+      qBUOY1 =0.0
+      qDISS1 =0.0
    endif
    if (flag_qc) then
-      allocate(qc2d(ims:ime,kms:kme))
-      qc2d=0.0
+      allocate(qc1(kms:kme))
+      qc1=0.0
    endif
    if (flag_qi) then
-      allocate(qi2d(ims:ime,kms:kme))
-      qi2d=0.0
+      allocate(qi1(kms:kme))
+      qi1=0.0
    endif
    if (flag_qs) then
-      allocate(qs2d(ims:ime,kms:kme))
-      qs2d=0.0
+      allocate(qs1(kms:kme))
+      qs1=0.0
    endif
    if (flag_qnc) then
-      allocate(qnc2d(ims:ime,kms:kme))
-      qnc2d=0.0
+      allocate(qnc1(kms:kme))
+      qnc1=0.0
    endif
    if (flag_qni) then
-      allocate(qni2d(ims:ime,kms:kme))
-      qni2d=0.0
+      allocate(qni1(kms:kme))
+      qni1=0.0
    endif
    if (flag_qnwfa) then
-      allocate(qnwfa2d(ims:ime,kms:kme))
-      qnwfa2d=0.0
+      allocate(qnwfa1(kms:kme))
+      qnwfa1=0.0
    endif
    if (flag_qnifa) then
-      allocate(qnifa2d(ims:ime,kms:kme))
-      qnifa2d=0.0
+      allocate(qnifa1(kms:kme))
+      qnifa1=0.0
    endif
    if (flag_qnbca) then
-      allocate(qnbca2d(ims:ime,kms:kme))
-      qnbca2d=0.0
+      allocate(qnbca1(kms:kme))
+      qnbca1=0.0
    endif
    !---------------------------------
-   !Begin looping in the j-direction
+   !Begin looping in the i- and j-direction
    !---------------------------------
    do j = jts,jtf
+   do i = its,itf
 
       !need sgs cloud info input for diagnostic-decay
       if (icloud_bl > 0) then
          do k=kts,ktf
-         do i=its,itf
-            qc_bl2d(i,k)     = qc_bl(i,k,j)
-            qi_bl2d(i,k)     = qi_bl(i,k,j)
-            cldfra_bl2d(i,k) = cldfra_bl(i,k,j)
-         enddo
+            qc_bl1(k)     = qc_bl(i,k,j)
+            qi_bl1(k)     = qi_bl(i,k,j)
+            cldfra_bl1(k) = cldfra_bl(i,k,j)
          enddo
       endif
 
       !spp input
       if (spp_pbl > 0) then
          do k=kts,ktf
-         do i=its,itf
-            pattern_spp_pbl2d(i,k) = pattern_spp_pbl(i,k,j)
-         enddo
+            pattern_spp_pbl1(k) = pattern_spp_pbl(i,k,j)
          enddo
       endif
 
       !intialize moist species
       if (flag_qc) then
          do k=kts,ktf
-         do i=its,itf
-            qc2d(i,k) = qc(i,k,j)
-         enddo
+            qc1(k) = qc(i,k,j)
          enddo
       endif
       if (flag_qi) then
          do k=kts,ktf
-         do i=its,itf
-            qi2d(i,k) = qi(i,k,j)
-         enddo
+            qi1(k) = qi(i,k,j)
          enddo
       endif
       if (flag_qs) then
          do k=kts,ktf
-         do i=its,itf
-            qs2d(i,k) = qs(i,k,j)
-         enddo
+            qs1(k) = qs(i,k,j)
          enddo
       endif
       if (flag_qnc) then
          do k=kts,ktf
-         do i=its,itf
-            qnc2d(i,k) = qnc(i,k,j)
-         enddo
+            qnc1(k) = qnc(i,k,j)
          enddo
       endif
       if (flag_qni) then
          do k=kts,ktf
-         do i=its,itf
-            qni2d(i,k) = qni(i,k,j)
-         enddo
+            qni1(k) = qni(i,k,j)
          enddo
       endif
       if (flag_qnwfa) then
          do k=kts,ktf
-         do i=its,itf
-            qnwfa2d(i,k) = qnwfa(i,k,j)
-         enddo
+            qnwfa1(k) = qnwfa(i,k,j)
          enddo
       endif
       if (flag_qnifa) then
          do k=kts,ktf
-         do i=its,itf
-            qnifa2d(i,k) = qnifa(i,k,j)
-         enddo
+            qnifa1(k) = qnifa(i,k,j)
          enddo
       endif
       if (flag_qnbca) then
          do k=kts,ktf
-         do i=its,itf
-            qnbca2d(i,k) = qnbca(i,k,j)
-         enddo
+            qnbca1(k) = qnbca(i,k,j)
          enddo
       endif
 
@@ -414,17 +383,13 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
       if (mix_chem) then
          do n=1,nchem
          do k=kts,ktf
-         do i=its,itf
-            chem(i,k,n)=chem3d(i,k,j,n)
-         enddo
+            chem(k,n)=chem3d(i,k,j,n)
          enddo
          enddo
 
          !set kdvel =1
          do n=1,ndvel
-         do i=its,itf
-            vd(i,n)  =vd3d(i,1,j,n)
-         enddo
+            vd(n)  =vd3d(i,1,j,n)
          enddo
       endif
       frp_mean = 0.0
@@ -436,11 +401,6 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
       emis_ant_no = 0.0
 #endif
 
-      ! Check incoming moist species to ensure non-negative values
-      ! First, create pressure differences (delp) across model layers
-      do i=its,itf
-         dx(i)=dxc
-      enddo
 
 !      do i=its,itf
 !         call moisture_check2(kte, delt,                 &
@@ -451,20 +411,16 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
 
       !In WRF, mixing ratio is incoming. Convert to specific humidity:
       do k=kts,ktf
-         do i=its,itf
-             sqv(i,k)=qv(i,k,j)/(1.0 + qv(i,k,j))
-             sqc(i,k)=qc2d(i,k)/(1.0 + qv(i,k,j))
-             sqi(i,k)=qi2d(i,k)/(1.0 + qv(i,k,j))
-         enddo
+         sqv1(k)=qv(i,k,j)/(1.0 + qv(i,k,j))
+         sqc1(k)=qc1(k)/(1.0 + qv(i,k,j))
+         sqi1(k)=qi1(k)/(1.0 + qv(i,k,j))
       enddo
       if (flag_qs) then
          do k=kts,ktf
-           do i=its,itf
-             sqs(i,k)=qs2d(i,k)/(1.0 + qv(i,k,j))
-           enddo
+            sqs1(k)=qs1(k)/(1.0 + qv(i,k,j))
          enddo
       else
-         sqs(:,:)=0.0
+         sqs1(:)=0.0
       endif
 
       if (debug) then
@@ -480,233 +436,219 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
          print*,"bl_mynn_cloudmix=",bl_mynn_cloudmix
          print*,"bl_mynn_mixqt=",bl_mynn_mixqt
          print*,"icloud_bl=",icloud_bl
-         print*,"T:",t3d(its,1,j),t3d(its,2,j),t3d(its,kte,j)
-         print*,"TH:",th(its,1,j),th(its,2,j),th(its,kte,j)
-         print*,"rho:",rho(its,1,j),rho(its,2,j),rho(its,kte,j)
-         print*,"exner:",exner(its,1,j),exner(its,2,j),exner(its,kte,j)
-         print*,"p:",p(its,1,j),p(its,2,j),p(its,kte,j)
-         print*,"dz:",dz(its,1,j),dz(its,2,j),dz(its,kte,j)
-         print*,"u:",u(its,1,j),u(its,2,j),u(its,kte,j)
-         print*,"v:",v(its,1,j),v(its,2,j),v(its,kte,j)
-         print*,"sqv:",sqv(its,1),sqv(its,2),sqv(its,kte)
-         print*,"sqc:",sqc(its,1),sqc(its,2),sqc(its,kte)
-         print*,"sqi:",sqi(its,1),sqi(its,2),sqi(its,kte)
-         print*,"rmol:",rmol(its,j)," ust:",ust(its,j)
-         print*,"dx=",dx(its),"initflag=",initflag
-         print*,"Thetasurf:",ts(its,j)
-         print*,"HFX:",hfx(its,j)," qfx",qfx(its,j)
-         print*,"qsfc:",qsfc(its,j)," ps:",ps(its,j)
-         print*,"wspd:",wspd(its,j)
-         print*,"znt:",znt(its,j)," delt=",delt
+         print*,"T:",t3d(i,1,j),t3d(i,2,j),t3d(i,kte,j)
+         print*,"TH:",th(i,1,j),th(i,2,j),th(i,kte,j)
+         print*,"rho:",rho(i,1,j),rho(i,2,j),rho(i,kte,j)
+         print*,"exner:",exner(i,1,j),exner(i,2,j),exner(i,kte,j)
+         print*,"p:",p(i,1,j),p(i,2,j),p(i,kte,j)
+         print*,"dz:",dz(i,1,j),dz(i,2,j),dz(i,kte,j)
+         print*,"u:",u(i,1,j),u(i,2,j),u(i,kte,j)
+         print*,"v:",v(i,1,j),v(i,2,j),v(i,kte,j)
+         print*,"sqv:",sqv1(1),sqv1(2),sqv1(kte)
+         print*,"sqc:",sqc1(1),sqc1(2),sqc1(kte)
+         print*,"sqi:",sqi1(1),sqi1(2),sqi1(kte)
+         print*,"rmol:",rmol(i,j)," ust:",ust(i,j)
+         print*,"dx=",dx(i),"initflag=",initflag
+         print*,"Thetasurf:",ts(i,j)
+         print*,"HFX:",hfx(i,j)," qfx",qfx(i,j)
+         print*,"qsfc:",qsfc(i,j)," ps:",ps(i,j)
+         print*,"wspd:",wspd(i,j)
+         print*,"znt:",znt(i,j)," delt=",delt
          print*,"ite=",ite," kte=",kte
-         print*,"PBLH=",pblh(its,j)," KPBL=",KPBL(its,j)," xland=",xland(its,j)
-         print*," ch=",ch(its,j)
-         print*,"qke:",qke(its,1,j),qke(its,2,j),qke(its,kte,j)
-         print*,"el_pbl:",el_pbl(its,1,j),el_pbl(its,2,j),el_pbl(its,kte,j)
-         print*,"Sh3d:",Sh3d(its,1,j),sh3d(its,2,j),sh3d(its,kte,j)
-         print*,"max cf_bl:",maxval(cldfra_bl(its,:,j))
+         print*,"PBLH=",pblh(i,j)," KPBL=",KPBL(i,j)," xland=",xland(i,j)
+         print*,"ch=",ch(i,j)
+         print*,"qke:",qke(i,1,j),qke(i,2,j),qke(i,kte,j)
+         print*,"el_pbl:",el_pbl(i,1,j),el_pbl(i,2,j),el_pbl(i,kte,j)
+         print*,"Sh3d:",Sh3d(i,1,j),sh3d(i,2,j),sh3d(i,kte,j)
+         print*,"max cf_bl:",maxval(cldfra_bl(i,:,j))
       endif
 
 !print*,"In mynn wrapper, calling mynn_bl_driver"
               CALL  mynn_bl_driver(                                    &
-     &        initflag=initflag,restart=restart,cycling=cycling,       &
-     &        delt=delt,dz=dz(:,:,j),dx=dx,znt=znt(:,j),               &
-     &        u=u(:,:,j),v=v(:,:,j),w=w(:,:,j),                        &
-     &        th=th(:,:,j),sqv3D=sqv,sqc3D=sqc,                        &
-     &        sqi3D=sqi,sqs3D=sqs,qnc=qnc2d,qni=qni2d,                 &
-     &        qnwfa=qnwfa2d,qnifa=qnifa2d,qnbca=qnbca2d,               &
-     &        ozone=ozone(:,:,j),                                      &
-     &        p=p(:,:,j),exner=exner(:,:,j),rho=rho(:,:,j),            &
-     &        T3D=t3d(:,:,j),xland=xland(:,j),                         &
-     &        ts=ts(:,j),qsfc=qsfc(:,j),ps=ps(:,j),                    &
-     &        ust=ust(:,j),ch=ch(:,j),hfx=hfx(:,j),qfx=qfx(:,j),       &
-     &        rmol=rmol(:,j),wspd=wspd(:,j),                           &
-     &        uoce=uoce(:,j),voce=voce(:,j),                           & !input
-     &        qke=QKE(:,:,j),qke_adv=qke_adv(:,:,j),                   & !output
-     &        sh3d=Sh3d(:,:,j),sm3d=Sm3d(:,:,j),                       & !output
+     &        initflag=initflag,         restart=restart,              &
+     &        cycling=cycling,           delt=delt,                    &
+     &        dz1=dz(i,:,j),             dx=dxc,znt=znt(i,j),          &
+     &        u1=u(i,:,j),               v1=v(i,:,j),                  &
+     &        w1=w(i,:,j),               th1=th(i,:,j),                &
+     &        sqv1=sqv1,                 sqc1=sqc1,                    &
+     &        sqi1=sqi1,                 sqs1=sqs1,                    &
+     &        qnc1=qnc1,                 qni1=qni1,                    &
+     &        qnwfa1=qnwfa1,             qnifa1=qnifa1,                &
+     &        qnbca1=qnbca1,             ozone1=ozone(i,:,j),          &
+     &        p1=p(i,:,j),               ex1=exner(i,:,j),             &
+     &        rho1=rho(i,:,j),           tk1=t3d(i,:,j),               &
+     &        xland=xland(i,j),          ts=ts(i,j),                   &
+     &        qsfc=qsfc(i,j),            ps=ps(i,j),                   &
+     &        ust=ust(i,j),              ch=ch(i,j),                   &
+     &        hfx=hfx(i,j),              qfx=qfx(i,j),                 &
+     &        rmol=rmol(i,j),            wspd=wspd(i,j),               &
+     &        uoce=uoce(i,j),            voce=voce(i,j),               & !input
+     &        qke1=QKE(i,:,j),           qke_adv1=qke_adv(i,:,j),      & !output
+     &        sh1=Sh3d(i,:,j),           sm1=Sm3d(i,:,j),              & !output
+
      &        nchem=nchem,kdvel=kdvel,ndvel=ndvel,                     & !chem/smoke
      &        Chem3d=chem,Vdep=vd,                                     &
-     &        FRP=frp_mean,EMIS_ANT_NO=emis_ant_no,                    &
+     &        FRP=frp_mean(i),EMIS_ANT_NO=emis_ant_no(i),              &
      &        mix_chem=mix_chem,enh_mix=enh_mix,                       &
      &        rrfs_sd=rrfs_sd,smoke_dbg=smoke_dbg,                     & !end chem/smoke
-     &        tsq=tsq(:,:,j),qsq=qsq(:,:,j),cov=cov(:,:,j),            & !output
-     &        RUBLTEN=RUBLTEN(:,:,j),RVBLTEN=RVBLTEN(:,:,j),           & !output
-     &        RTHBLTEN=RTHBLTEN(:,:,j),RQVBLTEN=RQVBLTEN(:,:,j),       & !output
-     &        RQCBLTEN=rqcblten(:,:,j),RQIBLTEN=rqiblten(:,:,j),       & !output
-     &        RQNCBLTEN=rqncblten(:,:,j),RQNIBLTEN=rqniblten(:,:,j),   & !output
-     &        RQSBLTEN=ikzero,                                         & !there is no RQSBLTEN, so use dummy arary
-     &        RQNWFABLTEN=RQNWFABLTEN(:,:,j),                          & !output
-     &        RQNIFABLTEN=RQNIFABLTEN(:,:,j),                          & !output
-     &        RQNBCABLTEN=RQNBCABLTEN(:,:,j),                          & !output
-     &        dozone=rO3blten(:,:,j),                                  & !output
-     &        EXCH_H=exch_h(:,:,j),EXCH_M=exch_m(:,:,j),               & !output
-     &        pblh=pblh(:,j),KPBL=KPBL(:,j),                           & !output
-     &        el_pbl=el_pbl(:,:,j),                                    & !output
-     &        dqke=dqke2d,qWT=qWT2d,qSHEAR=qSHEAR2d,                   & !output
-     &        qBUOY=qBUOY2d,qDISS=qDISS2d,                             & !output
-     &        qc_bl=qc_bl2d,qi_bl=qi_bl2d,cldfra_bl=cldfra_bl2d,       & !output
-     &        bl_mynn_tkeadvect=bl_mynn_tkeadvect,                     & !input parameter
-     &        tke_budget=tke_budget,                                   & !input parameter
-     &        bl_mynn_cloudpdf=bl_mynn_cloudpdf,                       & !input parameter
-     &        bl_mynn_mixlength=bl_mynn_mixlength,                     & !input parameter
-     &        icloud_bl=icloud_bl,                                     & !input parameter
-     &        closure=bl_mynn_closure,bl_mynn_edmf=bl_mynn_edmf,       & !input parameter
-     &        bl_mynn_edmf_mom=bl_mynn_edmf_mom,                       & !input parameter
-     &        bl_mynn_edmf_tke=bl_mynn_edmf_tke,                       & !input parameter
-     &        bl_mynn_mixscalars=bl_mynn_mixscalars,                   & !input parameter
-     &        bl_mynn_output=bl_mynn_output,                           & !input parameter
-     &        bl_mynn_cloudmix=bl_mynn_cloudmix,                       & !input parameter
-     &        bl_mynn_mixqt=bl_mynn_mixqt,                             & !input parameter
-     &        edmf_a=edmf_a2d,edmf_w=edmf_w2d,                         & !output
-     &        edmf_qt=edmf_qt2d,edmf_thl=edmf_thl2d,                   & !output
-     &        edmf_ent=edmf_ent2d,edmf_qc=edmf_qc2d,                   & !output
-     &        sub_thl3D=sub_thl2d,sub_sqv3D=sub_sqv2d,                 & !output
-     &        det_thl3D=det_thl2d,det_sqv3D=det_sqv2d,                 & !output
-     &        maxwidth=maxwidth(:,j),maxMF=maxMF(:,j),                 & !output
-     &        ztop_plume=ztop_plume(:,j),ktop_plume=ktop_plume(:,j),   & !output
-     &        spp_pbl=spp_pbl,pattern_spp_pbl=pattern_spp_pbl2d,       & !input
-     &        RTHRATEN=rthraten(:,:,j),                                & !input
+
+     &        tsq1=tsq(i,:,j), qsq1=qsq(i,:,j), cov1=cov(i,:,j),       & !output
+     &        du1=RUBLTEN(i,:,j),        dv1=RVBLTEN(i,:,j),           & !output
+     &        dth1=RTHBLTEN(i,:,j),      dqv1=RQVBLTEN(i,:,j),         & !output
+     &        dqc1=rqcblten(i,:,j),      dqi1=rqiblten(i,:,j),         & !output
+     &        dqnc1=rqncblten(i,:,j),    dqni1=rqniblten(i,:,j),       & !output
+     &        dqs1=ikzero,                                             & !there is no RQSBLTEN, so use dummy arary
+     &        dqnwfa1=RQNWFABLTEN(i,:,j),dqnifa1=RQNIFABLTEN(i,:,j),   & !output
+     &        dqnbca1=RQNBCABLTEN(i,:,j),dozone1=rO3blten(i,:,j),      & !output
+     &        kh1=exch_h(i,:,j),         km1=exch_m(i,:,j),            & !output
+     &        pblh=pblh(i,j),            KPBL=KPBL(i,j),               & !output
+     &        el1=el_pbl(i,:,j),         dqke1=dqke1,                  & !output
+     &        qWT1=qWT1,                 qSHEAR1=qSHEAR1,              & !output
+     &        qBUOY1=qBUOY1,             qDISS1=qDISS1,                & !output
+     &        qc_bl1=qc_bl1, qi_bl1=qi_bl1, cldfra_bl1=cldfra_bl1,     & !output
+     &        bl_mynn_tkeadvect  = bl_mynn_tkeadvect,                  & !input parameter
+     &        tke_budget         = tke_budget,                         & !input parameter
+     &        bl_mynn_cloudpdf   = bl_mynn_cloudpdf,                   & !input parameter
+     &        bl_mynn_mixlength  = bl_mynn_mixlength,                  & !input parameter
+     &        icloud_bl          = icloud_bl,                          & !input parameter
+     &        closure            = bl_mynn_closure,                    & !input parameter
+     &        bl_mynn_edmf       = bl_mynn_edmf,                       & !input parameter
+     &        bl_mynn_edmf_mom   = bl_mynn_edmf_mom,                   & !input parameter
+     &        bl_mynn_edmf_tke   = bl_mynn_edmf_tke,                   & !input parameter
+     &        bl_mynn_mixscalars = bl_mynn_mixscalars,                 & !input parameter
+     &        bl_mynn_output     = bl_mynn_output,                     & !input parameter
+     &        bl_mynn_cloudmix   = bl_mynn_cloudmix,                   & !input parameter
+     &        bl_mynn_mixqt      = bl_mynn_mixqt,                      & !input parameter
+     &        edmf_a1=edmf_a1,           edmf_w1=edmf_w1,              & !output
+     &        edmf_qt1=edmf_qt1,         edmf_thl1=edmf_thl1,          & !output
+     &        edmf_ent1=edmf_ent1,       edmf_qc1=edmf_qc1,            & !output
+     &        sub_thl1=sub_thl1,         sub_sqv1=sub_sqv1,            & !output
+     &        det_thl1=det_thl1,         det_sqv1=det_sqv1,            & !output
+     &        maxwidth=maxwidth(i,j),    maxmf=maxMF(i,j),             & !output
+     &        ztop_plume=ztop_plume(i,j),ktop_plume=ktop_plume(i,j),   & !output
+     &        spp_pbl=spp_pbl, pattern_spp_pbl1=pattern_spp_pbl1,      & !input
+     &        RTHRATEN1=rthraten(i,:,j),                               & !input
      &        FLAG_QI=flag_qi,FLAG_QNI=flag_qni,FLAG_QS=flag_qs,       & !input
      &        FLAG_QC=flag_qc,FLAG_QNC=flag_qnc,                       & !input
      &        FLAG_QNWFA=FLAG_QNWFA,FLAG_QNIFA=FLAG_QNIFA,             & !input
      &        FLAG_QNBCA=FLAG_QNBCA,FLAG_OZONE=flag_ozone,             & !input
      &        IDS=ids,IDE=ide,JDS=jds,JDE=jde,KDS=kds,KDE=kde,         & !input
      &        IMS=ims,IME=ime,JMS=jms,JME=jme,KMS=kms,KME=kme,         & !input
-     &        ITS=its,ITE=itf,JTS=jts,JTE=jtf,KTS=kts,KTE=kte)           !input
+     &        ITS=its,ITE=itf,JTS=jts,JTE=jtf,KTS=kts,KTE=kte          ) !input
 !print*,"In mynn wrapper, after bl_mynn_driver"
 
+!SHOULD CONVERT BACK WITH THE UPDATED QV??????????
      !- Convert spec hum to mixing ratio:
       do k=kts,ktf
-        do i=its,itf
-           RQVBLTEN(i,k,j) = RQVBLTEN(i,k,j)/(1.0 - sqv(i,k))
-           RQCBLTEN(i,k,j) = RQCBLTEN(i,k,j)/(1.0 - sqv(i,k))
-           RQIBLTEN(i,k,j) = RQIBLTEN(i,k,j)/(1.0 - sqv(i,k))
-        enddo
+         RQVBLTEN(i,k,j) = RQVBLTEN(i,k,j)/(1.0 - sqv1(k))
+         RQCBLTEN(i,k,j) = RQCBLTEN(i,k,j)/(1.0 - sqv1(k))
+         RQIBLTEN(i,k,j) = RQIBLTEN(i,k,j)/(1.0 - sqv1(k))
       enddo
       if (.false.) then !as of now, there is no RQSBLTEN in WRF
         do k=kts,ktf
-          do i=its,itf
-            RQSBLTEN(i,k,j) = RQSBLTEN(i,k,j)/(1.0 - sqv(i,k))
-          enddo
+           RQSBLTEN(i,k,j) = RQSBLTEN(i,k,j)/(1.0 - sqv1(k))
         enddo
       endif
 
      !- Collect 3D ouput:
       if (icloud_bl > 0) then
          do k=kts,ktf
-         do i=its,itf
-            qc_bl(i,k,j)     = qc_bl2d(i,k)/(1.0 - sqv(i,k))
-            qi_bl(i,k,j)     = qi_bl2d(i,k)/(1.0 - sqv(i,k))
-            cldfra_bl(i,k,j) = cldfra_bl2d(i,k)
-         enddo
+            qc_bl(i,k,j)     = qc_bl1(k)/(1.0 - sqv1(k))
+            qi_bl(i,k,j)     = qi_bl1(k)/(1.0 - sqv1(k))
+            cldfra_bl(i,k,j) = cldfra_bl1(k)
          enddo
       endif
 
       if (tke_budget .eq. 1) then
          do k=kts,ktf
-         do i=its,itf
-            dqke(i,k,j)     = dqke2d(i,k)
-            qwt(i,k,j)      = qwt2d(i,k)
-            qshear(i,k,j)   = qshear2d(i,k)
-            qbuoy(i,k,j)    = qbuoy2d(i,k)
-            qdiss(i,k,j)    = qdiss2d(i,k)
-         enddo
+            dqke(i,k,j)     = dqke1(k)
+            qwt(i,k,j)      = qwt1(k)
+            qshear(i,k,j)   = qshear1(k)
+            qbuoy(i,k,j)    = qbuoy1(k)
+            qdiss(i,k,j)    = qdiss1(k)
          enddo
       endif
 
       if (bl_mynn_output > 0) then
          do k=kts,ktf
-         do i=its,itf
-            edmf_a(i,k,j)     = edmf_a2d(i,k)
-            edmf_w(i,k,j)     = edmf_w2d(i,k)
-            edmf_qt(i,k,j)    = edmf_qt2d(i,k)
-            edmf_thl(i,k,j)   = edmf_thl2d(i,k)
-            edmf_ent(i,k,j)   = edmf_ent2d(i,k)
-            edmf_qc(i,k,j)    = edmf_qc2d(i,k)
-            sub_thl3d(i,k,j)  = sub_thl2d(i,k)
-            sub_sqv3d(i,k,j)  = sub_sqv2d(i,k)
-            det_thl3d(i,k,j)  = det_thl2d(i,k)
-            det_sqv3d(i,k,j)  = det_sqv2d(i,k)
-         enddo
+            edmf_a(i,k,j)     = edmf_a1(k)
+            edmf_w(i,k,j)     = edmf_w1(k)
+            edmf_qt(i,k,j)    = edmf_qt1(k)
+            edmf_thl(i,k,j)   = edmf_thl1(k)
+            edmf_ent(i,k,j)   = edmf_ent1(k)
+            edmf_qc(i,k,j)    = edmf_qc1(k)
+            sub_thl3d(i,k,j)  = sub_thl1(k)
+            sub_sqv3d(i,k,j)  = sub_sqv1(k)
+            det_thl3d(i,k,j)  = det_thl1(k)
+            det_sqv3d(i,k,j)  = det_sqv1(k)
          enddo
       endif
 
       if (debug) then
           print*
           print*,"===Finished with mynn_bl_driver; output:"
-          print*,"T:",t3d(its,1,j),t3d(its,2,j),t3d(its,kte,j)
-          print*,"TH:",th(its,1,j),th(its,2,j),th(its,kte,j)
-          print*,"rho:",rho(its,1,j),rho(its,2,j),rho(its,kte,j)
-          print*,"exner:",exner(its,1,j),exner(its,2,j),exner(its,kte,j)
-          print*,"p:",p(its,1,j),p(its,2,j),p(its,kte,j)
-          print*,"dz:",dz(its,1,j),dz(its,2,j),dz(its,kte,j)
-          print*,"u:",u(its,1,j),u(its,2,j),u(its,kte,j)
-          print*,"v:",v(its,1,j),v(its,2,j),v(its,kte,j)
-          print*,"sqv:",sqv(its,1),sqv(its,2),sqv(its,kte)
-          print*,"sqc:",sqc(its,1),sqc(its,2),sqc(its,kte)
-          print*,"sqi:",sqi(its,1),sqi(its,2),sqi(its,kte)
-          print*,"rmol:",rmol(its,j)," ust:",ust(its,j)
-          print*,"dx(its,j)=",dx(its),"initflag=",initflag
-          print*,"Thetasurf:",ts(its,j)
-          print*,"HFX:",hfx(its,j)," qfx",qfx(its,j)
-          print*,"qsfc:",qsfc(its,j)," ps:",ps(its,j)
-          print*,"wspd:",wspd(its,j)
-          print*,"znt:",znt(its,j)," delt=",delt
+          print*,"T:",t3d(i,1,j),t3d(i,2,j),t3d(i,kte,j)
+          print*,"TH:",th(i,1,j),th(i,2,j),th(i,kte,j)
+          print*,"rho:",rho(i,1,j),rho(i,2,j),rho(i,kte,j)
+          print*,"exner:",exner(i,1,j),exner(i,2,j),exner(i,kte,j)
+          print*,"p:",p(i,1,j),p(i,2,j),p(i,kte,j)
+          print*,"dz:",dz(i,1,j),dz(i,2,j),dz(i,kte,j)
+          print*,"u:",u(i,1,j),u(i,2,j),u(i,kte,j)
+          print*,"v:",v(i,1,j),v(i,2,j),v(i,kte,j)
+          print*,"sqv:",sqv1(1),sqv1(2),sqv1(kte)
+          print*,"sqc:",sqc1(1),sqc1(2),sqc1(kte)
+          print*,"sqi:",sqi1(1),sqi1(2),sqi1(kte)
+          print*,"rmol:",rmol(i,j)," ust:",ust(i,j)
+          print*,"dx(i,j)=",dx(i),"initflag=",initflag
+          print*,"Thetasurf:",ts(i,j)
+          print*,"HFX:",hfx(i,j)," qfx",qfx(i,j)
+          print*,"qsfc:",qsfc(i,j)," ps:",ps(i,j)
+          print*,"wspd:",wspd(i,j)
+          print*,"znt:",znt(i,j)," delt=",delt
           print*,"im=",ite," kte=",kte
-          print*,"PBLH=",pblh(its,j)," KPBL=",KPBL(its,j)," xland=",xland(its,j)
-          print*,"ch=",ch(its,j)
-          print*,"qke:",qke(its,1,j),qke(its,2,j),qke(its,kte,j)
-          print*,"el_pbl:",el_pbl(its,1,j),el_pbl(its,2,j),el_pbl(its,kte,j)
-          print*,"Sh3d:",Sh3d(its,1,j),sh3d(its,2,j),sh3d(its,kte,j)
-          print*,"exch_h:",exch_h(its,1,j),exch_h(its,2,j),exch_h(its,kte,j)
-          print*,"exch_m:",exch_m(its,1,j),exch_m(its,2,j),exch_m(its,kte,j)
-          print*,"max cf_bl:",maxval(cldfra_bl(its,:,j))
-          print*,"max qc_bl:",maxval(qc_bl(its,:,j))
-          print*,"dtdt:",rthblten(its,1,j),rthblten(its,2,j),rthblten(its,kte,j)
-          print*,"dudt:",rublten(its,1,j),rublten(its,2,j),rublten(its,kte,j)
-          print*,"dvdt:",rvblten(its,1,j),rvblten(its,2,j),rvblten(its,kte,j)
-          print*,"dqdt:",rqvblten(its,1,j),rqvblten(its,2,j),rqvblten(its,kte,j)
-          print*,"ztop_plume:",ztop_plume(its,j)," maxmf:",maxmf(its,j)
+          print*,"PBLH=",pblh(i,j)," KPBL=",KPBL(i,j)," xland=",xland(i,j)
+          print*,"ch=",ch(i,j)
+          print*,"qke:",qke(i,1,j),qke(i,2,j),qke(i,kte,j)
+          print*,"el_pbl:",el_pbl(i,1,j),el_pbl(i,2,j),el_pbl(i,kte,j)
+          print*,"Sh3d:",Sh3d(i,1,j),sh3d(i,2,j),sh3d(i,kte,j)
+          print*,"exch_h:",exch_h(i,1,j),exch_h(i,2,j),exch_h(i,kte,j)
+          print*,"exch_m:",exch_m(i,1,j),exch_m(i,2,j),exch_m(i,kte,j)
+          print*,"max cf_bl:",maxval(cldfra_bl(i,:,j))
+          print*,"max qc_bl:",maxval(qc_bl(i,:,j))
+          print*,"dtdt:",rthblten(i,1,j),rthblten(i,2,j),rthblten(i,kte,j)
+          print*,"dudt:",rublten(i,1,j),rublten(i,2,j),rublten(i,kte,j)
+          print*,"dvdt:",rvblten(i,1,j),rvblten(i,2,j),rvblten(i,kte,j)
+          print*,"dqdt:",rqvblten(i,1,j),rqvblten(i,2,j),rqvblten(i,kte,j)
+          print*,"ztop_plume:",ztop_plume(i,j)," maxmf:",maxmf(i,j)
           print*
        endif
 
-   enddo  !end j-loop 
+   enddo  !end j-loop
+   enddo  !end i-loop
 
    !Deallocate all temporary interface arrays
-   if (bl_mynn_output > 0) then
-      deallocate(edmf_a2d)
-      deallocate(edmf_w2d)
-      deallocate(edmf_qt2d)
-      deallocate(edmf_thl2d)
-      deallocate(edmf_ent2d)
-      deallocate(edmf_qc2d)
-      deallocate(sub_thl2d)
-      deallocate(sub_sqv2d)
-      deallocate(det_thl2d)
-      deallocate(det_sqv2d)
-   endif
    if (tke_budget .eq. 1) then
-      deallocate(dqke2d)
-      deallocate(qwt2d)
-      deallocate(qshear2d)
-      deallocate(qbuoy2d)
-      deallocate(qdiss2d)
+      deallocate(dqke1)
+      deallocate(qwt1)
+      deallocate(qshear1)
+      deallocate(qbuoy1)
+      deallocate(qdiss1)
    endif
    if (icloud_bl > 0) then
-      deallocate(qc_bl2d)
-      deallocate(qi_bl2d)
-      deallocate(cldfra_bl2d)
+      deallocate(qc_bl1)
+      deallocate(qi_bl1)
+      deallocate(cldfra_bl1)
    endif
-   if (flag_qc)   deallocate(qc2d)
-   if (flag_qi)   deallocate(qi2d)
-   if (flag_qs)   deallocate(qs2d)
-   if (flag_qnc)  deallocate(qnc2d)
-   if (flag_qni)  deallocate(qni2d)
-   if (flag_qnwfa)deallocate(qnwfa2d)
-   if (flag_qnifa)deallocate(qnifa2d)
-   if (flag_qnbca)deallocate(qnbca2d)
+   if (flag_qc)   deallocate(qc1)
+   if (flag_qi)   deallocate(qi1)
+   if (flag_qs)   deallocate(qs1)
+   if (flag_qnc)  deallocate(qnc1)
+   if (flag_qni)  deallocate(qni1)
+   if (flag_qnwfa)deallocate(qnwfa1)
+   if (flag_qnifa)deallocate(qnifa1)
+   if (flag_qnbca)deallocate(qnbca1)
    if (spp_pbl > 0) then
-      deallocate(pattern_spp_pbl2d)
+      deallocate(pattern_spp_pbl1)
    endif
 
 !print*,"In mynn wrapper, at end"
