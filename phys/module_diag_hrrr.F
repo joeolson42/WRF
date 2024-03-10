@@ -851,7 +851,7 @@ CONTAINS
 !  !$OMP END PARALLEL DO
    ENDIF
 
-   ntimesteps = ntimesteps + 1
+!   ntimesteps = ntimesteps + 1
 !  !$OMP PARALLEL DO   &
 !  !$OMP PRIVATE ( ij )
    DO ij = 1 , num_tiles
@@ -1155,7 +1155,7 @@ CONTAINS
              qctotal = QC_CURR(i,k,j)
           ENDIF
           IF (icloud_bl>0 .AND. PRESENT(QI_BL) .AND. &
-             PRESENT(CLDFRA_BL) .AND. qi_curr(i,k,j)<1E-8 .AND. &
+             PRESENT(CLDFRA_BL) .AND. qi_curr(i,k,j)<1E-9 .AND. &
              CLDFRA_BL(i,k,j)>0.01) THEN
              !already temp-dependent sorted, and now grid mean, so dont multiply by CF
              qitotal = QI_BL(i,k,j)
