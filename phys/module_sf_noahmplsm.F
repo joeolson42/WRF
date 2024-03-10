@@ -473,6 +473,8 @@ MODULE MODULE_SF_NOAHMPLSM
    real,   dimension(0:1000 ),save :: psim_stab,psim_unstab, &
                                       psih_stab,psih_unstab
 
+   logical, parameter :: debug_noahmp = .false.
+
 contains
 !
 !== begin noahmp_sflx ==============================================================================
@@ -486,7 +488,7 @@ contains
                    QC      , SOLDN   , LWDN    ,                               & ! IN : Forcing
 !mynn
                    garea1  ,thsfc_loc, prslkix , prsik1x ,prslk1x  , ustarx  , & ! in : forcing
-                   pblhx   , iz0tlnd , itime   ,psi_opt                      , &
+                   pblhx   , iz0tlnd , itime   , psi_opt                     , &
 	           PRCPCONV, PRCPNONC, PRCPSHCV, PRCPSNOW, PRCPGRPL, PRCPHAIL, & ! IN : Forcing
                    TBOT    , CO2AIR  , O2AIR   , FOLN    , FICEOLD , ZLVL    , & ! IN : Forcing
 !mynn
@@ -1010,10 +1012,10 @@ contains
                  FVEG   ,PAHV   ,PAHG   ,PAHB   ,                    & !in
                  QSNOW  ,DZSNSO ,LAT    ,CANLIQ ,CANICE ,iloc, jloc ,& !in
 !mynn
-                 thsfc_loc, prslkix,prsik1x,prslk1x,garea1,          & !in
+                 thsfc_loc,prslkix,prsik1x,prslk1x,garea1,           & !in
                  pblhx  ,shdfac ,ustarx ,                            &
                  iz0tlnd,itime  ,psi_opt,ep_1   ,ep_2   ,cp     ,    &
-		 Z0WRF  ,z0hwrf ,                                    & !out
+		 z0WRF  ,z0hwrf ,                                    & !out
                  IMELT  ,SNICEV ,SNLIQV ,EPORE  ,T2M    ,FSNO   ,    & !out
                  SAV    ,SAG    ,QMELT  ,FSA    ,FSR    ,TAUX   ,    & !out
                  TAUY   ,FIRA   ,FSH    ,FCEV   ,FGEV   ,FCTR   ,    & !out
@@ -2337,19 +2339,19 @@ ENDIF   ! CROPTYPE == 0
     TGV = TG
     CMV = CM
     CHV = CH
-    CALL VEGE_FLUX (parameters,NSNOW   ,NSOIL   ,ISNOW   ,VEGTYP  ,VEG     , & !in
+    CALL VEGE_FLUX (parameters,NSNOW ,NSOIL   ,ISNOW   ,VEGTYP  ,VEG     , & !in
                     DT      ,SAV     ,SAG     ,LWDN    ,UR      , & !in
                     UU      ,VV      ,SFCTMP  ,THAIR   ,QAIR    , & !in
-                    EAIR    ,RHOAIR  ,SNOWH   ,VAI     ,GAMMAV   ,GAMMAG   , & !in
+                    EAIR    ,RHOAIR  ,SNOWH   ,VAI     ,GAMMAV  ,GAMMAG  , & !in
                     FWET    ,LAISUN  ,LAISHA  ,CWP     ,DZSNSO  , & !in
-                    ZLVL    ,ZPD     ,Z0M     ,FVEG    , & !in
-                    Z0MG    ,EMV     ,EMG     ,CANLIQ  ,FSNO, & !in
+                    ZLVL    ,ZPD     ,Z0M     ,FVEG    ,          & !in
+                    Z0MG    ,EMV     ,EMG     ,CANLIQ  ,FSNO    , & !in
                     CANICE  ,STC     ,DF      ,RSSUN   ,RSSHA   , & !in
                     RSURF   ,LATHEAV ,LATHEAG ,PARSUN  ,PARSHA  ,IGS     , & !in
                     FOLN    ,CO2AIR  ,O2AIR   ,BTRAN   ,SFCPRS  , & !in
-                    RHSUR   ,ILOC    ,JLOC    ,Q2      ,PAHV  ,PAHG  , & !in
+                    RHSUR   ,ILOC    ,JLOC    ,Q2      ,PAHV    ,PAHG    , & !in
 !mynn
-                    thsfc_loc, prslkix,prsik1x,prslk1x ,garea1,   & !in
+                    thsfc_loc, prslkix,prsik1x,prslk1x ,garea1  , & !in
                     pblhx   ,shdfac  ,ustarx  ,iz0tlnd ,itime   , &
                     psi_opt ,ep_1    ,ep_2    ,cp,                &
                     EAH     ,TAH     ,TV      ,TGV     ,CMV     , & !inout
@@ -2360,8 +2362,8 @@ ENDIF   ! CROPTYPE == 0
 !mynn
                     csigmaf1,                                     & !out
 !jref:start
-                    QC      ,QSFC    ,PSFC    , & !in
-                    Q2V     ,CHV2, CHLEAF, CHUC, &
+                    QC      ,QSFC    ,PSFC    ,                   & !in
+                    Q2V     ,CHV2    ,CHLEAF  ,CHUC    ,          &
                     SH2O,JULIAN, SWDOWN, PRCP, FB, FSR, GECROS1D)      ! Gecros 
 !jref:end                            
     END IF
@@ -2369,22 +2371,22 @@ ENDIF   ! CROPTYPE == 0
     TGB = TG
     CMB = CM
     CHB = CH
-    CALL BARE_FLUX (parameters,NSNOW   ,NSOIL   ,ISNOW   ,DT      ,SAG     , & !in
+    CALL BARE_FLUX (parameters,NSNOW ,NSOIL   ,ISNOW   ,DT      ,SAG     , & !in
                     LWDN    ,UR      ,UU      ,VV      ,SFCTMP  , & !in
                     THAIR   ,QAIR    ,EAIR    ,RHOAIR  ,SNOWH   , & !in
-                    DZSNSO  ,ZLVL    ,ZPDG    ,Z0MG    ,FSNO,          & !in
-                    EMG     ,STC     ,DF      ,RSURF   ,LATHEAG  , & !in
-                    GAMMAG   ,RHSUR   ,ILOC    ,JLOC    ,Q2      ,PAHB  , & !in
+                    DZSNSO  ,ZLVL    ,ZPDG    ,Z0MG    ,FSNO    , & !in
+                    EMG     ,STC     ,DF      ,RSURF   ,LATHEAG , & !in
+                    GAMMAG  ,RHSUR   ,ILOC    ,JLOC    ,Q2      ,PAHB  , & !in
 !mynn
-                    thsfc_loc,prslkix,prsik1x ,prslk1x ,vegtyp   ,&
+                    thsfc_loc,prslkix,prsik1x ,prslk1x ,vegtyp  , &
                     fveg    ,shdfac  ,garea1  ,ustarx  ,          &
                     pblhx   ,iz0tlnd ,itime   ,psi_opt ,ep_1, ep_2, cp,      &
                     TGB     ,CMB     ,CHB     ,                   & !inout
                     TAUXB   ,TAUYB   ,IRB     ,SHB     ,EVB     ,csigmaf0,& !out
                     GHB     ,T2MB    ,DX      ,DZ8W    ,VEGTYP  , & !out
 !jref:start
-                    QC      ,QSFC    ,PSFC    , & !in
-                    SFCPRS  ,Q2B,   CHB2)                          !in 
+                    QC      ,QSFC    ,PSFC    ,                   & !in
+                    SFCPRS  ,Q2B,   CHB2)                           !in 
 !jref:end                            
 
 !energy balance at vege canopy: SAV          =(IRC+SHC+EVC+TR)     *FVEG  at   FVEG 
@@ -2413,10 +2415,27 @@ ENDIF   ! CROPTYPE == 0
         ! effectibe skin temperature
         ts = (fveg*chv*tah + (1.0-fveg)*chb*tgb ) / ch
 
+        if (debug_noahmp) then
+           write(0,*)"=====in ENERGY, before thermalz0 ======="
+           write(0,*)"fveg=",fveg,"z0m=",z0m,"z0mg=",z0mg,"zpd=",zpd, &
+             "vai=",vai,"ur=",ur,"csigf0=",csigmaf0,"csigf1=",csigmaf1, &
+             "vegtyp=",vegtyp," u*=",ustarx,"zlvl=",zlvl,"ezpd=",ezpd
+           write(0,*)"==============================================="
+        endif
+
         ! new coupling code
         call thermalz0(parameters,fveg,z0m,z0mg,zlvl,zpd,ezpd,ustarx,      & !in
                        vegtyp,vai,ur,csigmaf0,csigmaf1,aone,cdmnv,cdmng,2, & !in
                        z0wrf,z0hwrf)
+
+        if (debug_noahmp) then
+           write(0,*)"=====in ENERGY, after thermalz0 ======="
+           write(0,*)"fveg=",fveg,"z0m=",z0m,"z0mg=",z0mg,"zpd=",zpd, &
+             "vai=",vai,"ur=",ur,"csigf0=",csigmaf0,"csigf1=",csigmaf1, &
+             "vegtyp=",vegtyp," u*=",ustarx,"z0wrf=",z0wrf,"z0hwrf=",z0hwrf
+           write(0,*)"==============================================="
+        endif
+
     ELSE
         TAUX  = TAUXB
         TAUY  = TAUYB
@@ -2440,9 +2459,26 @@ ENDIF   ! CROPTYPE == 0
         CHV   = CHB
 !	Z0WRF = Z0MG
 !mynn
+        if (debug_noahmp) then
+           write(0,*)"=====in ENERGY, before thermalz0 ===="
+           write(0,*)"fveg=",fveg,"z0m=",z0m,"z0mg=",z0mg,"zpd=",zpd, &
+             "vai=",vai,"ur=",ur,"csigf0=",csigmaf0,"csigf1=",csigmaf1, &
+             "vegtyp=",vegtyp," u*=",ustarx
+           write(0,*)"==============================================="
+        endif
+
         call thermalz0(parameters,fveg,z0m,z0mg,zlvl,zpd,ezpd,ustarx,      & !in
                        vegtyp,vai,ur,csigmaf0,csigmaf1,aone,cdmnv,cdmng,0, & !in
                        z0wrf,z0hwrf)
+
+        if (debug_noahmp) then
+           write(0,*)"=====in ENERGY, after thermalz0 ===="
+           write(0,*)"fveg=",fveg,"z0m=",z0m,"z0mg=",z0mg,"zpd=",zpd, &
+             "vai=",vai,"ur=",ur,"csigf0=",csigmaf0,"csigf1=",csigmaf1, &
+             "vegtyp=",vegtyp," u*=",ustarx,"z0wrf=",z0wrf,"z0hwrf=",z0hwrf
+           write(0,*)"==============================================="
+        endif
+
     END IF
 
     FIRE = LWDN + FIRA
@@ -3977,7 +4013,10 @@ ENDIF   ! CROPTYPE == 0
         LITER = 0
         FV = 0.1
 !mynn
-        temptrs = 1.
+        temptrs  = 1.
+!test
+        csigmaf0 = 0.0
+        csigmaf1 = 0.0
 
 ! ---------------------------------------------------------------------------------------------
 ! initialization variables that do not depend on stability iteration
@@ -4057,11 +4096,15 @@ ENDIF   ! CROPTYPE == 0
 !            Z0H  = Z0M    !* EXP(-CZIL*0.4*258.2*SQRT(FV*Z0M))
 !            Z0HG = Z0MG   !* EXP(-CZIL*0.4*258.2*SQRT(FV*Z0MG))
 !       END IF
-!write(0,*)"========before thermalz0 ==== iter=",iter
-!write(0,*)"fveg=",fveg,"z0m=",z0m,"z0mg=",z0mg,"zpd=",zpd, &
-!          "vaie=",vaie,"ur=",ur,"csigf0=",csigmaf0,"csigf1=",csigmaf1, &
-!          "temptrs=",temptrs,"z0mo=",z0mo,"z0hg=",z0hg,"vegtyp=",vegtyp
-!write(0,*)"==============================================="
+
+      if (debug_noahmp) then
+         write(0,*)"==== in VEGE_FLUX, before thermalz0 ==== iter=",iter
+         write(0,*)"fveg=",fveg,"z0m=",z0m,"z0mg=",z0mg,"zpd=",zpd, &
+          "vaie=",vaie,"ur=",ur,"csigf0=",csigmaf0,"csigf1=",csigmaf1, &
+          "temptrs=",temptrs,"vegtyp=",vegtyp,"u*=",ustarx
+         write(0,*)"==============================================="
+      endif
+
       call thermalz0(parameters,fveg,z0m,z0mg,zlvl,zpd,zpd,ustarx,          & !in
                        vegtyp,vaie,ur,csigmaf0,csigmaf1,temptrs,temptrs,temptrs,0, & !in
                        z0mo,z0hg)
@@ -4069,11 +4112,15 @@ ENDIF   ! CROPTYPE == 0
       call thermalz0(parameters,fveg,z0m,z0mg,zlvl,zpd,zpd,ustarx,          & !in
                        vegtyp,vaie,ur,csigmaf0,csigmaf1,temptrs,temptrs,temptrs,1, & !in
                        z0mo,z0h)
-!write(0,*)"========after thermalz0 ======================"
-!write(0,*)"fveg=",fveg,"z0m=",z0m,"z0mg=",z0mg,"zpd=",zpd, &
-!          "vaie=",vaie,"ur=",ur,"csigf0=",csigmaf0,"csigf1=",csigmaf1, &
-!          "temptrs=",temptrs,"z0mo=",z0mo,"z0hg=",z0hg,"z0h=",z0h
-!write(0,*)"==============================================="
+
+      if (debug_noahmp) then
+         write(0,*)"==== in VEGE_FLUX, after thermalz0 ======================"
+         write(0,*)"fveg=",fveg,"z0m=",z0m,"z0mg=",z0mg,"zpd=",zpd,"u*=",ustarx, &
+          "vaie=",vaie,"ur=",ur,"csigf0=",csigmaf0,"csigf1=",csigmaf1, &
+          "temptrs=",temptrs,"z0mo=",z0mo,"z0h=",z0h,"z0hg=",z0hg
+         write(0,*)"==============================================="
+      endif
+
 ! aerodyn resistances between heights zlvl and d+z0v
 
        IF(OPT_SFC == 1) THEN
@@ -4096,11 +4143,15 @@ ENDIF   ! CROPTYPE == 0
        ENDIF
 !mynn
        if(opt_sfc == 4) then
-!          write(0,*)"======== before sfcdif4 ===================="
-!          write(0,*)"iter=",iter," sfctmp=",sfctmp," tah=", tah, &
-!                    " qair=",qair," qsfc=",qsfc," sfcprs=",sfcprs, &
-!                    " psfc=",psfc
-!          write(0,*)"============================================"
+          if (debug_noahmp) then
+             write(0,*)"======== before sfcdif4 ===================="
+             write(0,*)"iter=",iter," sfctmp=",sfctmp," tah=", tah,   &
+                    " qair=",qair," qsfc=",qsfc," sfcprs=",sfcprs, &
+                    " psfc=",psfc," pblh=",pblhx," gdx=",gdx,      &
+                    " z0m=",z0m," u=",uu," v=",vv,"qair=",qair,    &
+                    " wspd=",wspdv
+             write(0,*)"============================================"
+          endif
 
           call sfcdif4(iloc  ,jloc  ,iter  ,                &
                       uu     ,vv    ,sfctmp,                & 
@@ -4112,13 +4163,16 @@ ENDIF   ! CROPTYPE == 0
                       cq2v   ,moz   ,ustarx,rb1v  ,fm ,fh , &
                      stress1v,fm10  ,fh2   ,wspdv ,flhcv ,flqcv)
           fv=ustarx
-!          write(0,*)"======== after sfcdif4 ===================="
-!          write(0,*)"iter=",iter," sfctmp=",sfctmp," tah=", tah, &
-!                    " qair=",qair," qsfc=",qsfc," sfcprs=",sfcprs, &
-!                    " psfc=",psfc," hfx=",h,"qfx=",qfx,            &
-!                    " cm=",cm," ch=",ch," fm=",fm," fh=",fh,       &
-!                    " wspdv=",wspdv," u*=",ustarx," flhcv=",flhcv
-!          write(0,*)"============================================"
+
+          if (debug_noahmp) then
+             write(0,*)"======== after sfcdif4 ===================="
+             write(0,*)"iter=",iter," sfctmp=",sfctmp," tah=", tah, &
+                    " qair=",qair," qsfc=",qsfc," sfcprs=",sfcprs, &
+                    " psfc=",psfc," hfx=",h,"qfx=",qfx,            &
+                    " cm=",cm," ch=",ch," fm=",fm," fh=",fh,       &
+                    " wspdv=",wspdv," u*=",ustarx," flhcv=",flhcv
+             write(0,*)"============================================"
+          endif
 
           ! Undo the multiplication by windspeed that SFCDIF4
           ! applies to exchange coefficients CH and CM
@@ -4139,16 +4193,22 @@ ENDIF   ! CROPTYPE == 0
 ! aerodyn resistance between heights z0g and d+z0v, RAG, and leaf
 ! boundary layer resistance, RB
 
-!write(0,*)"vaie=",vaie,"rho=",rhoair,"hg=",hg,"zpd=",zpd, &
-!          "z0mg=",z0mg,"z0hg=",z0hg,"hcan=",hcan,"uc=",uc, &
-!          "z0h=",z0h,"cwp=",cwp,"vegtyp=",vegtyp,"mpe=",mpe,&
-!          "tv=",tv,"mozg=",mozg,"fhg=",fhg,"ramg=",ramg
+       if (debug_noahmp) then
+          write(0,*)"vaie=",vaie,"rho=",rhoair,"hg=",hg,"zpd=",zpd, &
+             "z0mg=",z0mg,"z0hg=",z0hg,"hcan=",hcan,"uc=",uc, &
+             "z0h=",z0h,"cwp=",cwp,"vegtyp=",vegtyp,"mpe=",mpe,&
+             "tv=",tv,"mozg=",mozg,"fhg=",fhg,"ramg=",ramg
+       endif
+
        CALL RAGRB(parameters,ITER   ,VAIE   ,RHOAIR ,HG     ,TAH    , & !in
                   ZPD    ,Z0MG   ,Z0HG   ,HCAN   ,UC     , & !in
                   Z0H    ,FV     ,CWP    ,VEGTYP ,MPE    , & !in
                   TV     ,MOZG   ,FHG    ,ILOC   ,JLOC   , & !inout
                   RAMG   ,RAHG   ,RAWG   ,RB     )           !out
-!write(0,*)"rahc=",rahc,"rahg=",rahg,"rb=",rb,"ramc=",ramc
+
+       if (debug_noahmp) then
+           write(0,*)"rahc=",rahc,"rahg=",rahg,"rb=",rb,"ramc=",ramc
+       endif
 
 ! es and d(es)/dt evaluated at tv
 
@@ -4243,8 +4303,6 @@ ENDIF   ! CROPTYPE == 0
         CVH  = 2.0*VAIE/RB
         CGH  = 1.0/RAHG
         COND = CAH + CVH + CGH
-!write(0,*)"sfctmp=",sfctmp,"cah=",cah,"tg=",tg,"cgh=",cgh,&
-!           "cond=",cond,"cvh=",cvh
         ATA  = (SFCTMP*CAH + TG*CGH) / COND
         BTA  = CVH/COND
         CSH  = (1.0-BTA)*RHOAIR*CPAIR*CVH
@@ -4268,7 +4326,6 @@ ENDIF   ! CROPTYPE == 0
         CTR  = (1.0-BEA)*CTW*RHOAIR*CPAIR/GAMMAV
 
 ! evaluate surface fluxes with current temperature and solve for dts
-!write(0,*)"tah=",tah,"ata=",ata,"bta=",bta,"tv=",tv
         TAH = ATA + BTA*TV               ! canopy air T.
         EAH = AEA + BEA*ESTV             ! canopy air e
 
@@ -4304,8 +4361,7 @@ ENDIF   ! CROPTYPE == 0
         HG = RHOAIR*CPAIR*(TG  - TAH)   /RAHG
 
 ! consistent specific humidity from canopy air vapor pressure
-!write(0,*)"qsfc=",qsfc,"eah=",eah,"sfcprs=",sfcprs
-!        QSFC = (0.622*EAH)/(SFCPRS-0.378*EAH)
+        QSFC = (0.622*EAH)/(SFCPRS-0.378*EAH)
 
 !mynn
         if ( opt_sfc == 4 ) then
@@ -4640,6 +4696,9 @@ ENDIF   ! CROPTYPE == 0
         CGH = 2.0*DF(ISNOW+1)/DZSNSO(ISNOW+1)
 !mynn
         reynb = ustarx*z0m/(1.5e-05)
+!test
+        csigmaf0 = 0.0
+        csigmaf1 = 0.0
 
         if (reynb .gt. 2.0) then
            kbsigmaf0 = 2.46*reynb**0.25 - log(7.4)
@@ -4669,9 +4728,26 @@ ENDIF   ! CROPTYPE == 0
 !            Z0H = Z0M !* EXP(-CZIL*0.4*258.2*SQRT(FV*Z0M))
 !        END IF
 !mynn
+
+      if (debug_noahmp) then
+         write(0,*)"==== in BARE_FLUX, before thermalz0 ==== iter=",iter
+         write(0,*)"fveg=",fveg,"z0m=",z0m,"zpd=",zpd,"u*=",ustarx,   &
+          "vegtyp=",vegtyp,"ur=",ur,"csigf0=",csigmaf0,"csigf1=",csigmaf1, &
+          "temptrs=",temptrs
+         write(0,*)"==============================================="
+      endif
+
       call thermalz0(parameters,fveg,z0m,z0m,zlvl,zpd,zpd,ustarx,    & !in
            vegtyp,0.0,ur,csigmaf0,csigmaf1,temptrs,temptrs,temptrs,0, & !in
                      z0mo,z0h)
+
+      if (debug_noahmp) then
+         write(0,*)"==== in BARE_FLUX, after thermalz0 =============="
+         write(0,*)"fveg=",fveg,"z0m=",z0m,"zpd=",zpd,"u*=",ustarx,  &
+          "vegtyp=",vegtyp,"ur=",ur,"csigf0=",csigmaf0,"csigf1=",csigmaf1, &
+          "temptrs=",temptrs,"z0mo=",z0mo,"z0h=",z0h
+         write(0,*)"==============================================="
+      endif
 
         IF(OPT_SFC == 1) THEN
           CALL SFCDIF1(parameters,ITER   ,SFCTMP ,RHOAIR ,H      ,QAIR   , & !in
@@ -4698,11 +4774,14 @@ ENDIF   ! CROPTYPE == 0
 !mynn
         if (opt_sfc == 4) then
 
-           !write(0,*)"======== before sfcdif4 ===================="
-           !write(0,*)"iter=",iter," sfctmp=",sfctmp," tah=", tah, &
-           !          " qair=",qair," qsfc=",qsfc," sfcprs=",sfcprs, &
-           !          " psfc=",psfc
-           !write(0,*)"============================================"
+           if (debug_noahmp) then
+              write(0,*)"======== before sfcdif4 ===================="
+              write(0,*)"iter=",iter," sfctmp=",sfctmp," tah=", tah, &
+                      " qair=",qair," qsfc=",qsfc," sfcprs=",sfcprs, &
+                      " psfc=",psfc
+              write(0,*)"============================================"
+           endif
+
            call sfcdif4(iloc  ,jloc  ,iter  ,                &
                        uu     ,vv    ,sfctmp,                &
                        sfcprs ,psfc  ,pblhx ,gdx   ,z0m    , &
@@ -4713,12 +4792,15 @@ ENDIF   ! CROPTYPE == 0
                        cq2b   ,moz   ,ustarx,rb1b  ,fm ,fh , &
                        stress1b,fm10 ,fh2   ,wspdb ,flhcb  ,flqcb)
            fv=ustarx
-           !write(0,*)"======== after sfcdif4 ===================="
-           !write(0,*)"iter=",iter," sfctmp=",sfctmp," tah=", tah, &
-           !          " qair=",qair," qsfc=",qsfc," sfcprs=",sfcprs, &
-           !          " psfc=",psfc," hfx=",h,"qfx=",qfx,            &
-           !          " cm=",cm," ch=",ch," fm=",fm," fh=",fh
-           !write(0,*)"============================================"
+
+           if (debug_noahmp) then
+              write(0,*)"======== after sfcdif4 ===================="
+              write(0,*)"iter=",iter," sfctmp=",sfctmp," tah=", tah, &
+                      " qair=",qair," qsfc=",qsfc," sfcprs=",sfcprs, &
+                      " psfc=",psfc," hfx=",h,"qfx=",qfx,            &
+                      " cm=",cm," ch=",ch," fm=",fm," fh=",fh
+              write(0,*)"============================================"
+           endif
 
            ! Undo the multiplication by windspeed that SFCDIF4
            ! applies to exchange coefficients CH and CM:
@@ -6575,8 +6657,8 @@ ENDIF   ! CROPTYPE == 0
 ! inputs
 
   type (noahmp_parameters), intent(in) :: parameters
-    integer , intent(in   ) :: vegtyp      ! vegetation type
-    integer , intent(in   ) :: icom        ! 0=bared 1=vege 2=composition
+    integer , intent(in) :: vegtyp    ! vegetation type
+    integer , intent(in) :: icom      ! 0=bared 1=vege 2=composition
     real , intent(in   ) :: fveg      ! green vegetation fraction [0.0-1.0]
     real , intent(in   ) :: z0m       ! z0 momentum (m)
     real , intent(in   ) :: z0mg      ! z0 momentum, ground (m)
@@ -6608,39 +6690,46 @@ ENDIF   ! CROPTYPE == 0
     real                 :: kbsigmaf1
 
 ! -------------------------------------------------------------------------------------------------
-    czil1     = 0.5
-    coeffa    = 0.0
-    coeffb    = 0.0
-    csigmafveg= 0.0
-    gsigma    = 0.0
-    cdmn      = 0.0
-    reyn      = 0.0
-    sigmaa    = 0.0
+    czil1       = 0.5
+    coeffa      = 0.0
+    coeffb      = 0.0
+    csigmafveg  = 0.0
+    gsigma      = 0.0
+    cdmn        = 0.0
+    reyn        = 0.0
+    sigmaa      = 0.0
     kbsigmafveg = 0.0
-    kbsigmaf0 = 0.0
-    kbsigmaf1 = 0.0
-    if( icom == 2 )then
-     if (opt_trs == 1) then
-        z0mt  = fveg * z0m      + (1.0 - fveg) * z0mg
-        z0ht = z0mt
-     elseif (opt_trs == 2) then
-        z0mt  = fveg * z0m      + (1.0 - fveg) * z0mg
-        czil1=10.0 ** (- (0.40/0.07) * parameters%hvt)
-        z0ht = fveg * z0m*exp(-czil1*0.4*258.2*sqrt(ustarx*z0m))  &
-            +(1.0 - fveg) * z0mg*exp(-czil1*0.4*258.2*sqrt(ustarx*z0mg))
-     elseif (opt_trs == 3) then
-        z0mt  = fveg * z0m      + (1.0 - fveg) * z0mg
-        if (vegtyp.le.5) then
-          z0ht = fveg * z0m    + (1.0 - fveg) * z0mg*0.1
-        else
-         z0ht = fveg * z0m*0.01 + (1.0 - fveg) * z0mg*0.1
-        endif
-     elseif (opt_trs == 4) then
-        coeffa     = (csigmaf0 - csigmaf1)/(1.0 - exp(-1.0*aone))
-        coeffb     = csigmaf0 - coeffa
-        csigmafveg = coeffa * exp(-1.0*aone*fveg) + coeffb
+    kbsigmaf0   = 0.0
+    kbsigmaf1   = 0.0
 
-        gsigma = fveg**0.5 + fveg*(1.0-fveg)*1.0
+!mynn
+    if (debug_noahmp) then
+       write(0,*)"icom=",icom," opt_trs=",opt_trs
+       write(0,*)"hvt=",parameters%hvt," dleaf=",parameters%dleaf
+    endif
+
+    if ( icom == 2 )then    !combination bare/vege
+       if (opt_trs == 1) then
+          z0mt  = fveg * z0m      + (1.0 - fveg) * z0mg
+          z0ht = z0mt
+       elseif (opt_trs == 2) then
+          z0mt  = fveg * z0m      + (1.0 - fveg) * z0mg
+          czil1=10.0 ** (- (0.40/0.07) * parameters%hvt)
+          z0ht = fveg * z0m*exp(-czil1*0.4*258.2*sqrt(ustarx*z0m))  &
+            +(1.0 - fveg) * z0mg*exp(-czil1*0.4*258.2*sqrt(ustarx*z0mg))
+       elseif (opt_trs == 3) then
+          z0mt  = fveg * z0m      + (1.0 - fveg) * z0mg
+          if (vegtyp.le.5) then
+             z0ht = fveg * z0m    + (1.0 - fveg) * z0mg*0.1
+          else
+             z0ht = fveg * z0m*0.01 + (1.0 - fveg) * z0mg*0.1
+          endif
+       elseif (opt_trs == 4) then
+          coeffa     = (csigmaf0 - csigmaf1)/(1.0 - exp(-1.0*aone))
+          coeffb     = csigmaf0 - coeffa
+          csigmafveg = coeffa * exp(-1.0*aone*fveg) + coeffb
+
+          gsigma = fveg**0.5 + fveg*(1.0-fveg)*1.0
 !
 ! 0.5 ~ 1.0 for the 0.5 place; 0 ~ 1.0 for the 1.0 place, adjustable empirical
 ! canopy roughness geometry parameter; currently fveg = 0.78 has the largest
@@ -6648,60 +6737,61 @@ ENDIF   ! CROPTYPE == 0
 ! to 0.0 ! see Blumel; JAM,1998
 !
 
-        cdmn   = gsigma*cdmnv + (1.0-gsigma)*cdmng
-        z0mt = (zlvl - ezpd)*exp(-0.4/sqrt(cdmn))
+          cdmn   = gsigma*cdmnv + (1.0-gsigma)*cdmng
+          z0mt = (zlvl - ezpd)*exp(-0.4/sqrt(cdmn))
 
-        kbsigmafveg = csigmafveg/log((zlvl-ezpd)/z0mt) - log((zlvl-ezpd)/z0mt)
-        z0ht = z0mt/exp(kbsigmafveg)
-     endif
+          kbsigmafveg = csigmafveg/log((zlvl-ezpd)/z0mt) - log((zlvl-ezpd)/z0mt)
+          z0ht = z0mt/exp(kbsigmafveg)
+       endif
 
-    elseif( icom == 0 )then
+    elseif( icom == 0 )then  !bare soil
 
         z0mt = z0mg
-     if (opt_trs == 1) then
-        z0ht = z0mt
-     elseif (opt_trs == 2) then
-        czil1=10.0 ** (- (0.40/0.07) * parameters%hvt)
-        z0ht =z0mt*exp(-czil1*0.4*258.2*sqrt(ustarx*z0mt))
-     elseif (opt_trs == 3) then
-      if (vegtyp.le.5) then
-        z0ht = z0mt
-      else
-        z0ht = z0mt*0.01
-      endif
-     elseif (opt_trs == 4) then
-      reyn = ustarx*z0mt/(1.5e-05)
-      if (reyn .gt. 2.0) then
-        kbsigmaf0 = 2.46*reyn**0.25 - log(7.4)
-      else
-        kbsigmaf0 = - log(0.397)
-      endif
+        if (opt_trs == 1) then
+           z0ht = z0mt
+        elseif (opt_trs == 2) then
+           czil1=10.0 ** (- (0.40/0.07) * parameters%hvt)
+           z0ht =z0mt*exp(-czil1*0.4*258.2*sqrt(ustarx*z0mt))
+        elseif (opt_trs == 3) then
+           if (vegtyp.le.5) then
+              z0ht = z0mt
+           else
+              z0ht = z0mt*0.01
+           endif
+        elseif (opt_trs == 4) then
+           reyn = ustarx*z0mt/(1.5e-05)
+           if (reyn .gt. 2.0) then
+              kbsigmaf0 = 2.46*reyn**0.25 - log(7.4)
+           else
+              kbsigmaf0 = - log(0.397)
+           endif
 
-      z0ht = max(z0mt/exp(kbsigmaf0),1.0e-6)
-      csigmaf0 = log((zlvl-zpd)/z0mt)*(log((zlvl-zpd)/z0mt) + kbsigmaf0)
-     endif
+           z0ht = max(z0mt/exp(kbsigmaf0),1.0e-6)
+           csigmaf0 = log((zlvl-zpd)/z0mt)*(log((zlvl-zpd)/z0mt) + kbsigmaf0)
+        endif
 
-    elseif( icom == 1 )then
+    elseif( icom == 1 )then  !vege
 
         z0mt = z0m
-       if (opt_trs == 1) then
-         z0ht    = z0mt
-       elseif (opt_trs == 2) then
-         czil1= 10.0 ** (- (0.40/0.07) * parameters%hvt)
-         z0ht = z0mt*exp(-czil1*0.4*258.2*sqrt(ustarx*z0mt))
-       elseif (opt_trs == 3) then
-         if (vegtyp.le.5) then
-           z0ht = z0mt
-         else
-           z0ht = z0mt*0.01
-         endif
+        if (opt_trs == 1) then
+           z0ht    = z0mt
+        elseif (opt_trs == 2) then
+           czil1= 10.0 ** (- (0.40/0.07) * parameters%hvt)
+           z0ht = z0mt*exp(-czil1*0.4*258.2*sqrt(ustarx*z0mt))
+        elseif (opt_trs == 3) then
+           if (vegtyp.le.5) then
+              z0ht = z0mt
+           else
+              z0ht = z0mt*0.01
+           endif
         elseif (opt_trs == 4) then
-          sigmaa    = 1.0 - (0.5/(0.5+vaie))*exp(-vaie**2/8.0)
-          kbsigmaf1 = 16.4*(sigmaa*vaie**3)**(-0.25)*sqrt(parameters%dleaf*ur/log((zlvl-zpd)/z0mt))
-          z0ht       = z0mt/exp(kbsigmaf1)
-          csigmaf1  = log((zlvl-zpd)/z0mt)*(log((zlvl-zpd)/z0mt)+kbsigmaf1) ! for output for interpolation
+           sigmaa    = 1.0 - (0.5/(0.5+vaie))*exp(-vaie**2/8.0)
+           kbsigmaf1 = 16.4*(sigmaa*vaie**3)**(-0.25)*sqrt(parameters%dleaf*ur/log((zlvl-zpd)/z0mt))
+           z0ht       = z0mt/exp(kbsigmaf1)
+           csigmaf1  = log((zlvl-zpd)/z0mt)*(log((zlvl-zpd)/z0mt)+kbsigmaf1) ! for output for interpolation
         endif
-     endif
+
+    endif
 
   end subroutine thermalz0
 
@@ -12778,7 +12868,7 @@ END SUBROUTINE EMERG
 
 !== begin noahmp_options ===========================================================================
 
-  subroutine noahmp_options( idveg    ,iopt_crs  ,iopt_btr  ,iopt_run  ,iopt_sfc  ,iopt_frz , & 
+  subroutine noahmp_options( idveg    ,iopt_crs  ,iopt_trs  ,iopt_btr  ,iopt_run  ,iopt_sfc  ,iopt_frz , & 
                              iopt_inf ,iopt_rad  ,iopt_alb  ,iopt_snf  ,iopt_tbot ,iopt_stc , &
 			     iopt_rsf ,iopt_soil ,iopt_pedo ,iopt_crop ,iopt_irr  ,iopt_irrm, &
                              iopt_infdv, iopt_tdrn)
@@ -12787,6 +12877,7 @@ END SUBROUTINE EMERG
 
   INTEGER,  INTENT(IN) :: idveg     !dynamic vegetation (1 -> off ; 2 -> on) with opt_crs = 1
   INTEGER,  INTENT(IN) :: iopt_crs  !canopy stomatal resistance (1-> Ball-Berry; 2->Jarvis)
+  INTEGER,  INTENT(IN) :: iopt_trs  !zt option
   INTEGER,  INTENT(IN) :: iopt_btr  !soil moisture factor for stomatal resistance (1-> Noah; 2-> CLM; 3-> SSiB)
   INTEGER,  INTENT(IN) :: iopt_run  !runoff and groundwater (1->SIMGM; 2->SIMTOP; 3->Schaake96; 4->BATS)
   INTEGER,  INTENT(IN) :: iopt_sfc  !surface layer drag coeff (CH & CM) (1->M-O; 2->Chen97)
@@ -12817,7 +12908,8 @@ END SUBROUTINE EMERG
 
   dveg = idveg
   
-  opt_crs  = iopt_crs  
+  opt_crs  = iopt_crs
+  opt_trs  = iopt_trs  
   opt_btr  = iopt_btr  
   opt_run  = iopt_run  
   opt_sfc  = iopt_sfc  

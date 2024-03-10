@@ -43,7 +43,7 @@ CONTAINS
      &          ,pxlsm_smois_init, pxlsm_soil_nudge                   & ! PX-LSM
      &          ,pxlsm_modis_veg, lai_px, wwlt_px, wfc_px                           & ! PX-LSM
      &          ,wsat_px, clay_px, csand_px, fmsand_px                              & ! PX-LSM
-     &          ,idveg    ,iopt_crs  ,iopt_btr  ,iopt_run  ,iopt_sfc  ,iopt_frz     &
+     &          ,idveg    ,iopt_crs  ,iopt_trs  ,iopt_btr  ,iopt_run  ,iopt_sfc  ,iopt_frz     &
      &          ,iopt_inf ,iopt_rad  ,iopt_alb  ,iopt_snf  ,iopt_tbot ,iopt_stc     &
      &          ,iopt_gla ,iopt_rsf  ,iopt_soil ,iopt_pedo ,iopt_crop ,iopt_irr     &
      &          ,iopt_irrm,iopt_infdv,iopt_tdrn ,soiltstep                          &
@@ -874,7 +874,7 @@ CONTAINS
 
 !  NoahMP specific fields
 
-   INTEGER, OPTIONAL, INTENT(IN) ::    idveg, iopt_crs, iopt_btr, iopt_run, iopt_sfc , iopt_frz, &
+   INTEGER, OPTIONAL, INTENT(IN) ::    idveg, iopt_crs, iopt_trs, iopt_btr, iopt_run, iopt_sfc , iopt_frz, &
                                     iopt_inf, iopt_rad, iopt_alb, iopt_snf, iopt_tbot, iopt_stc, &
 				    iopt_gla, iopt_rsf, iopt_soil,iopt_pedo,iopt_crop, iopt_irr, &
                                     iopt_irrm,iopt_infdv,iopt_tdrn
@@ -3126,7 +3126,7 @@ CONTAINS
 		 IVGTYP,   ISLTYP,   VEGFRA,   SHDMAX,       TMN,             &
 		  XLAND,     XICE,     XICE_THRESHOLD,   CROPCAT,             &
                PLANTING,  HARVEST,SEASON_GDD,                               &
-                  IDVEG, IOPT_CRS, IOPT_BTR, IOPT_RUN,  IOPT_SFC,   IOPT_FRZ, &
+                  IDVEG, IOPT_CRS, IOPT_TRS, IOPT_BTR, IOPT_RUN,  IOPT_SFC,   IOPT_FRZ, &
 	       IOPT_INF, IOPT_RAD, IOPT_ALB, IOPT_SNF, IOPT_TBOT,   IOPT_STC, &
 	       IOPT_GLA, IOPT_RSF, IOPT_SOIL,IOPT_PEDO,IOPT_CROP,   IOPT_IRR, &
               IOPT_IRRM, IOPT_INFDV, IOPT_TDRN, soiltstep,                    &

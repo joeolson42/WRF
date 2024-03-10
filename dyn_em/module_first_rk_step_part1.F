@@ -915,6 +915,7 @@ BENCH_START(surf_driver_tim)
      &        ,CSAND_PX=grid%csand_px, FMSAND_PX=grid%fmsand_px               &
 ! for Noah-MP LSM
      &        ,idveg=config_flags%dveg,         iopt_crs=config_flags%opt_crs &
+     &        ,iopt_trs=config_flags%opt_trs                                  &                         
      &        ,iopt_btr=config_flags%opt_btr,   iopt_run=config_flags%opt_run &
      &        ,iopt_sfc=config_flags%opt_sfc,   iopt_frz=config_flags%opt_frz &
      &        ,iopt_inf=config_flags%opt_inf,   iopt_rad=config_flags%opt_rad &

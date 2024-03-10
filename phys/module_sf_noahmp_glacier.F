@@ -3208,7 +3208,8 @@ END IF   ! OPT_GLA == 1
  END SUBROUTINE ERROR_GLACIER
 ! ==================================================================================================
 
-  SUBROUTINE NOAHMP_OPTIONS_GLACIER(iopt_alb  ,iopt_snf  ,iopt_tbot, iopt_stc, iopt_gla )
+  SUBROUTINE NOAHMP_OPTIONS_GLACIER(iopt_alb  ,iopt_snf  ,iopt_tbot, iopt_stc, iopt_gla, &
+                                    iopt_sfc  ,iopt_trs                                  )
 
   IMPLICIT NONE
 
@@ -3218,6 +3219,8 @@ END IF   ! OPT_GLA == 1
   INTEGER,  INTENT(IN) :: iopt_stc  !snow/soil temperature time scheme (only layer 1)
                                     ! 1 -> semi-implicit; 2 -> full implicit (original Noah)
   INTEGER,  INTENT(IN) :: IOPT_GLA  ! glacier option (1->phase change; 2->simple)
+  INTEGER,  INTENT(IN) :: iopt_sfc  !embedded sfclayer option
+  INTEGER,  INTENT(IN) :: iopt_trs  !zt option
 
 ! -------------------------------------------------------------------------------------------------
 
@@ -3226,6 +3229,8 @@ END IF   ! OPT_GLA == 1
   opt_tbot = iopt_tbot 
   opt_stc  = iopt_stc
   opt_gla  = iopt_gla
+  opt_sfc  = iopt_sfc
+  opt_trs  = iopt_trs
   
   end subroutine noahmp_options_glacier
  
