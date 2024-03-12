@@ -87,7 +87,7 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
 !     &  frp_mean,emis_ant_no,enh_mix,            & !to be included soon
 #endif
 !--- end chem/smoke 
-     &  Tsq,Qsq,Cov,                             &
+     &  tsq,qsq,cov,                             &
      &  rublten,rvblten,rthblten,                &
      &  rqvblten,rqcblten,rqiblten,rqsblten,     &
      &  rqncblten,rqniblten,                     &
@@ -171,7 +171,7 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
 !MYNN-1D
       REAL(kind_phys),    intent(in) :: delt, dxc
       LOGICAL, intent(in) :: restart
-      INTEGER :: i, j, k, itf, jtf, ktf, n
+      INTEGER :: i, j, k, itf, jtf, n
       INTEGER, intent(in) :: initflag,                      &
      &           IDS,IDE,JDS,JDE,KDS,KDE,                   &
      &           IMS,IME,JMS,JME,KMS,KME,                   &
@@ -186,9 +186,9 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
      &       rqncblten,rqniblten,                                                      &
      &       rqnwfablten,rqnifablten,rqnbcablten !,ro3blten
       real(kind_phys), dimension(ims:ime,kms:kme,jms:jme), intent(inout) ::            &
-     &       qke, qke_adv, el_pbl, sh3d, sm3d
+     &       qke, qke_adv, el_pbl, sh3d, sm3d, tsq, qsq, cov
       real(kind_phys), dimension(ims:ime,kms:kme,jms:jme), intent(inout) ::            &
-     &       Tsq, Qsq, Cov, exch_h, exch_m
+     &       exch_h, exch_m
       real(kind_phys), dimension(ims:ime,kms:kme,jms:jme), intent(in) :: rthraten
 
 !optional 3D arrays
@@ -205,17 +205,16 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
       real(kind_phys), dimension(ims:ime,kms:kme,jms:jme), optional, intent(inout) ::  &
      &       qv,qc,qi,qs,qnc,qni,qnwfa,qnifa,qnbca!,o3
 
-!non-optional 1D arrays
-      real(kind_phys), dimension(kms:kme)  ::                                          &
+!(non-optional) 1D arrays
+      real(kind_phys), dimension(kts:kte)  ::                                          &
      &       edmf_a1,edmf_w1,edmf_qt1,edmf_thl1,edmf_ent1,edmf_qc1,                    &
      &       sub_thl1,sub_sqv1,det_thl1,det_sqv1
-!optional 1D arrays for passing into module_bl_myn.F
-      real(kind_phys), allocatable, dimension(:) ::                                    &
+      real(kind_phys), dimension(kts:kte) ::                                           &
      &       qc_bl1, qi_bl1, cldfra_bl1, pattern_spp_pbl1
-      real(kind_phys), allocatable, dimension(:) ::                                    &
+      real(kind_phys), dimension(kts:kte) ::                                           &
      &       dqke1,qWT1,qSHEAR1,qBUOY1,qDISS1
-      real(kind_phys), allocatable, dimension(:) ::                                    &
-     &       qc1,qi1,qs1,qnc1,qni1,qnwfa1,qnifa1,qnbca1!,o31
+      real(kind_phys), dimension(kts:kte) ::                                           &
+     &       qc1,qi1,qs1,qnc1,qni1,qnwfa1,qnifa1,qnbca1,ozone1
 
 !smoke/chem arrays - no if-defs in module_bl_mynn.F, so must define arrays
 #if (WRF_CHEM == 1)
@@ -240,18 +239,18 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
      &        kpbl,ktop_plume
 
 !Local
-      real(kind_phys), dimension(kms:kme)                 :: delp,sqv1,sqc1,sqi1,sqs1,ikzero
+      real(kind_phys), dimension(kts:kte)                 :: delp,sqv1,sqc1,sqi1,sqs1,ikzero
       real(kind_phys), dimension(ims:ime)                 :: dx
       logical, parameter                                  :: debug = .false.
       real(kind_phys), dimension(ims:ime,kms:kme,jms:jme) :: ozone,rO3blten
 
-   !write(0,*)"=============================================="
-   !write(0,*)"in mynn wrapper..."
-   !write(0,*)"initflag=",initflag
-   !write(0,*)"restart =",restart
+   if (debug) then
+      write(0,*)"=============================================="
+      write(0,*)"in mynn wrapper..."
+      write(0,*)"initflag=",initflag," restart =",restart
+   endif
 
    jtf=MIN0(JTE,JDE-1)
-   ktf=MIN0(KTE,KDE-1)
    itf=MIN0(ITE,IDE-1)
 
    !For now, initialized bogus array
@@ -259,62 +258,40 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
    rO3blten=0.0
    ikzero=0.0
 
-   !Allocate any arrays being used
-   if (icloud_bl > 0) then
-      allocate(qc_bl1(kms:kme))
-      allocate(qi_bl1(kms:kme))
-      allocate(cldfra_bl1(kms:kme))
-      qc_bl1=0.0
-      qi_bl1=0.0
-      cldfra_bl1=0.0
-   endif
-   if (spp_pbl > 0) then
-      allocate(pattern_spp_pbl1(kms:kme))
-   endif
-   if (tke_budget .eq. 1) then
-      allocate(dqke1(kms:kme))
-      allocate(qWT1(kms:kme))
-      allocate(qSHEAR1(kms:kme))
-      allocate(qBUOY1(kms:kme))
-      allocate(qDISS1(kms:kme))
-      dqke1  =0.0
-      qWT1   =0.0
-      qSHEAR1=0.0
-      qBUOY1 =0.0
-      qDISS1 =0.0
-   endif
-   if (flag_qc) then
-      allocate(qc1(kms:kme))
-      qc1=0.0
-   endif
-   if (flag_qi) then
-      allocate(qi1(kms:kme))
-      qi1=0.0
-   endif
-   if (flag_qs) then
-      allocate(qs1(kms:kme))
-      qs1=0.0
-   endif
-   if (flag_qnc) then
-      allocate(qnc1(kms:kme))
-      qnc1=0.0
-   endif
-   if (flag_qni) then
-      allocate(qni1(kms:kme))
-      qni1=0.0
-   endif
-   if (flag_qnwfa) then
-      allocate(qnwfa1(kms:kme))
-      qnwfa1=0.0
-   endif
-   if (flag_qnifa) then
-      allocate(qnifa1(kms:kme))
-      qnifa1=0.0
-   endif
-   if (flag_qnbca) then
-      allocate(qnbca1(kms:kme))
-      qnbca1=0.0
-   endif
+   !initialize 1d arrays:
+   !subgrid clouds:
+   qc_bl1           =0.0
+   qi_bl1           =0.0
+   cldfra_bl1       =0.0
+   !spp
+   pattern_spp_pbl1 =0.0
+   !tke budget
+   dqke1            =0.0
+   qWT1             =0.0
+   qSHEAR1          =0.0
+   qBUOY1           =0.0
+   qDISS1           =0.0
+   !mass-flux arrays
+   edmf_a1          =0.0
+   edmf_w1          =0.0
+   edmf_qt1         =0.0
+   edmf_thl1        =0.0
+   edmf_ent1        =0.0
+   edmf_qc1         =0.0
+   sub_thl1         =0.0
+   sub_sqv1         =0.0
+   det_thl1         =0.0
+   det_sqv1         =0.0
+   !moist species
+   qc1              =0.0
+   qi1              =0.0
+   qs1              =0.0
+   qnc1             =0.0
+   qni1             =0.0
+   qnwfa1           =0.0
+   qnifa1           =0.0
+   qnbca1           =0.0
+
    !---------------------------------
    !Begin looping in the i- and j-direction
    !---------------------------------
@@ -323,7 +300,7 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
 
       !need sgs cloud info input for diagnostic-decay
       if (icloud_bl > 0) then
-         do k=kts,ktf
+         do k=kts,kte
             qc_bl1(k)     = qc_bl(i,k,j)
             qi_bl1(k)     = qi_bl(i,k,j)
             cldfra_bl1(k) = cldfra_bl(i,k,j)
@@ -332,49 +309,49 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
 
       !spp input
       if (spp_pbl > 0) then
-         do k=kts,ktf
+         do k=kts,kte
             pattern_spp_pbl1(k) = pattern_spp_pbl(i,k,j)
          enddo
       endif
 
       !intialize moist species
       if (flag_qc) then
-         do k=kts,ktf
+         do k=kts,kte
             qc1(k) = qc(i,k,j)
          enddo
       endif
       if (flag_qi) then
-         do k=kts,ktf
+         do k=kts,kte
             qi1(k) = qi(i,k,j)
          enddo
       endif
       if (flag_qs) then
-         do k=kts,ktf
+         do k=kts,kte
             qs1(k) = qs(i,k,j)
          enddo
       endif
       if (flag_qnc) then
-         do k=kts,ktf
+         do k=kts,kte
             qnc1(k) = qnc(i,k,j)
          enddo
       endif
       if (flag_qni) then
-         do k=kts,ktf
+         do k=kts,kte
             qni1(k) = qni(i,k,j)
          enddo
       endif
       if (flag_qnwfa) then
-         do k=kts,ktf
+         do k=kts,kte
             qnwfa1(k) = qnwfa(i,k,j)
          enddo
       endif
       if (flag_qnifa) then
-         do k=kts,ktf
+         do k=kts,kte
             qnifa1(k) = qnifa(i,k,j)
          enddo
       endif
       if (flag_qnbca) then
-         do k=kts,ktf
+         do k=kts,kte
             qnbca1(k) = qnbca(i,k,j)
          enddo
       endif
@@ -382,7 +359,7 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
 #if (WRF_CHEM == 1)
       if (mix_chem) then
          do n=1,nchem
-         do k=kts,ktf
+         do k=kts,kte
             chem(k,n)=chem3d(i,k,j,n)
          enddo
          enddo
@@ -402,25 +379,24 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
 #endif
 
 
-!      do i=its,itf
-!         call moisture_check2(kte, delt,                 &
-!                              delp(i,:), exner(i,:,j),   &
-!                              qv(i,:,j), qc(i,:,j),      &
-!                              qi(i,:,j), t3d(i,:,j)      )
-!      enddo
+      !find/fix negative mixing ratios
+!      call moisture_check2(kte, delt,                 &
+!                           delp(i,:), exner(i,:,j),   &
+!                           qv(i,:,j), qc(i,:,j),      &
+!                           qi(i,:,j), t3d(i,:,j)      )
 
       !In WRF, mixing ratio is incoming. Convert to specific humidity:
-      do k=kts,ktf
+      do k=kts,kte
          sqv1(k)=qv(i,k,j)/(1.0 + qv(i,k,j))
          sqc1(k)=qc1(k)/(1.0 + qv(i,k,j))
          sqi1(k)=qi1(k)/(1.0 + qv(i,k,j))
       enddo
       if (flag_qs) then
-         do k=kts,ktf
-            sqs1(k)=qs1(k)/(1.0 + qv(i,k,j))
+         do k=kts,kte
+            sqs1(k)=max(qs1(k)/(1.0 + qv(i,k,j)), 0.0)
          enddo
       else
-         sqs1(:)=0.0
+         sqs1=0.0
       endif
 
       if (debug) then
@@ -467,45 +443,53 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
               CALL  mynn_bl_driver(                                    &
      &        initflag=initflag,         restart=restart,              &
      &        cycling=cycling,           delt=delt,                    &
-     &        dz1=dz(i,:,j),             dx=dxc,znt=znt(i,j),          &
-     &        u1=u(i,:,j),               v1=v(i,:,j),                  &
-     &        w1=w(i,:,j),               th1=th(i,:,j),                &
+     &        dz1=dz(i,kts:kte,j),       dx=dxc,                       &
+     &        znt=znt(i,j),               &
+     &        u1=u(i,kts:kte,j),         v1=v(i,kts:kte,j),            &
+     &        w1=w(i,kts:kte,j),         th1=th(i,kts:kte,j),          &
      &        sqv1=sqv1,                 sqc1=sqc1,                    &
      &        sqi1=sqi1,                 sqs1=sqs1,                    &
      &        qnc1=qnc1,                 qni1=qni1,                    &
      &        qnwfa1=qnwfa1,             qnifa1=qnifa1,                &
-     &        qnbca1=qnbca1,             ozone1=ozone(i,:,j),          &
-     &        p1=p(i,:,j),               ex1=exner(i,:,j),             &
-     &        rho1=rho(i,:,j),           tk1=t3d(i,:,j),               &
+     &        qnbca1=qnbca1,             ozone1=ozone(i,kts:kte,j),    &
+     &        p1=p(i,kts:kte,j),         ex1=exner(i,kts:kte,j),       &
+     &        rho1=rho(i,kts:kte,j),     tk1=t3d(i,kts:kte,j),         &
+              !2d variables
      &        xland=xland(i,j),          ts=ts(i,j),                   &
      &        qsfc=qsfc(i,j),            ps=ps(i,j),                   &
      &        ust=ust(i,j),              ch=ch(i,j),                   &
      &        hfx=hfx(i,j),              qfx=qfx(i,j),                 &
      &        rmol=rmol(i,j),            wspd=wspd(i,j),               &
+     &        pblh=pblh(i,j),            KPBL=KPBL(i,j),               & !output
      &        uoce=uoce(i,j),            voce=voce(i,j),               & !input
-     &        qke1=QKE(i,:,j),           qke_adv1=qke_adv(i,:,j),      & !output
-     &        sh1=Sh3d(i,:,j),           sm1=Sm3d(i,:,j),              & !output
-
-     &        nchem=nchem,kdvel=kdvel,ndvel=ndvel,                     & !chem/smoke
+              !smoke/chem
+     &        nchem=nchem,kdvel=kdvel,ndvel=ndvel,                     &
      &        Chem3d=chem,Vdep=vd,                                     &
      &        FRP=frp_mean(i),EMIS_ANT_NO=emis_ant_no(i),              &
      &        mix_chem=mix_chem,enh_mix=enh_mix,                       &
-     &        rrfs_sd=rrfs_sd,smoke_dbg=smoke_dbg,                     & !end chem/smoke
-
-     &        tsq1=tsq(i,:,j), qsq1=qsq(i,:,j), cov1=cov(i,:,j),       & !output
-     &        du1=RUBLTEN(i,:,j),        dv1=RVBLTEN(i,:,j),           & !output
-     &        dth1=RTHBLTEN(i,:,j),      dqv1=RQVBLTEN(i,:,j),         & !output
-     &        dqc1=rqcblten(i,:,j),      dqi1=rqiblten(i,:,j),         & !output
-     &        dqnc1=rqncblten(i,:,j),    dqni1=rqniblten(i,:,j),       & !output
+     &        rrfs_sd=rrfs_sd,smoke_dbg=smoke_dbg,                     &
+              !higher-order variables and subgrid clouds
+     &        tsq1=tsq(i,kts:kte,j),     qsq1=qsq(i,kts:kte,j),        & !output
+     &        cov1=cov(i,kts:kte,j),     cldfra_bl1=cldfra_bl1,        & !output
+     &        qc_bl1=qc_bl1,             qi_bl1=qi_bl1,                & !output
+              !eddy diffusivity/viscosity and components
+     &        kh1=exch_h(i,kts:kte+1,j), km1=exch_m(i,kts:kte+1,j),    & !output
+     &        qke1=QKE(i,kts:kte,j),     qke_adv1=qke_adv(i,kts:kte,j),& !output
+     &        sh1=Sh3d(i,kts:kte,j),     sm1=Sm3d(i,kts:kte,j),        & !output
+     &        el1=el_pbl(i,kts:kte,j),                                 &
+              !tendencies
+     &        du1=RUBLTEN(i,kts:kte,j),  dv1=RVBLTEN(i,kts:kte,j),     & !output
+     &        dth1=RTHBLTEN(i,kts:kte,j),dqv1=RQVBLTEN(i,kts:kte,j),   & !output
+     &        dqc1=rqcblten(i,kts:kte,j),dqi1=rqiblten(i,kts:kte,j),   & !output
+     &        dqnc1=rqncblten(i,kts:kte,j),dqni1=rqniblten(i,kts:kte,j),& !output
      &        dqs1=ikzero,                                             & !there is no RQSBLTEN, so use dummy arary
-     &        dqnwfa1=RQNWFABLTEN(i,:,j),dqnifa1=RQNIFABLTEN(i,:,j),   & !output
-     &        dqnbca1=RQNBCABLTEN(i,:,j),dozone1=rO3blten(i,:,j),      & !output
-     &        kh1=exch_h(i,:,j),         km1=exch_m(i,:,j),            & !output
-     &        pblh=pblh(i,j),            KPBL=KPBL(i,j),               & !output
-     &        el1=el_pbl(i,:,j),         dqke1=dqke1,                  & !output
+     &        dqnwfa1=RQNWFABLTEN(i,kts:kte,j),dqnifa1=RQNIFABLTEN(i,kts:kte,j),   & !output
+     &        dqnbca1=RQNBCABLTEN(i,kts:kte,j),dozone1=rO3blten(i,kts:kte,j),      & !output
+              !tke budget
+     &        dqke1=dqke1,                                             & !output
      &        qWT1=qWT1,                 qSHEAR1=qSHEAR1,              & !output
      &        qBUOY1=qBUOY1,             qDISS1=qDISS1,                & !output
-     &        qc_bl1=qc_bl1, qi_bl1=qi_bl1, cldfra_bl1=cldfra_bl1,     & !output
+              !input namelist parameters
      &        bl_mynn_tkeadvect  = bl_mynn_tkeadvect,                  & !input parameter
      &        tke_budget         = tke_budget,                         & !input parameter
      &        bl_mynn_cloudpdf   = bl_mynn_cloudpdf,                   & !input parameter
@@ -527,7 +511,7 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
      &        maxwidth=maxwidth(i,j),    maxmf=maxMF(i,j),             & !output
      &        ztop_plume=ztop_plume(i,j),ktop_plume=ktop_plume(i,j),   & !output
      &        spp_pbl=spp_pbl, pattern_spp_pbl1=pattern_spp_pbl1,      & !input
-     &        RTHRATEN1=rthraten(i,:,j),                               & !input
+     &        RTHRATEN1=rthraten(i,kts:kte,j),                         & !input
      &        FLAG_QI=flag_qi,FLAG_QNI=flag_qni,FLAG_QS=flag_qs,       & !input
      &        FLAG_QC=flag_qc,FLAG_QNC=flag_qnc,                       & !input
      &        FLAG_QNWFA=FLAG_QNWFA,FLAG_QNIFA=FLAG_QNIFA,             & !input
@@ -539,20 +523,20 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
 
 !SHOULD CONVERT BACK WITH THE UPDATED QV??????????
      !- Convert spec hum to mixing ratio:
-      do k=kts,ktf
+      do k=kts,kte
          RQVBLTEN(i,k,j) = RQVBLTEN(i,k,j)/(1.0 - sqv1(k))
          RQCBLTEN(i,k,j) = RQCBLTEN(i,k,j)/(1.0 - sqv1(k))
          RQIBLTEN(i,k,j) = RQIBLTEN(i,k,j)/(1.0 - sqv1(k))
       enddo
       if (.false.) then !as of now, there is no RQSBLTEN in WRF
-        do k=kts,ktf
+        do k=kts,kte
            RQSBLTEN(i,k,j) = RQSBLTEN(i,k,j)/(1.0 - sqv1(k))
         enddo
       endif
 
      !- Collect 3D ouput:
       if (icloud_bl > 0) then
-         do k=kts,ktf
+         do k=kts,kte
             qc_bl(i,k,j)     = qc_bl1(k)/(1.0 - sqv1(k))
             qi_bl(i,k,j)     = qi_bl1(k)/(1.0 - sqv1(k))
             cldfra_bl(i,k,j) = cldfra_bl1(k)
@@ -560,7 +544,7 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
       endif
 
       if (tke_budget .eq. 1) then
-         do k=kts,ktf
+         do k=kts,kte
             dqke(i,k,j)     = dqke1(k)
             qwt(i,k,j)      = qwt1(k)
             qshear(i,k,j)   = qshear1(k)
@@ -570,7 +554,7 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
       endif
 
       if (bl_mynn_output > 0) then
-         do k=kts,ktf
+         do k=kts,kte
             edmf_a(i,k,j)     = edmf_a1(k)
             edmf_w(i,k,j)     = edmf_w1(k)
             edmf_qt(i,k,j)    = edmf_qt1(k)
@@ -626,32 +610,9 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
    enddo  !end j-loop
    enddo  !end i-loop
 
-   !Deallocate all temporary interface arrays
-   if (tke_budget .eq. 1) then
-      deallocate(dqke1)
-      deallocate(qwt1)
-      deallocate(qshear1)
-      deallocate(qbuoy1)
-      deallocate(qdiss1)
+   if (debug) then
+      print*,"In mynn wrapper, at end"
    endif
-   if (icloud_bl > 0) then
-      deallocate(qc_bl1)
-      deallocate(qi_bl1)
-      deallocate(cldfra_bl1)
-   endif
-   if (flag_qc)   deallocate(qc1)
-   if (flag_qi)   deallocate(qi1)
-   if (flag_qs)   deallocate(qs1)
-   if (flag_qnc)  deallocate(qnc1)
-   if (flag_qni)  deallocate(qni1)
-   if (flag_qnwfa)deallocate(qnwfa1)
-   if (flag_qnifa)deallocate(qnifa1)
-   if (flag_qnbca)deallocate(qnbca1)
-   if (spp_pbl > 0) then
-      deallocate(pattern_spp_pbl1)
-   endif
-
-!print*,"In mynn wrapper, at end"
 
   CONTAINS
 
