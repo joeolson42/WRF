@@ -207,7 +207,7 @@ i1       real   ph_save        ikj     dyn_em      1         Z
 # Potential Temperature
 state    real   th_phy_m_t0    ikj      dyn_em      1         -     irhd      "t"      "perturbation potential temperature theta-t0" "K"
 state    real   t              ikjb     dyn_em      2         -     \
-       i0rhusdf=(bdy_interp:dt)   "thm"      "either 1) pert moist pot temp=(1+Rv/Rd Qv)*(theta)-T0, or 2) pert dry pot temp=theta-T0; based on use_theta_m setting" "K"
+       i0rusdf=(bdy_interp:dt)   "thm"      "either 1) pert moist pot temp=(1+Rv/Rd Qv)*(theta)-T0, or 2) pert dry pot temp=theta-T0; based on use_theta_m setting" "K"
 
 state    real   t_init         ikj     dyn_em      1         -      ird       "t_init" "initial potential temperature" "K"
 i1       real   t_tend         ikj     dyn_em      1         -  
@@ -1678,8 +1678,8 @@ state    real  QI_BL            ikj      misc        1         -      rh      "Q
 state integer  STEPAVE_COUNT     -       misc        1         -      r      "STEPAVE_COUNT"        "time steps contained in averages for convective transport" ""
 
 #
-state    real  RTHFTEN          ikj     misc        1         -      rh        "RTHFTEN"               "TOTAL ADVECTIVE POTENTIAL TEMPERATURE TENDENCY"  "K s-1"
-state    real  RQVFTEN          ikj     misc        1         -      rh        "RQVFTEN"               "TOTAL ADVECTIVE MOISTURE TENDENCY"     "kg kg-1 s-1"
+state    real  RTHFTEN          ikj     misc        1         -      r        "RTHFTEN"               "TOTAL ADVECTIVE POTENTIAL TEMPERATURE TENDENCY"  "K s-1"
+state    real  RQVFTEN          ikj     misc        1         -      r        "RQVFTEN"               "TOTAL ADVECTIVE MOISTURE TENDENCY"     "kg kg-1 s-1"
 
 state integer  STEPCU          -        misc        1         -      r        "STEPCU"                "NUMBER OF FUNDAMENTAL TIMESTEPS BETWEEN CONVECTION CALLS"  ""
                                                 
