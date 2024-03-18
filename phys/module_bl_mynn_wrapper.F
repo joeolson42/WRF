@@ -218,28 +218,30 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
 
 !smoke/chem arrays - no if-defs in module_bl_mynn.F, so must define arrays
 #if (WRF_CHEM == 1)
-      real(kind_phys), dimension(ims:ime,kms:kme,jms:jme,nchem), intent(in) :: chem3d
-      real(kind_phys), dimension(ims:ime,kdvel,jms:jme, ndvel), intent(in)  :: vd3d
-      real(kind_phys), dimension(ims:ime,kms:kme,nchem) :: chem
-      real(kind_phys), dimension(ims:ime,ndvel)         :: vd
-      real(kind_phys), dimension(ims:ime)               :: frp_mean, emis_ant_no
+      real(kind_phys), dimension(ims:ime,kms:kme,jms:jme,nchem), intent(inout) :: chem3d
+      real(kind_phys), dimension(ims:ime,kdvel,jms:jme, ndvel),  intent(in)    :: vd3d
+      real(kind_phys), dimension(kms:kme,nchem) :: chem
+      real(kind_phys), dimension(ndvel)         :: vd
+      real(kind_phys), dimension(ims:ime)       :: frp_mean, emis_ant_no
 #else
-      real(kind_phys), dimension(ims:ime,kms:kme,nchem) :: chem
-      real(kind_phys), dimension(ims:ime,ndvel)         :: vd
-      real(kind_phys), dimension(ims:ime) :: frp_mean, emis_ant_no
+      real(kind_phys), dimension(kms:kme,nchem) :: chem
+      real(kind_phys), dimension(ndvel)         :: vd
+      real(kind_phys), dimension(ims:ime)       :: frp_mean, emis_ant_no
 #endif
 
 !MYNN-2D
       real(kind_phys), dimension(ims:ime,jms:jme), intent(in) ::                       &
-     &        xland,ts,qsfc,ps,ch
+     &       xland,ts,qsfc,ps,ch,hfx,qfx,ust,wspd,znt,                                 &
+     &       uoce,voce
       real(kind_phys), dimension(ims:ime,jms:jme), intent(inout) ::                    &
-     &        znt,pblh,maxwidth,maxmf,ztop_plume,rmol,hfx,qfx,ust,wspd,                &
-     &        uoce,voce
-      integer, dimension(ims:ime,jms:jme), intent(inout) ::                            &
-     &        kpbl,ktop_plume
+     &       rmol
+     real(kind_phys), dimension(ims:ime,jms:jme), intent(out) ::                       &
+     &       pblh,maxwidth,maxmf,ztop_plume
+      integer, dimension(ims:ime,jms:jme), intent(out) ::                              &
+     &       kpbl,ktop_plume
 
 !Local
-      real(kind_phys), dimension(kts:kte)                 :: delp,sqv1,sqc1,sqi1,sqs1,ikzero
+      real(kind_phys), dimension(kts:kte)                 :: delp,sqv1,sqc1,sqi1,sqs1,kzero
       real(kind_phys), dimension(ims:ime)                 :: dx
       logical, parameter                                  :: debug = .false.
       real(kind_phys), dimension(ims:ime,kms:kme,jms:jme) :: ozone,rO3blten
@@ -254,12 +256,17 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
    itf=MIN0(ITE,IDE-1)
 
    !For now, initialized bogus array
-   ozone=0.0
-   rO3blten=0.0
-   ikzero=0.0
-
-   !initialize 1d arrays:
-   !subgrid clouds:
+   ozone            =0.0
+   rO3blten         =0.0
+   kzero            =0.0
+   !initialize 2d output
+   pblh             =0.0
+   maxwidth         =0.0
+   maxmf            =0.0
+   ztop_plume       =0.0
+   kpbl             =0  !int
+   ktop_plume       =0  !int
+   !initialize subgrid clouds:
    qc_bl1           =0.0
    qi_bl1           =0.0
    cldfra_bl1       =0.0
@@ -292,13 +299,13 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
    qnifa1           =0.0
    qnbca1           =0.0
 
-   !---------------------------------
+   !---------------------------------------
    !Begin looping in the i- and j-direction
-   !---------------------------------
-   do j = jts,jtf
-   do i = its,itf
+   !---------------------------------------
+   do j = jts, jtf
+   do i = its, itf
 
-      !need sgs cloud info input for diagnostic-decay
+      !update sgs cloud info
       if (icloud_bl > 0) then
          do k=kts,kte
             qc_bl1(k)     = qc_bl(i,k,j)
@@ -366,15 +373,15 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
 
          !set kdvel =1
          do n=1,ndvel
-            vd(n)  =vd3d(i,1,j,n)
+            vd(n) = vd3d(i,1,j,n)
          enddo
       endif
-      frp_mean = 0.0
+      frp_mean    = 0.0
       emis_ant_no = 0.0
 #else
-      chem     = 0.0
-      vd       = 0.0
-      frp_mean = 0.0
+      chem        = 0.0
+      vd          = 0.0
+      frp_mean    = 0.0
       emis_ant_no = 0.0
 #endif
 
@@ -440,11 +447,10 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
       endif
 
 !print*,"In mynn wrapper, calling mynn_bl_driver"
-              CALL  mynn_bl_driver(                                    &
+              CALL  mynn_bl_driver(i=i,j=j,                            &
      &        initflag=initflag,         restart=restart,              &
      &        cycling=cycling,           delt=delt,                    &
      &        dz1=dz(i,kts:kte,j),       dx=dxc,                       &
-     &        znt=znt(i,j),               &
      &        u1=u(i,kts:kte,j),         v1=v(i,kts:kte,j),            &
      &        w1=w(i,kts:kte,j),         th1=th(i,kts:kte,j),          &
      &        sqv1=sqv1,                 sqc1=sqc1,                    &
@@ -462,9 +468,10 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
      &        rmol=rmol(i,j),            wspd=wspd(i,j),               &
      &        pblh=pblh(i,j),            KPBL=KPBL(i,j),               & !output
      &        uoce=uoce(i,j),            voce=voce(i,j),               & !input
+     &        znt=znt(i,j),                                            & !input
               !smoke/chem
      &        nchem=nchem,kdvel=kdvel,ndvel=ndvel,                     &
-     &        Chem3d=chem,Vdep=vd,                                     &
+     &        chem=chem(kts:kte,1:nchem),vdep=vd,                      &
      &        FRP=frp_mean(i),EMIS_ANT_NO=emis_ant_no(i),              &
      &        mix_chem=mix_chem,enh_mix=enh_mix,                       &
      &        rrfs_sd=rrfs_sd,smoke_dbg=smoke_dbg,                     &
@@ -482,7 +489,7 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
      &        dth1=RTHBLTEN(i,kts:kte,j),dqv1=RQVBLTEN(i,kts:kte,j),   & !output
      &        dqc1=rqcblten(i,kts:kte,j),dqi1=rqiblten(i,kts:kte,j),   & !output
      &        dqnc1=rqncblten(i,kts:kte,j),dqni1=rqniblten(i,kts:kte,j),& !output
-     &        dqs1=ikzero,                                             & !there is no RQSBLTEN, so use dummy arary
+     &        dqs1=kzero,                                              & !there is no RQSBLTEN, so use dummy arary
      &        dqnwfa1=RQNWFABLTEN(i,kts:kte,j),dqnifa1=RQNIFABLTEN(i,kts:kte,j),   & !output
      &        dqnbca1=RQNBCABLTEN(i,kts:kte,j),dozone1=rO3blten(i,kts:kte,j),      & !output
               !tke budget
@@ -568,6 +575,16 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
          enddo
       endif
 
+#if (WRF_CHEM == 1)
+      if (mix_chem) then
+         do ic = 1,nchem
+            do k = kts,kte
+               chem3d(i,k,j,ic) = max(1.e-12, chem(k,ic))
+            enddo
+         enddo
+      endif
+#endif
+      
       if (debug) then
           print*
           print*,"===Finished with mynn_bl_driver; output:"
