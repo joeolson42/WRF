@@ -6913,8 +6913,8 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
   ! entrainment variables
         real(kind_phys), dimension(kts:kte+1,1:ndd) :: ent
   ! internal variables
-        integer :: k,i,ki,qltop,p700_ind,qlbase
-        real(kind_phys):: wstar,qstar,thstar,sigmaw,sigmaqt,          &
+        integer :: k,i,ki,qltop,qlbase
+        real(kind_phys):: qstar,thstar,sigmaw,sigmaqt,                &
             sigmath,z0,pwmin,pwmax,wmin,wmax,went,mindownw
         real(kind_phys):: qtn,thln,thvn,qcn,un,vn,qken,wn2,wn,        &
             qin,qncn,qnin,qnwfan,qnifan,                              &
@@ -6925,7 +6925,7 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
             qx_k,qx_km1,refthvm1,cftop,ac_wsp,wspd_pbl
 
   ! dd specific internal variables
-        real(kind_phys):: radflux, f0, wst_rad, wst_dd
+        real(kind_phys):: radflux, f0, wstar_rad
         logical :: cloudflg
         logical :: singlelayer             !check for single or multi-layer clouds
         real(kind_phys):: sigq,xl,rsl,cpm,a,mf_cf,diffqt,             &
@@ -7029,7 +7029,7 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
       enddo
       f0 = min(max(f0, 1.0), 200.)  !total radiative cooling (w/m2)
 
-      !allow the total fractional area of the downdrafts to be proportional
+      !allow the total fractional area of the downdrafts (add) to be proportional
       !to the radiative forcing:
       !for  50 w/m2, add = 0.20
       !for 100 w/m2, add = 0.30
@@ -7044,22 +7044,19 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
       endif
       add  = add * ac_wsp
 
-      ![ew: invjump] find 700mb height then subtract trpospheric lapse rate
-      p700_ind = minloc(abs(p-70000),1)!p (or p1) is in pa
-      !to prevent numerical issure, make sure p700_ind > qltop+3
-      if (p700_ind .le. qltop+3) p700_ind=qltop+4
-      jump_thv = thv(p700_ind) - thv(1) - (thv(p700_ind)-thv(qltop+3))/(zw(p700_ind)-zw(qltop+3))*(zw(p700_ind)-zw(qltop))
-      jump_qt = qc(p700_ind) + qv(p700_ind) - qc(1) - qv(1)
-      jump_thetal = thl(p700_ind) - thl(1) - (thl(p700_ind)-thl(qltop+3))/(zw(p700_ind)-zw(qltop+3))*(zw(p700_ind)-zw(qltop))
+      !find inversion strength
+      jump_thv    = thv(qltop+1) - thv(qltop)
+      jump_qt     = qt(qltop+1)  - qt(qltop)
+      jump_thetal = thl(qltop+1) - thl(qltop)
 
-      ki = qltop
-      if (singlelayer) then
-         refthl  = thl(ki) !sum(thl(1:ki)) / (ki) ! avg over bl for now or just at qltop
+      ki = qltop  !index of cloud top
+      if (singlelayer) then !initialize dd with cloud properties (not using info from above)
+         refthl  = thl(ki)
          refthlv = refthl*(1.+p608*qv(ki))
          refthv  = thv(ki)
          refthvm1= thv(ki-1)
          reftk   = tk(ki)
-         refqt   = qt(ki)  !sum(qt(1:ki))  / (ki)
+         refqt   = qt(ki)
          refqc   = qc(ki)
          refqi   = qi(ki)
          refqnc  = qnc(ki)
@@ -7070,7 +7067,7 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
          refv    = v(ki)
          refqke  = qke(ki)
          refp    = p(ki)
-      else
+      else                  !initialize dd with avg of in-cloud properties (at & below) cloud top 
          refthl  = (thl(ki-1)*dz(ki) + thl(ki)*dz(ki-1)) /(dz(ki)+dz(ki-1))
          refthlv = refthl*(1.+p608*(qv(ki-1)*dz(ki) + qv(ki)*dz(ki-1)) /(dz(ki)+dz(ki-1)))
          refthv  = (thv(ki-1)*dz(ki) + thv(ki)*dz(ki-1)) /(dz(ki)+dz(ki-1))
@@ -7089,25 +7086,22 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
          refp    = (p(ki-1)*dz(ki)   + p(ki)*dz(ki-1))   /(dz(ki)+dz(ki-1))
       endif
 
-      ! wstar_rad, following lock and macvean (1999a)
-      wst_rad = ( grav * zw(ki) * f0 / (refthl * rho(ki) * cp) ) **onethird
-      wst_rad = max(wst_rad, 0.1)
-      wstar   = (grav/thv(1)*max(fltv,0.0)*pblh)**(onethird)
-      went    = thv(1) / ( grav * jump_thv * zw(ki) ) * &
-                (0.15 * (wstar**3 + 5*ust**3) + 0.35 * wst_rad**3 )
-      qstar   = abs(went*jump_qt/wst_rad)
-      thstar  = f0/rho(ki)/cp/wst_rad - went*jump_thv/wst_rad
-      !wstar_dd= mixrad + surface wst
-      wst_dd  = (0.15 * (wstar**3 + 5*ust**3) + 0.35 * wst_rad**3 ) **onethird
+      ! w* from radiative forcing
+      wstar_rad = ( grav * zw(ki) * f0 / (refthl * rho(ki) * cp) ) **onethird
+      wstar_rad = max(wstar_rad, 0.1)
+      went      = thv(1) / ( grav * jump_thv * zw(ki) ) * &
+                  (0.5 * wstar_rad**3 )
+      qstar     = abs(went*jump_qt/wstar_rad)
+      thstar    = f0/rho(ki)/cp/wstar_rad - went*jump_thv/wstar_rad
 
-      sigmaw  = 0.3 * wst_dd ! 0.8*wst_dd !wst_rad tuning parameter ! 0.5 was good
-      sigmaqt = 40  * qstar  ! 50 was good
-      sigmath = 1.0 * thstar ! 0.5 was good
+      sigmaw    = 0.3 * wstar_rad ! 0.8*wstar_rad ! tuning parameter ! 0.5 was good
+      sigmaqt   = 40  * qstar  ! 50 was good
+      sigmath   = 1.0 * thstar ! 0.5 was good
 
-      pwmin      =-1. ! drawing from the negative tail -3sigma to -1sigma
-      pwmax      =-3.
-      wmin    = max(min(sigmaw*pwmin, -0.1), -0.2)
-      wmax    = max(min(sigmaw*pwmax, -0.2), -0.5)
+      pwmin     = -1. ! drawing from the negative tail -3sigma to -1sigma
+      pwmax     = -3.
+      wmin      = max(min(sigmaw*pwmin, -0.1), -0.2)
+      wmax      = max(min(sigmaw*pwmax, -0.2), -0.5)
 
       !initialize downdraft temperature deficit def_th
       minexc = min(-0.05     , 0.5*(refthvm1 - refthv)) !increase prob to go down 1 level
@@ -7133,12 +7127,12 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
 
       if (debug_dd .eq. 1) then
          print*,"found conditions for downdraft mixing"
-         print*,"qltop=",qltop," qlbase=",qlbase," wst_rad=",wst_rad
+         print*,"qltop=",qltop," qlbase=",qlbase
          print*,"qstar=",qstar," thstar=",thstar," went=",went
-         print*,"f0=",f0," w*=",wstar," jump_thv=",jump_thv
+         print*,"f0=",f0," jump_thv=",jump_thv
          print*,"u*=",ust," jump_qt=",jump_qt," fltv=",fltv
          print*,"grav=",grav," pblh=",pblh," thv(1)=",thv(1)
-         print*,"p(1)=",p(1)," p700_ind=",p700_ind," jump_thetal=",jump_thetal
+         print*,"p(1)=",p(1)," jump_thetal=",jump_thetal
          print*,"sigmaw=",sigmaw," wmin=",wmin," wmax=",wmax
       endif
 
