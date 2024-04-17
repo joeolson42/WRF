@@ -1832,19 +1832,22 @@ CONTAINS
            zwk    = zw(k)          !full-sigma levels
            qkw_mf = max(edmf_a1(k-1)*edmf_w1(k-1),                &
                   & abs(edmf_a_dd1(k-1)*edmf_w_dd1(k-1)))
-
+                  
            !   **  Length scale limited by the buoyancy effect  **
            IF ( dtv(k) .GT. 0.0 ) THEN
-              bv  = max( sqrt( gtr*dtv(k) ), 0.0001)
-              elb = MAX(alp2*(max(qkw(k), qkw_elb_min*wt_u2)),     &
-                  &     alp6*     qkw_mf     ) / bv               &
-                  &  *( 1.0 + alp3*SQRT( vsc/(bv*elt) ) )
-              elb = MIN(elb, zwk)
-              elf = 1.0 * max(qkw(k), qkw_elb_min*wt_u2)/bv
-              elBLavg(k) = MAX(elBLavg(k), alp6*qkw_mf/bv)
+              bv     = max( sqrt( gtr*dtv(k) ), 0.001)
+              elb_mf = alp6*qkw_mf/bv
+              elb_mf = elb_mf / (1. + (elb_mf/100.))
+              elb    = alp2*(max(qkw(k),qkw_elb_min*wt_u2))/bv    &
+                     &  *( 1.0 + alp3*SQRT( vsc/(bv*elt) ) )
+              elb    = max(elb, elb_mf)
+              elb    = MIN(elb, zwk)
+              elf    = 1.0 * max(qkw(k), qkw_elb_min*wt_u2)/bv
+              elf    = max(elf, elb_mf)
+              elBLavg(k) = MAX(elBLavg(k), elb_mf)
            ELSE
-              elb = 1.0e10
-              elf = elb
+              elb    = 1.0e10
+              elf    = elb
            ENDIF
 
            !   **  Length scale in the surface layer  **
@@ -1866,6 +1869,12 @@ CONTAINS
            el(k) = min(el(k), elb)
            el(k) = min(el(k), elf)  !elf can be smaller than elb in upper pbl
            el(k) = el(k)*(1.-wt) + alp5*elBLavg(k)*wt
+
+           !if (el(k) > 1000.) then
+           !   print*,"big ML at k=",k," el=",el(k),"elb=",elb," elBL=",elBLavg(k), &
+           !   " elt=",elt," els=",els," N=",bv," qtke=",qtke(k), &
+           !   " pblh=",pblh2," zwk=",zwk," wt=",wt
+           !endif
 
            ! include scale-awareness, except for original MYNN
            el(k) = el(k)*Psig_bl
@@ -2208,7 +2217,7 @@ CONTAINS
      !LOCAL VARS
      integer :: iz, izz, found
      real(kind_phys), dimension(kts:kte) :: dlu,dld
-     real(kind_phys), parameter :: Lmax=2000.  !soft limit
+     real(kind_phys), parameter :: Lmax=1500.  !soft limit
      real(kind_phys):: dzt, zup, beta, zup_inf, bbb, tl, zdo, zdo_sup, zzz
 
      !print*,"IN MYNN-BouLac",kts, kte
@@ -2318,29 +2327,25 @@ CONTAINS
         !----------------------------------
         ! GET MINIMUM (OR AVERAGE)
         !----------------------------------
-        !The surface layer length scale can exceed z for large z/L,
-        !so keep maximum distance down > z.
-        dld(iz) = min(dld(iz),zw(iz+1))!not used in PBL anyway, only free atmos
-        lb1(iz) = min(dlu(iz),dld(iz))     !minimum
-        !JOE-fight floating point errors
-        dlu(iz)=MAX(0.1,MIN(dlu(iz),1000.))
-        dld(iz)=MAX(0.1,MIN(dld(iz),1000.))
-        lb2(iz) = sqrt(dlu(iz)*dld(iz))    !average - biased towards smallest
-        !lb2(iz) = 0.5*(dlu(iz)+dld(iz))   !average
+        !The length scale down should not exceed z.
+        dld(iz) = min(dld(iz),zw(iz+1))
+        !apply soft upper limit (only impacts very large lb; lb=100 by 5%, lb=500 by 20%)
+        dlu(iz)=MAX(0.1, dlu(iz)/(1. + (dlu(iz)/Lmax)) )
+        dld(iz)=MAX(0.1, dld(iz)/(1. + (dld(iz)/Lmax)) )
 
-        !Apply soft limit (only impacts very large lb; lb=100 by 5%, lb=500 by 20%).
-        lb1(iz) = lb1(iz)/(1. + (lb1(iz)/Lmax))
-        lb2(iz) = lb2(iz)/(1. + (lb2(iz)/Lmax))
- 
-        if (iz .eq. kte) then
-           lb1(kte) = lb1(kte-1)
-           lb2(kte) = lb2(kte-1)
-        endif
+        !minimum of up/down length scales
+        lb1(iz) = min(dlu(iz),dld(iz))
+        !average - biased towards smallest
+        lb2(iz) = sqrt(dlu(iz)*dld(iz))
+
         !print*,"IN MYNN-BouLac",kts, kte,lb1(iz)
         !print*,"IN MYNN-BouLac",iz,dld(iz),dlu(iz)
 
      ENDDO
-                   
+
+     lb1(kte) = lb1(kte-1)
+     lb2(kte) = lb2(kte-1)
+        
   END SUBROUTINE boulac_length
 !
 ! ==================================================================
