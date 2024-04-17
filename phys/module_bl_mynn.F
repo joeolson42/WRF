@@ -7049,10 +7049,11 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
       endif
       add  = add * ac_wsp
 
-      !find inversion strength
-      jump_thv    = thv(qltop+1) - thv(qltop)
-      jump_qt     = qt(qltop+1)  - qt(qltop)
-      jump_thetal = thl(qltop+1) - thl(qltop)
+      !find inversion strength across cloud top entrainment zone--normalized to 200 m vertical grid spacing
+      dz_ent      = 0.5 * (dz(qltop+1) + dz(qltop))
+      jump_thv    = (thv(qltop+1) - thv(qltop)) / dz_ent * 200._kind_phys
+      jump_qt     = (qt(qltop+1)  - qt(qltop))	/ dz_ent * 200._kind_phys
+      jump_thetal = (thl(qltop+1) - thl(qltop))	/ dz_ent * 200._kind_phys
 
       ki = qltop  !index of cloud top
       if (singlelayer) then !initialize dd with cloud properties (not using info from above)
