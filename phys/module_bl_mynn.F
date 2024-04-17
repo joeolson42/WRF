@@ -6930,7 +6930,7 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
             qx_k,qx_km1,refthvm1,cftop,ac_wsp,wspd_pbl
 
   ! dd specific internal variables
-        real(kind_phys):: radflux, f0, wstar_rad
+        real(kind_phys):: radflux, f0, wstar_rad, dz_ent
         logical :: cloudflg
         logical :: singlelayer             !check for single or multi-layer clouds
         real(kind_phys):: sigq,xl,rsl,cpm,a,mf_cf,diffqt,             &
