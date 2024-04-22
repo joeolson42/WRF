@@ -1120,9 +1120,6 @@ state   real   cov             ikj     misc        1         -      r        "co
 state   real   Sh3d            ikj     misc        1         -      r        "Sh3d"              "Stability function for heat"   ""
 state   real   Sm3d            ikj     misc        1         -      r        "Sm3d"              "Stability function for momentum"   ""
 state   real   ch               ij     misc        1         -      -        "ch"                "surface exchange coeff for heat"    "m s-1"
-#state   real   K_m             ikj     misc        1         -     -          "K_m"               "EXCHANGE COEFFICIENT for momentum "
-#state   real   K_h             ikj     misc        1         -     -          "K_h"               "EXCHANGE COEFFICIENT for heat "
-#state   real   K_q             ikj     misc        1         -     -          "K_q"               "EXCHANGE COEFFICIENT for qke "
 #MYNN-EDMF VARIABLES
 state   real   edmf_a          ikj     misc        1         -      h         "edmf_a"           "EDMF relative updraft  area - moist updrafts" "-"
 state   real   edmf_w          ikj     misc        1         -      h         "edmf_w"           "EDMF vertical velocity  - mean moist updrafts" "m s-1"
@@ -1130,10 +1127,10 @@ state   real   edmf_thl        ikj     misc        1         -      h         "e
 state   real   edmf_qt         ikj     misc        1         -      h         "edmf_qt"          "EDMF qt  - mean moist updrafts" "kg kg-1"
 state   real   edmf_ent        ikj     misc        1         -      h         "edmf_ent"         "EDMF entrainment  - mean moist updrafts" "m-1"
 state   real   edmf_qc         ikj     misc        1         -      h         "edmf_qc"          "EDMF qc - mean moist updrafts" "kg kg-1"
-state   real   sub_thl3D       ikj     misc        1         -      h         "sub_thl3D"        "thetaL subsidence tendency from EDMF" "K s-1"
-state   real   sub_sqv3D       ikj     misc        1         -      h         "sub_sqv3D"        "qv subsidence tendency from EDMF" "kg kg-1 s-1"
-state   real   det_thl3D       ikj     misc        1         -      h         "det_thl3D"        "thetaL detrainment tendency from EDMF" "K s-1"
-state   real   det_sqv3D       ikj     misc        1         -      h         "det_sqv3D"        "qv detrainment tendency from EDMF" "kg kg-1 s-1"
+state   real   sub_thl3D       ikj     misc        1         -      -         "sub_thl3D"        "thetaL subsidence tendency from EDMF" "K s-1"
+state   real   sub_sqv3D       ikj     misc        1         -      -         "sub_sqv3D"        "qv subsidence tendency from EDMF" "kg kg-1 s-1"
+state   real   det_thl3D       ikj     misc        1         -      -         "det_thl3D"        "thetaL detrainment tendency from EDMF" "K s-1"
+state   real   det_sqv3D       ikj     misc        1         -      -         "det_sqv3D"        "qv detrainment tendency from EDMF" "kg kg-1 s-1"
 state   integer  ktop_plume     ij     misc        1         -      h         "ktop_plume"       "k-level of highest pentrating plume"    ""
 state   real   maxMF            ij     misc        1         -      h         "maxMF"            "Maximum mass-flux (neg: all dry, pos: moist)"   "m/s * area"
 state   real   maxwidth         ij     misc        1         -      h         "maxwidth"         "Maximum plume width"   "m"
@@ -1220,10 +1217,10 @@ state    real    dlg_bep       ikj     misc        1         Z      -        "dl
 state    real    dl_u_bep      ikj     misc        1         Z      -        "dl_u_bep"              "urban length scale"        "m"
 state    real    sf_bep        ikj     misc        1         Z      -        "sf_bep"                "surface grid"              "-"
 state    real    vl_bep        ikj     misc        1         Z      -        "vl_bep"                "volume grid"               "-"
-state    real   tke_pbl        ikj     misc        1         Z      rh       "tke_pbl"              "TKE from PBL"      "m2 s-2"
+state    real   tke_pbl        ikj     misc        1         Z      -        "tke_pbl"              "TKE from PBL"      "m2 s-2"
 state    real   el_pbl         ikj     misc        1         Z      rh       "el_pbl"               "Length scale from PBL"      "m"
-state    real    diss_pbl      ikj     misc        1         -      rh       "diss_pbl"              "Dissipation Rrate from PBL - keps"      "m2 s-3"
-state    real    tpe_pbl       ikj     misc        1         -      rh       "tpe_pbl"              "TPE from PBL- keps"      "K2"
+state    real    diss_pbl      ikj     misc        1         -      r        "diss_pbl"              "Dissipation Rrate from PBL - keps"      "m2 s-3"
+state    real    tpe_pbl       ikj     misc        1         -      r        "tpe_pbl"              "TPE from PBL- keps"      "K2"
 state    real    tke_adv       ikjftb  scalar      1         -      i0rusdf=(bdy_interp:dt) "tke_adv"       "Advected TKE from keps"      "m2 s-2"
 state    real    diss_adv      ikjftb  scalar      1         -      i0rusdf=(bdy_interp:dt) "diss_adv"      "Advected dissipation rate from keps"      "m2 s-3"
 state    real    tpe_adv       ikjftb  scalar      1         -      i0rusdf=(bdy_interp:dt) "tpe_adv"       "Advected TPE from keps"      "K2"
@@ -1379,8 +1376,8 @@ state   real    lnint          ij      misc         1         -      r        "L
 
 # Other Misc State Variables                                            
 state   real    h_diabatic     ikj     misc         1         -      rhdu      "h_diabatic"            "MICROPHYSICS LATENT HEATING"         "K s-1"      
-state   real    qv_diabatic    ikj     misc         1         -      rhdu      "qv_diabatic"           "MICROPHYSICS QV TENDENCY"            "g g-1 s-1"      
-state   real    qc_diabatic    ikj     misc         1         -      rhdu      "qc_diabatic"           "MICROPHYSICS QC TENDENCY"            "g g-1 s-1"      
+state   real    qv_diabatic    ikj     misc         1         -      rdu       "qv_diabatic"           "MICROPHYSICS QV TENDENCY"            "g g-1 s-1"      
+state   real    qc_diabatic    ikj     misc         1         -      rdu       "qc_diabatic"           "MICROPHYSICS QC TENDENCY"            "g g-1 s-1"      
 state   real    msft           ij      misc         1         -     i012rhdu=(copy_fcnm)    "MAPFAC_M"         "Map scale factor on mass grid" ""
 state   real    msfu           ij      misc         1         X     i012rhdu=(copy_fcnm)    "MAPFAC_U"         "Map scale factor on u-grid" ""
 state   real    msfv           ij      misc         1         Y     i012rhdu=(copy_fcnm)    "MAPFAC_V"         "Map scale factor on v-grid" ""
@@ -1684,9 +1681,9 @@ state    real  RQVFTEN          ikj     misc        1         -      r        "R
 state integer  STEPCU          -        misc        1         -      r        "STEPCU"                "NUMBER OF FUNDAMENTAL TIMESTEPS BETWEEN CONVECTION CALLS"  ""
                                                 
 state    real  RTHRATEN        ikj      misc        1         -      rhd       "RTHRATEN"              "THETA TENDENCY DUE TO RADIATION"              "K s-1"
-state    real  RTHRATENLW      ikj      misc        1         -      rh        "RTHRATLW"              "UNCOUPLED THETA TENDENCY DUE TO LONG WAVE RADIATION"    "K s-1"
+state    real  RTHRATENLW      ikj      misc        1         -      r        "RTHRATLW"              "UNCOUPLED THETA TENDENCY DUE TO LONG WAVE RADIATION"    "K s-1"
 state    real  RTHRATENLWC     ikj      misc        1         -      r        "RTHRATLWC"             "UNCOUPLED THETA TEND DUE TO CLEAR SKY LONG WAVE RAD"    "K s-1"
-state    real  RTHRATENSW      ikj      misc        1         -      rh        "RTHRATSW"              "UNCOUPLED THETA TENDENCY DUE TO SHORT WAVE RADIATION"   "K s-1"
+state    real  RTHRATENSW      ikj      misc        1         -      r        "RTHRATSW"              "UNCOUPLED THETA TENDENCY DUE TO SHORT WAVE RADIATION"   "K s-1"
 state    real  RTHRATENSWC     ikj      misc        1         -      r        "RTHRATSWC"             "UNCOUPLED THETA TEND DUE TO CLEAR SKY SHORT WAVE RAD"   "K s-1"
 state    real  CLDFRA          ikj      misc        1         -      irh      "CLDFRA"                "CLOUD FRACTION"   ""
 state    real  CONVCLD          ij      misc        1         -      r        "CONVCLD"               "BMJ CONVECTIVE CLOUD" "kg m-2"
@@ -3135,7 +3132,7 @@ package   ysuscheme      bl_pbl_physics==1           -             -
 package   myjpblscheme   bl_pbl_physics==2           -             state:tke_pbl,el_pbl
 package   gfsscheme      bl_pbl_physics==3           -             -
 package   qnsepblscheme  bl_pbl_physics==4           -             state:tke_pbl,el_pbl,massflux_EDKF,entr_EDKF,detr_EDKF,thl_up,thv_up,rv_up,rt_up,rc_up,u_up,v_up,frac_up,rc_mf
-package   mynnpblscheme  bl_pbl_physics==5           -             scalar:qke_adv;state:qke,tke_pbl,sh3d,sm3d,tsq,qsq,cov,el_pbl
+package   mynnpblscheme  bl_pbl_physics==5           -             scalar:qke_adv;state:qke,sh3d,sm3d,tsq,qsq,cov,el_pbl,tke_pbl
 package   acmpblscheme   bl_pbl_physics==7           -             -
 package   boulacscheme   bl_pbl_physics==8           -             state:el_pbl,tke_pbl,wu_tur,wv_tur,wt_tur,wq_tur
 package   camuwpblscheme bl_pbl_physics==9           -             state:tauresx2d,tauresy2d,tpert2d,qpert2d,wpert2d,tke_pbl,smaw3d,wsedl3d,turbtype3d
