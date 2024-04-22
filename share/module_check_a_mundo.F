@@ -2074,12 +2074,13 @@
       END IF
 
 !-----------------------------------------------------------------------
-! If a user sets nwp_diagnostics = 1, then radar reflectivity computation
+! If a user sets nwp_diagnostics = 1, or hrrr_diagnostics = 1, then radar reflectivity computation
 ! needs to happen
 !-----------------------------------------------------------------------
 
-      IF ( model_config_rec % nwp_diagnostics == 1 ) model_config_rec % do_radar_ref = 1
-
+      IF ( model_config_rec % nwp_diagnostics == 1 )  model_config_rec % do_radar_ref = 1
+      IF ( model_config_rec % hrrr_diagnostics == 1 ) model_config_rec % do_radar_ref = 1
+      
 !-----------------------------------------------------------------------
 ! If hailcast_opt = 1 for any domain, convective parameterization must be off for that domain.           
 !-----------------------------------------------------------------------
