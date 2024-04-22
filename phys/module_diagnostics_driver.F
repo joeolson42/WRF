@@ -1381,7 +1381,7 @@ END IF ! JOE: use hrrr_diagnostics OR nwp diags, not both
                 ,NR_CURR=scalar(ims,kms,jms,P_QNR)                   &  !  gthompsn
                 ,QC_CURR=moist(ims,kms,jms,P_QC)                     & !joe-wfip
                 ,QI_CURR=moist(ims,kms,jms,P_QI)                     & !joe-wfip
-                ,RHO=grid%rho,PH=grid%ph_2,PHB=grid%phb,G=g          &
+                ,RHO=grid%rho,PH=grid%ph_2,PHB=grid%phb,grav=g       &
                 ,CLDFRA=grid%cldfra                                  & !joe-wfip
                 ,icloud_bl=config_flags%icloud_bl                    & !joe-wfip
                 ,CLDFRA_BL=grid%cldfra_bl                            & !joe-wfip

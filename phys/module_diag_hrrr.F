@@ -221,7 +221,7 @@ CONTAINS
 
    END SUBROUTINE hrrr_refl_first_time_step
 
-   SUBROUTINE hrrr_diagnostic_driver(                                  &
+   SUBROUTINE hrrr_diagnostic_driver(                                 &
                       ids,ide, jds,jde, kds,kde,                      &
                       ims,ime, jms,jme, kms,kme,                      &
                       ips,ipe, jps,jpe, kps,kpe,                      & ! patch  dims
@@ -276,7 +276,7 @@ CONTAINS
                      ,qg_curr,qs_curr                                 &
                      ,ng_curr,qh_curr,nh_curr,qr_curr,nr_curr         & ! Optional (gthompsn)
                      ,qc_curr,qi_curr                                 & !JOE
-                     ,rho,ph,phb,g                                    &
+                     ,rho,ph,phb,grav                                 &
                      ,cldfra,icloud_bl,cldfra_bl,qc_bl,qi_bl          & !JOE
                                                                       )
 !----------------------------------------------------------------------
@@ -492,7 +492,7 @@ CONTAINS
                                                            ,v10  &
                                                            ,msft
 
-   REAL, INTENT(IN) :: g
+   REAL, INTENT(IN) :: grav
 
    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(INOUT) ::        &
                                                       wspd10max  &
@@ -751,7 +751,7 @@ CONTAINS
    ENDIF
 
 !
-   IF (prec_acc_dt .gt. 0.) THEN
+IF (prec_acc_dt .gt. 0.) THEN
 
 !  !$OMP PARALLEL DO   &
 !  !$OMP PRIVATE ( ij )
@@ -795,15 +795,13 @@ CONTAINS
    ENDDO     
 
 !  !$OMP END PARALLEL DO
-   ENDIF
+ ENDIF
 
 
-
-! NSSL
 
 !JOE: removed   IF ( nwp_diagnostics .EQ. 1 ) THEN
 
-     idump = (history_interval * 60.) / dt
+ idump = (history_interval * 60.) / dt
      time_minutes = MOD(xtime,60.)
 
 !   print *,' history_interval = ', history_interval
@@ -817,140 +815,121 @@ CONTAINS
 !    CALL wrf_message ( TRIM(outstring) )
 
 !   IF ( MOD((itimestep - 1), idump) .eq. 0 ) THEN
-   IF ( MOD(curr_secs2,60.*history_interval) .eq. 0. ) THEN
-     WRITE(outstring,*) 'Resetting max arrays for domain with dt = ', dt
-     WRITE(outstring,*) 'Diagnostics: curr_sec2 = ', curr_secs2
-     CALL wrf_debug ( 10,TRIM(outstring) )
+ IF ( MOD(curr_secs2,60.*history_interval) .eq. 0. ) THEN
+    WRITE(outstring,*) 'Resetting max arrays for domain with dt = ', dt
+    WRITE(outstring,*) 'Diagnostics: curr_sec2 = ', curr_secs2
+    CALL wrf_debug ( 10,TRIM(outstring) )
 
-     ntimesteps = 0 
+    ntimesteps = 0 
 
 !  !$OMP PARALLEL DO   &
 !  !$OMP PRIVATE ( ij )
-     DO ij = 1 , num_tiles
+    DO ij = 1 , num_tiles
        DO j=j_start(ij),j_end(ij)
        DO i=i_start(ij),i_end(ij)
-         wspd10max(i,j)   = 0. 
-         up_heli_max(i,j) = 0. 
-         w_up_max(i,j)    = 0. 
-         w_dn_max(i,j)    = 0. 
-         w_mean_sum(i,j)  = 0. 
-         w_mean(i,j)      = 0. 
-         grpl_max(i,j)    = 0. 
-         refd_max(i,j)    = 0. 
-         hail_maxk1(i,j)  = 0. 
-         hail_max2d(i,j)  = 0. 
-         WSPD10(i,j)=-99.
-         WSPD80(i,j)=-99.
-         LWP(i,j)=0.
-         IWP(i,j)=0.
-         SWP(i,j)=0.
-         MAXCLDFRA(i,j)=0.
+          wspd10max(i,j)   = 0. 
+          up_heli_max(i,j) = 0. 
+          w_up_max(i,j)    = 0. 
+          w_dn_max(i,j)    = 0. 
+          w_mean_sum(i,j)  = 0. 
+          w_mean(i,j)      = 0. 
+          grpl_max(i,j)    = 0. 
+          refd_max(i,j)    = 0. 
+          hail_maxk1(i,j)  = 0. 
+          hail_max2d(i,j)  = 0. 
+          WSPD10(i,j)      =-99.
+          WSPD80(i,j)      =-99.
+          LWP(i,j)         = 0.
+          IWP(i,j)         = 0.
+          SWP(i,j)         = 0.
+          MAXCLDFRA(i,j)   = 0.
        ENDDO
        ENDDO
-     ENDDO
+    ENDDO
 !  !$OMP END PARALLEL DO
-   ENDIF
+ ENDIF
 
 !   ntimesteps = ntimesteps + 1
 !  !$OMP PARALLEL DO   &
 !  !$OMP PRIVATE ( ij )
-   DO ij = 1 , num_tiles
-     DO j=j_start(ij),j_end(ij)
-     DO i=i_start(ij),i_end(ij)
-
-! Zero some accounting arrays that will be used below
+ DO ij = 1 , num_tiles
+    DO j=j_start(ij),j_end(ij)
+    DO i=i_start(ij),i_end(ij)
+       ! Zero some accounting arrays that will be used below
        w_colmean(i,j)   = 0.
        grpl_colint(i,j) = 0.
-!       totice_colint(i,j) = 0.
-
-     ENDDO
-     ENDDO
-   ENDDO
+    ENDDO
+    ENDDO
+ ENDDO
 !  !$OMP END PARALLEL DO
 
 !  !$OMP PARALLEL DO   &
 !  !$OMP PRIVATE ( ij )
-   DO ij = 1 , num_tiles
-     DO j=j_start(ij),j_end(ij)
-     DO k=kms,kme
-     DO i=i_start(ij),i_end(ij)
-
-! Find vertical velocity max (up and down) below 100 mb
-
+ DO ij = 1 , num_tiles
+    DO j=j_start(ij),j_end(ij)
+    DO k=kms,kme
+    DO i=i_start(ij),i_end(ij)
+       ! Find vertical velocity max (up and down) below 100 mb
        IF ( p8w(i,k,j) .GT. 10000. .AND. w(i,k,j) .GT. w_up_max(i,j) ) THEN
-         w_up_max(i,j) = w(i,k,j)
+          w_up_max(i,j) = w(i,k,j)
        ENDIF
 
        IF ( p8w(i,k,j) .GT. 10000. .AND. w(i,k,j) .LT. w_dn_max(i,j) ) THEN
-         w_dn_max(i,j) = w(i,k,j)
-       ENDIF
+          w_dn_max(i,j) = w(i,k,j)
+      ENDIF
 
-! For the column mean vertical velocity calculation, first
-! total the vertical velocity between sigma levels 0.5 and 0.8
-
+      ! For the column mean vertical velocity calculation, first
+      ! total the vertical velocity between sigma levels 0.5 and 0.8
        IF ( znw(k) .GE. 0.5 .AND. znw(k) .LE. 0.8 ) THEN
-         w_colmean(i,j) = w_colmean(i,j) + w(i,k,j)
+          w_colmean(i,j) = w_colmean(i,j) + w(i,k,j)
        ENDIF
-     ENDDO
-     ENDDO
-     ENDDO
-   ENDDO
+    ENDDO
+    ENDDO
+    ENDDO
+ ENDDO
 !  !$OMP END PARALLEL DO
 
 !  !$OMP PARALLEL DO   &
 !  !$OMP PRIVATE ( ij )
-   DO ij = 1 , num_tiles
-     DO j=j_start(ij),j_end(ij)
-     DO k=kms,kme-1
-     DO i=i_start(ij),i_end(ij)
-
-! Calculate the column integrated graupel
-
-       depth = ( ( ph(i,k+1,j) + phb(i,k+1,j) ) / g ) - &
-               ( ( ph(i,k  ,j) + phb(i,k  ,j) ) / g )
+ DO ij = 1 , num_tiles
+    DO j=j_start(ij),j_end(ij)
+    DO k=kms,kme-1
+    DO i=i_start(ij),i_end(ij)
+       ! Calculate the column integrated graupel
+       depth = ( ( ph(i,k+1,j) + phb(i,k+1,j) ) / grav ) - &
+               ( ( ph(i,k  ,j) + phb(i,k  ,j) ) / grav )
        grpl_colint(i,j) = grpl_colint(i,j) + qg_curr(i,k,j) * depth * rho(i,k,j)
-
-!       totice_colint(i,j) = totice_colint(i,j) + ( qi_curr(i,k,j) + \
-!                            qs_curr(i,k,j) + qg_curr(i,k,j) ) * \
-!                            depth * rho(i,k,j)
-
-     ENDDO
-     ENDDO
-     ENDDO
-   ENDDO
+    ENDDO
+    ENDDO
+    ENDDO
+ ENDDO
 !  !$OMP END PARALLEL DO
 
 !  !$OMP PARALLEL DO   &
 !  !$OMP PRIVATE ( ij )
-   DO ij = 1 , num_tiles
-     DO j=j_start(ij),j_end(ij)
-     DO i=i_start(ij),i_end(ij)
-
-! Calculate the max 10 m wind speed between output times
-
+ DO ij = 1 , num_tiles
+    DO j=j_start(ij),j_end(ij)
+    DO i=i_start(ij),i_end(ij)
+       ! Calculate the max 10 m wind speed between output times
        wind_vel = sqrt ( u10(i,j)*u10(i,j) + v10(i,j)*v10(i,j) )
        IF ( wind_vel .GT. wspd10max(i,j) ) THEN
          wspd10max(i,j) = wind_vel
        ENDIF
 
-! Calculate the max column integrated graupel between output times
-
+       ! Calculate the max column integrated graupel between output times
        IF ( grpl_colint(i,j) .gt. grpl_max(i,j) ) THEN
           grpl_max(i,j) = grpl_colint(i,j)
        ENDIF
 
-! Calculate the max radar reflectivity between output times
+       ! Calculate the max radar reflectivity between output times
+       !IF ( refl_10cm(i,kms,j) .GT. refd_max(i,j) ) THEN
+       !  refd_max(i,j) = refl_10cm(i,kms,j)
+       !ENDIF
 
-!       IF ( refl_10cm(i,kms,j) .GT. refd_max(i,j) ) THEN
-!         refd_max(i,j) = refl_10cm(i,kms,j)
-!       ENDIF
-
-! Use k=kms for now, but can be reset to whatever level seems best
-
+       ! Use k=kms for now, but can be reset to whatever level seems best
        dbzr = 0.
        dbzs = 0.
        dbzg = 0.
-
        IF ( qr_curr(i,kms,j) .GT. 0. ) then
          dbzr = (( qr_curr(i,kms,j) * rho(i,kms,j) ) ** 1.75 )*     &
                 3.630803e-9 * 1.e18
@@ -973,20 +952,19 @@ CONTAINS
        IF ( dbz .GT. refd_max(i,j) ) THEN
          refd_max(i,j) = dbz
        ENDIF
-
-     ENDDO
-     ENDDO
-   ENDDO
+    ENDDO
+    ENDDO
+ ENDDO
 !  !$OMP END PARALLEL DO
 ! Calculate the derived radar reflectivity at the -10 deg C
 ! level between output times -- used in CI algorithm
 
 !  !$OMP PARALLEL DO   &
 !  !$OMP PRIVATE ( ij )
-   DO ij = 1 , num_tiles
-     DO j=j_start(ij),j_end(ij)
-     DO k=kme-1,kms+1,-1
-     DO i=i_start(ij),i_end(ij)
+ DO ij = 1 , num_tiles
+    DO j=j_start(ij),j_end(ij)
+    DO k=kme-1,kms+1,-1
+    DO i=i_start(ij),i_end(ij)
        tval1 = ( t(i,k,j) + t0 ) *  &
                (( p(i,k,j) + pb(i,k,j) ) * 1.e-5 ) ** capa
        tval2 = ( t(i,k-1,j) + t0 ) *  &
@@ -1034,63 +1012,61 @@ CONTAINS
          dBz = MAX ( dbzmin, dbz  )
 
        ENDIF
-     ENDDO
-     ENDDO
-     ENDDO
-   ENDDO
+    ENDDO
+    ENDDO
+    ENDDO
+ ENDDO
 !  !$OMP END PARALLEL DO
 
 ! dcd  reflectivity diagnostics for RAP and HRRR                                                                                                      
-   IF (diagflag) THEN                                                                                                                                 
-     k1 = kms                                                                                                                                         
-     k2 = kme-1                                                                                                                                       
+ IF (diagflag) THEN                                                                                                                                 
+    k1 = kms                                                                                                                                         
+    k2 = kme-1                                                                                                                                       
 !  !$OMP PARALLEL DO   &                                                                                                                              
 !  !$OMP PRIVATE ( ij )                                                                                                                               
-     DO ij = 1 , num_tiles                                                                                                                            
+    DO ij = 1 , num_tiles                                                                                                                            
                                                                                                                                                       
        DO j=j_start(ij),j_end(ij)                                                                                                                     
-       DO i=i_start(ij),i_end(ij)                                                                                                                     
+       DO i=i_start(ij),i_end(ij)
+          composite_refl_10cm(i,j) = dbzmin                                                                                                            
+          refl_10cm_1km(i,j) = dbzmin                                                                                                                  
+          refl_10cm_4km(i,j) = dbzmin                                                                                                                  
+          found_1km = .false.                                                                                                                          
+          found_4km = .false.                                                                                                                          
                                                                                                                                                       
-         composite_refl_10cm(i,j) = dbzmin                                                                                                            
-         refl_10cm_1km(i,j) = dbzmin                                                                                                                  
-         refl_10cm_4km(i,j) = dbzmin                                                                                                                  
-         found_1km = .false.                                                                                                                          
-         found_4km = .false.                                                                                                                          
+          !reflectivity parameterization for parameterized convection (reference:  Unipost MDLFLD.f)                                                    
+          ze_conv = 0.0                                                                                                                                
+          cuprate = raincv(i,j) * 3600.0 / dt          ! cu precip rate (mm/h)                                                                         
+          ze_conv = 300.0 * cuprate**1.4                                                                                                               
                                                                                                                                                       
-!        reflectivity parameterization for parameterized convection (reference:  Unipost MDLFLD.f)                                                    
-         ze_conv = 0.0                                                                                                                                
-         cuprate = raincv(i,j) * 3600.0 / dt          ! cu precip rate (mm/h)                                                                         
-         ze_conv = 300.0 * cuprate**1.4                                                                                                               
+          DO k=k1,k2                                                                                                                                   
                                                                                                                                                       
-         DO k=k1,k2                                                                                                                                   
+             !approximation:  use base-state geopotential to determine height
+             h_agl = phb(i,k,j) / grav - ht(i,j)
+             ze = 10.0 ** (0.1 * refl_10cm(i,k,j))                                                                                                      
+             dbz_sum = max(dbzmin, 10.0 * log10(ze + ze_conv))                                                                                          
+             refl_10cm(i,k,j) = dbz_sum                                                                                                                 
                                                                                                                                                       
-!          approximation:  use base-state geopotential to determine height
-           h_agl = phb(i,k,j) / g - ht(i,j)                                                                                                           
+             IF ( (.not. found_1km) .and. (h_agl.gt.1000.0) ) THEN                                                                                      
+                refl_10cm_1km(i,j) = dbz_sum                                                                                                             
+                found_1km = .true.                                                                                                                       
+             ENDIF                                                                                                                                      
+             IF ( (.not. found_4km) .and. (h_agl.gt.4000.0) ) THEN                                                                                      
+                refl_10cm_4km(i,j) = dbz_sum                                                                                                             
+                found_4km = .true.                                                                                                                       
+             ENDIF                                                                                                                                      
+             IF ( dbz_sum .GT. composite_refl_10cm(i,j) ) THEN                                                                                          
+                composite_refl_10cm(i,j) = dbz_sum                                                                                                       
+             ENDIF                                                                                                                                      
                                                                                                                                                       
-           ze = 10.0 ** (0.1 * refl_10cm(i,k,j))                                                                                                      
-           dbz_sum = max(dbzmin, 10.0 * log10(ze + ze_conv))                                                                                          
-           refl_10cm(i,k,j) = dbz_sum                                                                                                                 
-                                                                                                                                                      
-           IF ( (.not. found_1km) .and. (h_agl.gt.1000.0) ) THEN                                                                                      
-             refl_10cm_1km(i,j) = dbz_sum                                                                                                             
-             found_1km = .true.                                                                                                                       
-           ENDIF                                                                                                                                      
-           IF ( (.not. found_4km) .and. (h_agl.gt.4000.0) ) THEN                                                                                      
-             refl_10cm_4km(i,j) = dbz_sum                                                                                                             
-             found_4km = .true.                                                                                                                       
-           ENDIF                                                                                                                                      
-           IF ( dbz_sum .GT. composite_refl_10cm(i,j) ) THEN                                                                                          
-             composite_refl_10cm(i,j) = dbz_sum                                                                                                       
-           ENDIF                                                                                                                                      
-                                                                                                                                                      
-         ENDDO                                                                                                                                        
+          ENDDO                                                                                                                                        
                                                                                                                                                       
        ENDDO                                                                                                                                          
        ENDDO                                                                                                                                          
                                                                                                                                                       
-     ENDDO                                                                                                                                            
+    ENDDO                                                                                                                                            
 !  !$OMP END PARALLEL DO                                                                                                                              
-   ENDIF                                                                                                                                              
+ ENDIF                                                                                                                                              
 
 
 !Diagnostics for PBL/Cloud Development
@@ -1102,7 +1078,7 @@ CONTAINS
      DO j=j_start(ij),j_end(ij)
      DO i=i_start(ij),i_end(ij)
 
-       ter = ( ph(i,1,j) + phb(i,1,j) ) / g
+       ter = ( ph(i,1,j) + phb(i,1,j) ) / grav
        zm=0.
        sum1=0.
        sum2=0.
@@ -1113,7 +1089,7 @@ CONTAINS
           !Note: ph & phb are defined at the layer interface, so we average to
           !      get a height (AMSL) at the middle of the model layers
           zm0=zm
-          zm = 0.5*((ph(i,k,j) + phb(i,k,j) + ph(i,k+1,j) + phb(i,k+1,j)) / g )
+          zm = 0.5*((ph(i,k,j) + phb(i,k,j) + ph(i,k+1,j) + phb(i,k+1,j)) / grav )
           depth = zm-zm0
 
           !10 m WIND SPEED
@@ -1163,9 +1139,9 @@ CONTAINS
              qitotal = qi_curr(i,k,j)
           ENDIF
           qstotal = qs_curr(i,k,j) !ther ecurrently is no sgs snow...
-          sum1 = sum1 + MAX((dp/g)*qctotal,0.0)
-          sum2 = sum2 + MAX((dp/g)*qitotal,0.0)
-          sum3 = sum3 + MAX((dp/g)*qstotal,0.0)
+          sum1 = sum1 + MAX((dp/grav)*qctotal,0.0)
+          sum2 = sum2 + MAX((dp/grav)*qitotal,0.0)
+          sum3 = sum3 + MAX((dp/grav)*qstotal,0.0)
           sum4 = MAX(sum4,CLDFRA_BL(i,k,j))
        ENDDO
 
@@ -1243,7 +1219,8 @@ CONTAINS
    ENDDO
 !  !$OMP END PARALLEL DO
    ELSEIF (PRESENT(ng_curr)) THEN
-   WRITE(outstring,*) 'GT-Debug, this mp scheme, ', mphysics_opt, ' has graupel number concentration'
+      WRITE(outstring,*) 'This mp scheme, ', mphysics_opt, &
+      ' has graupel num conc'
 !  !$OMP PARALLEL DO   &
 !  !$OMP PRIVATE ( ij )
    DO ij = 1 , num_tiles
@@ -1448,7 +1425,7 @@ CONTAINS
        xam_g = 3.1415926536/6.0*xrho_g
 
      CASE (MILBRANDT2MOM)
-       WRITE(outstring,*) 'GT-Debug, using Milbrandt2mom, which has 2-moment hail'
+       WRITE(outstring,*) 'Using Milbrandt2mom, which has 2-moment hail'
        CALL wrf_debug (150, TRIM(outstring))
        scheme_has_graupel = .true.
        xrho_g = 900.
@@ -1708,37 +1685,43 @@ CONTAINS
 #ifdef DM_PARALLEL
    IF ( wrf_dm_on_monitor() ) THEN
 #endif
-     WRITE(outstring,*) grid_str,'Domain average of dpsdt, dmudt (mb/3h): ', xtime, &
-           dpsdt_sum/no_points*108., &
-           dmudt_sum/no_points*108.
-     CALL wrf_message ( TRIM(outstring) )
+      WRITE(outstring,*) grid_str,&
+         'Domain average of dpsdt, dmudt (mb/3h): ', xtime, &
+         dpsdt_sum/no_points*108., &
+         dmudt_sum/no_points*108.
+      CALL wrf_message ( TRIM(outstring) )
 
-     WRITE(outstring,*) grid_str,'Max mu change time step: ', idp,jdp,dmumax
-     CALL wrf_message ( TRIM(outstring) )
+      WRITE(outstring,*) grid_str,'Max mu change time step: ', idp,jdp,dmumax
+      CALL wrf_message ( TRIM(outstring) )
 
-     IF ( diag_print .eq. 2) THEN
-     WRITE(outstring,*) grid_str,'Domain average of dardt, drcdt, drndt (mm/sec): ', xtime, &
-           dardt_sum/dt/no_points, &
-           drcdt_sum/dt/no_points, &
-           drndt_sum/dt/no_points
-     CALL wrf_message ( TRIM(outstring) )
-     WRITE(outstring,*) grid_str,'Domain average of rt_sum, rc_sum, rnc_sum (mm): ', xtime, &
-           raint_sum/no_points, &
-           rainc_sum/no_points, &
-           rainnc_sum/no_points
-     CALL wrf_message ( TRIM(outstring) )
-     WRITE(outstring,*) grid_str,'Max Accum Resolved Precip,   I,J  (mm): '               ,&
-           rainncmax,irnc,jrnc
-     CALL wrf_message ( TRIM(outstring) )
-     WRITE(outstring,*) grid_str,'Max Accum Convective Precip,   I,J  (mm): '             ,&
-           raincmax,irc,jrc
-     CALL wrf_message ( TRIM(outstring) )
-     WRITE(outstring,*) grid_str,'Domain average of sfcevp, hfx, lh: ', xtime, &
-           sfcevp_sum/no_points, &
-           hfx_sum/no_points, &
-           lh_sum/no_points
-     CALL wrf_message ( TRIM(outstring) )
-     ENDIF
+      IF ( diag_print .eq. 2) THEN
+         WRITE(outstring,*) grid_str,&
+         'Domain average of dardt, drcdt, drndt (mm/sec): ', xtime, &
+         dardt_sum/dt/no_points, &
+         drcdt_sum/dt/no_points, &
+         drndt_sum/dt/no_points
+      CALL wrf_message ( TRIM(outstring) )
+      WRITE(outstring,*) grid_str,&
+         'Domain average of rt_sum, rc_sum, rnc_sum (mm): ', xtime, &
+         raint_sum/no_points, &
+         rainc_sum/no_points, &
+         rainnc_sum/no_points
+      CALL wrf_message ( TRIM(outstring) )
+      WRITE(outstring,*) grid_str,&
+         'Max Accum Resolved Precip,   I,J  (mm): '               ,&
+         rainncmax,irnc,jrnc
+      CALL wrf_message ( TRIM(outstring) )
+      WRITE(outstring,*) grid_str,&
+         'Max Accum Convective Precip,   I,J  (mm): '             ,&
+         raincmax,irc,jrc
+      CALL wrf_message ( TRIM(outstring) )
+      WRITE(outstring,*) grid_str,&
+         'Domain average of sfcevp, hfx, lh: ', xtime, &
+         sfcevp_sum/no_points, &
+         hfx_sum/no_points, &
+         lh_sum/no_points
+      CALL wrf_message ( TRIM(outstring) )
+      ENDIF
 #ifdef DM_PARALLEL
    ENDIF
 #endif
