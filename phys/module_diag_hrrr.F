@@ -19,8 +19,7 @@ CONTAINS
                     ,i_start,i_end,j_start,j_end,num_tiles             &    
                     ,mp_physics, th, pii, p, rho_curr, qv_curr         &    
                     ,qc_curr, qnr_curr, qr_curr, qs_curr, qg_curr      &    
-                    ,refl_10cm                                         & 
-                                                                       )    
+                    ,refl_10cm                                         )    
 !----------------------------------------------------------------------
 
   USE module_state_description, ONLY : THOMPSON,THOMPSONAERO
@@ -81,7 +80,7 @@ CONTAINS
    REAL, DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(OUT) :: refl_10cm
  !  REAL, DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(OUT) :: vt_dbz_wt
 
-   REAL :: rand1
+   REAL    :: rand1
    INTEGER :: i,j,k,ij,m,n
 
    REAL, DIMENSION(kts:kte) :: qv1d, qc1d, qr1d, nr1d, qs1d, qg1d, &
@@ -192,8 +191,6 @@ CONTAINS
              endif 
            ENDDO
 
-!         call calc_refl10cm (qv1d, qc1d, qr1d, nr1d, qs1d, qg1d,           &    
-!                                 t1d, p1d, dbz, fallspd, rand1, kts, kte, i, j, kte)
           call calc_refl10cm (qv1d, qc1d, qr1d, nr1d, qs1d, qg1d,       &
                       ng1d, qb1d, t1d, p1d, dBZ, kts, kte, i, j, kte)
 
@@ -226,7 +223,7 @@ CONTAINS
                       ims,ime, jms,jme, kms,kme,                      &
                       ips,ipe, jps,jpe, kps,kpe,                      & ! patch  dims
                       i_start,i_end,j_start,j_end,kts,kte,num_tiles   &
-                     ,hrrr_diagnostics                                 &
+                     ,hrrr_diagnostics                                &
                      ,dpsdt,dmudt                                     &
                      ,p8w,pk1m,mu_2,mu_2m                             &
                      ,u,v, temp                                       &
@@ -252,10 +249,10 @@ CONTAINS
                      ,nssl_rho_qh, nssl_rho_qhl                       & !namelist parameters
                      ,nssl_alphah, nssl_alphahl                       & !namelist parameters 
                      ,prec_acc_c, prec_acc_nc, snow_acc_nc            & ! Optional - prec_acc_opt =1
-                     ,graupelncv         &
-                     ,acsnow, acrunoff                       &
+                     ,graupelncv                                      &
+                     ,acsnow, acrunoff                                &
                      ,sfcrunoff, udrunoff                             &
-                     ,snowncv, prec_acc_dt, curr_secs2  &
+                     ,snowncv, prec_acc_dt, curr_secs2                &
                      ,diagflag                                        &
                      ,history_interval                                &
 !                     ,reset_interval1                                 &
@@ -368,7 +365,7 @@ CONTAINS
 !
 !======================================================================
 
-   INTEGER,      INTENT(IN   )    ::                             &
+   INTEGER,   INTENT(IN)    ::                                   &
                                       ids,ide, jds,jde, kds,kde, &
                                       ims,ime, jms,jme, kms,kme, &
                                       ips,ipe, jps,jpe, kps,kpe, &
@@ -378,17 +375,17 @@ CONTAINS
    INTEGER, DIMENSION(num_tiles), INTENT(IN) ::                  &
      &           i_start,i_end,j_start,j_end
 
-   INTEGER,      INTENT(IN   )    ::   diag_print
-   INTEGER,      INTENT(IN   )    ::   dfi_stage
-   REAL,      INTENT(IN   )    ::   bucket_mm, bucket_J
-   INTEGER,   INTENT(IN   )    ::   mphysics_opt
-   INTEGER, INTENT(IN) :: gsfcgce_hail, gsfcgce_2ice, mpuse_hail
-   REAL, INTENT(IN)    ::   nssl_cnoh, nssl_cnohl                &
-                           ,nssl_rho_qh, nssl_rho_qhl            &
-                           ,nssl_alphah, nssl_alphahl
-   INTEGER,   INTENT(IN   )    ::   icloud_bl
-   INTEGER,   INTENT(IN   )    ::   hrrr_diagnostics
-   LOGICAL,   INTENT(IN   )    ::   diagflag
+   INTEGER,   INTENT(IN)    :: diag_print
+   INTEGER,   INTENT(IN)    :: dfi_stage
+   REAL,      INTENT(IN)    :: bucket_mm, bucket_J
+   INTEGER,   INTENT(IN)    :: mphysics_opt
+   INTEGER,   INTENT(IN)    :: gsfcgce_hail, gsfcgce_2ice, mpuse_hail
+   REAL,      INTENT(IN)    ::    nssl_cnoh, nssl_cnohl          &
+                               ,nssl_rho_qh, nssl_rho_qhl        &
+                               ,nssl_alphah, nssl_alphahl
+   INTEGER,   INTENT(IN)    ::   icloud_bl
+   INTEGER,   INTENT(IN)    ::   hrrr_diagnostics
+   LOGICAL,   INTENT(IN)    ::   diagflag
 
    REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                 &
          INTENT(IN ) ::                                       u  &
@@ -446,9 +443,9 @@ CONTAINS
 
    REAL, OPTIONAL, INTENT(IN)::  PREC_ACC_DT, CURR_SECS2
 
-   INTEGER :: i,j,k,its,ite,jts,jte,ij
-   INTEGER :: idp,jdp,irc,jrc,irnc,jrnc,isnh,jsnh
-   INTEGER :: prfreq
+   INTEGER           :: i,j,k,its,ite,jts,jte,ij
+   INTEGER           :: idp,jdp,irc,jrc,irnc,jrnc,isnh,jsnh
+   INTEGER           :: prfreq
    REAL, PARAMETER   :: dbzmin=-10.0          ! dcd
    INTEGER           :: k1, k2                ! dcd
    REAL              :: h_agl                 ! dcd
@@ -1140,7 +1137,7 @@ IF (prec_acc_dt .gt. 0.) THEN
           ENDIF
           qstotal = qs_curr(i,k,j) !ther ecurrently is no sgs snow...
           sum1 = sum1 + MAX((dp/grav)*qctotal,0.0)
-          sum2 = sum2 + MAX((dp/grav)*qitotal,0.0)
+          sum2 = sum2 + MAX((dp/grav)*(qitotal+qstotal),0.0) !actually frozen water path
           sum3 = sum3 + MAX((dp/grav)*qstotal,0.0)
           sum4 = MAX(sum4,CLDFRA_BL(i,k,j))
        ENDDO
