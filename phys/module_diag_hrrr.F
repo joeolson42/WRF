@@ -89,14 +89,14 @@ CONTAINS
 
    !thompson parameters:
    REAL :: ygra1,zans1,N0_exp,lam_exp,lamg
-   REAL, PARAMETER:: R1 = 1.E-12
-   REAL, PARAMETER:: R2 = 1.E-6
-   REAL, PARAMETER:: PI = 3.1415926536
+   REAL,    PARAMETER:: R1    = 1.E-12
+   REAL,    PARAMETER:: R2    = 1.E-6
+   REAL,    PARAMETER:: PI    = 3.1415926536
 !..Densities of rain, snow, graupel, and cloud ice.
-   REAL, PARAMETER:: rho_w = 1000.0
-   REAL, PARAMETER:: rho_s = 100.0
-   REAL, PARAMETER:: rho_i = 890.0
-   INTEGER, PARAMETER:: NRHG = 9
+   REAL,    PARAMETER:: rho_w = 1000.0
+   REAL,    PARAMETER:: rho_s = 100.0
+   REAL,    PARAMETER:: rho_i = 890.0
+   INTEGER, PARAMETER:: NRHG  = 9
    INTEGER, PARAMETER:: NRHG1 = 1
    INTEGER :: dimNRHG
    REAL, DIMENSION(NRHG), PARAMETER:: &
@@ -227,6 +227,7 @@ CONTAINS
                      ,dpsdt,dmudt                                     &
                      ,p8w,pk1m,mu_2,mu_2m                             &
                      ,u,v, temp                                       &
+                     ,pblh                                            &
                      ,raincv,rainncv,rainc,rainnc                     &
                      ,i_rainc,i_rainnc                                & ! Optional - bucketr_opt =1  from bucket_mm
                      ,hfx,sfcevp,lh                                   &
@@ -260,7 +261,8 @@ CONTAINS
 !                     ,ntimesteps                                      &
                      ,t,u10,v10,w,u_phy,v_phy,p,pb                    & !JOE
                      ,wspd10max                                       &
-                     ,wspd10,wspd80,LWP,IWP,SWP,maxcldfra             & !JOE: Optional - hrrr_diagnostics =1
+                     ,wspd10,wspd80,LWP,IWP,SWP                       &
+                     ,maxcldfra,maxcldfra_pbl                         & !JOE: Optional - hrrr_diagnostics =1
                      ,up_heli_max                                     & ! Optional - hrrr_diagnostics =1 
                      ,w_up_max,w_dn_max                               & ! Optional - hrrr_diagnostics =1
                      ,znw,w_colmean                                   &
@@ -401,7 +403,8 @@ CONTAINS
                                                     ,       HFX  &
                                                     ,        LH  &
                                                     ,    SFCEVP  &  
-                                                    ,        T2
+                                                    ,        T2  &
+                                                    ,      pblh
 
    REAL, DIMENSION( ims:ime, kms:kme, jms:jme ), OPTIONAL,       &
          INTENT(IN ) ::         CLDFRA, CLDFRA_BL, QC_BL, QI_BL     
@@ -502,10 +505,11 @@ CONTAINS
                ,refl_10cm_1km,refl_10cm_4km,composite_refl_10cm  &  ! dcd
                                                             ,ht  &  ! dcd
                                      ,wspd10,wspd80,LWP,IWP,SWP  &
-                                                     ,maxcldfra
+                                       ,maxcldfra,maxcldfra_pbl
 
    INTEGER ::           ntimesteps
-   REAL, DIMENSION(ims:ime,kms:kme,jms:jme):: temp_qg, temp_ng, temp_qr, temp_nr
+   REAL, DIMENSION(ims:ime,kms:kme,jms:jme):: temp_qg, temp_ng,   &
+                                              temp_qr, temp_nr
 
 !   INTEGER, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT) ::      &    
 !                                        ltg1_calc
@@ -517,7 +521,7 @@ CONTAINS
    REAL :: time_minutes
    REAL :: afrac
    REAL :: uh, vh, wind_vel
-   REAL :: depth
+   REAL :: depth, zm
    REAL :: tval2,tval1
    REAL :: qr_val, qs_val, qg_val, rho_val
    REAL :: thr1mx, thr2mx, thr1, thr2
@@ -540,212 +544,211 @@ CONTAINS
    REAL, PARAMETER    :: clim3=0.02*1.22
    REAL, PARAMETER    :: capa=0.28589641e0
 
-      DOUBLE PRECISION:: hail_max
-      REAL:: hail_max_sp
-      DOUBLE PRECISION, PARAMETER:: thresh_conc = 0.0005d0                 ! number conc. of graupel/hail per cubic meter
-      LOGICAL:: scheme_has_graupel
-      INTEGER, PARAMETER:: ngbins=50
-      DOUBLE PRECISION, DIMENSION(ngbins+1):: xxDx
-      DOUBLE PRECISION, DIMENSION(ngbins):: xxDg, xdtg
-      REAL:: xrho_g, xam_g, xbm_g, xmu_g
-      REAL, DIMENSION(3):: cge, cgg
-      DOUBLE PRECISION:: f_d, sum_ng, sum_t, lamg, ilamg, N0_g, lam_exp, N0exp
-      DOUBLE PRECISION:: lamr, N0min
-      REAL:: mvd_r, xslw1, ygra1, zans1
-      INTEGER:: ng, n
-      REAL :: dp,sum1,sum2,sum3,sum4,zm,zm0,wt1,ter,u100,v100,t100, &
-              qctotal,qitotal,qstotal
+   DOUBLE PRECISION:: hail_max
+   REAL:: hail_max_sp
+   DOUBLE PRECISION, PARAMETER:: thresh_conc = 0.0005d0                 ! number conc. of graupel/hail per cubic meter
+   LOGICAL:: scheme_has_graupel
+   INTEGER, PARAMETER:: ngbins=50
+   DOUBLE PRECISION, DIMENSION(ngbins+1):: xxDx
+   DOUBLE PRECISION, DIMENSION(ngbins):: xxDg, xdtg
+   REAL:: xrho_g, xam_g, xbm_g, xmu_g
+   REAL, DIMENSION(3):: cge, cgg
+   DOUBLE PRECISION:: f_d, sum_ng, sum_t, lamg, ilamg, N0_g, lam_exp, N0exp
+   DOUBLE PRECISION:: lamr, N0min
+   REAL:: mvd_r, xslw1, ygra1, zans1
+   INTEGER:: ng, n
+   REAL :: dp,sum1,sum2,sum3,sum4,sum5,zm0,wt1,ter,u100,v100,t100, &
+           qctotal,qitotal,qstotal
 
 !-----------------------------------------------------------------
 ! Handle accumulations with buckets to prevent round-off truncation in long runs
 ! This is done every 360 minutes assuming time step fits exactly into 360 minutes
-   IF(bucket_mm .gt. 0. .AND. MOD(NINT(XTIME),360) .EQ. 0)THEN
+ IF (bucket_mm .gt. 0. .AND. MOD(NINT(XTIME),360) .EQ. 0)THEN
 ! SET START AND END POINTS FOR TILES
 !  !$OMP PARALLEL DO   &
 !  !$OMP PRIVATE ( ij )
 
-   DO ij = 1 , num_tiles
+    DO ij = 1 , num_tiles
 
-      IF (xtime .eq. 0.0)THEN
-        DO j=j_start(ij),j_end(ij)
-        DO i=i_start(ij),i_end(ij)
-          i_rainnc(i,j) = 0
-          i_rainc(i,j) = 0
-        ENDDO      
-        ENDDO
-      ENDIF
-      DO j=j_start(ij),j_end(ij)
-      DO i=i_start(ij),i_end(ij)
-        IF(rainnc(i,j) .gt. bucket_mm)THEN
-          rainnc(i,j) = rainnc(i,j) - bucket_mm
-          i_rainnc(i,j) =  i_rainnc(i,j) + 1
-        ENDIF
-        IF(rainc(i,j) .gt. bucket_mm)THEN
-          rainc(i,j) = rainc(i,j) - bucket_mm
-          i_rainc(i,j) =  i_rainc(i,j) + 1
-        ENDIF
-      ENDDO      
-      ENDDO
-
-      !LIMIT THESE RADIATION DIAGS TO NON-REALTIME CONFIGURATION
-      IF (hrrr_diagnostics .eq. 1) THEN
-        !only set them == 0 for realtime application
-        !and avoid using them again
-        IF (xtime .eq. 0.0 .and. bucket_J .gt. 0.0 .and. PRESENT(ACSWUPT))THEN
-         DO j=j_start(ij),j_end(ij)
-         DO i=i_start(ij),i_end(ij)
-          i_acswupt(i,j) = 1
-          i_acswuptc(i,j) = 1
-          i_acswdnt(i,j) = 1
-          i_acswdntc(i,j) = 1
-          i_acswupb(i,j) = 1
-          i_acswupbc(i,j) = 1
-          i_acswdnb(i,j) = 1
-          i_acswdnbc(i,j) = 1
-          acswupt(i,j) = 0.0
-          acswuptc(i,j) = 0.0
-          acswdnt(i,j) = 0.0
-          acswdntc(i,j) = 0.0
-          acswupb(i,j) = 0.0
-          acswupbc(i,j) = 0.0
-          acswdnb(i,j) = 0.0
-          acswdnbc(i,j) = 0.0
-         ENDDO
-         ENDDO
-        ENDIF
-        IF (xtime .eq. 0.0  .and. bucket_J .gt. 0.0 .and. PRESENT(ACLWUPT))THEN
-         DO j=j_start(ij),j_end(ij)
-         DO i=i_start(ij),i_end(ij)
-          i_aclwupt(i,j) = 1
-          i_aclwuptc(i,j) = 1
-          i_aclwdnt(i,j) = 1
-          i_aclwdntc(i,j) = 1
-          i_aclwupb(i,j) = 1
-          i_aclwupbc(i,j) = 1
-          i_aclwdnb(i,j) = 1
-          i_aclwdnbc(i,j) = 1
-          aclwupt(i,j) = 0.0
-          aclwuptc(i,j) = 0.0
-          aclwdnt(i,j) = 0.0
-          aclwdntc(i,j) = 0.0
-          aclwupb(i,j) = 0.0
-          aclwupbc(i,j) = 0.0
-          aclwdnb(i,j) = 0.0
-          aclwdnbc(i,j) = 0.0
-         ENDDO
-         ENDDO
-        ENDIF
-      ELSEIF (hrrr_diagnostics .eq. 2) THEN
-       !For research (hrrr_diagnostics=2), calculate these fields
-       IF (xtime .eq. 0.0 .and. bucket_J .gt. 0.0 .and. PRESENT(ACSWUPT))THEN
-         DO j=j_start(ij),j_end(ij)
-         DO i=i_start(ij),i_end(ij)
-          i_acswupt(i,j) = 0
-          i_acswuptc(i,j) = 0
-          i_acswdnt(i,j) = 0
-          i_acswdntc(i,j) = 0
-          i_acswupb(i,j) = 0
-          i_acswupbc(i,j) = 0
-          i_acswdnb(i,j) = 0
-          i_acswdnbc(i,j) = 0
-         ENDDO      
-         ENDDO
+       IF (xtime .eq. 0.0)THEN
+          DO j=j_start(ij),j_end(ij)
+          DO i=i_start(ij),i_end(ij)
+             i_rainnc(i,j) = 0
+             i_rainc(i,j) = 0
+          ENDDO      
+          ENDDO
        ENDIF
-       IF (xtime .eq. 0.0  .and. bucket_J .gt. 0.0 .and. PRESENT(ACLWUPT))THEN
-         DO j=j_start(ij),j_end(ij)
-         DO i=i_start(ij),i_end(ij)
-          i_aclwupt(i,j) = 0
-          i_aclwuptc(i,j) = 0
-          i_aclwdnt(i,j) = 0
-          i_aclwdntc(i,j) = 0
-          i_aclwupb(i,j) = 0
-          i_aclwupbc(i,j) = 0
-          i_aclwdnb(i,j) = 0
-          i_aclwdnbc(i,j) = 0
-
-         ENDDO      
-         ENDDO
-       ENDIF
-       IF (PRESENT(ACSWUPT) .and. bucket_J .gt. 0.0)THEN
-        DO j=j_start(ij),j_end(ij)
-        DO i=i_start(ij),i_end(ij)
-         IF(acswupt(i,j) .gt. bucket_J)THEN
-          acswupt(i,j) = acswupt(i,j) - bucket_J
-          i_acswupt(i,j) =  i_acswupt(i,j) + 1
-         ENDIF
-         IF(acswuptc(i,j) .gt. bucket_J)THEN
-          acswuptc(i,j) = acswuptc(i,j) - bucket_J
-          i_acswuptc(i,j) =  i_acswuptc(i,j) + 1
-         ENDIF
-         IF(acswdnt(i,j) .gt. bucket_J)THEN
-          acswdnt(i,j) = acswdnt(i,j) - bucket_J
-          i_acswdnt(i,j) =  i_acswdnt(i,j) + 1
-         ENDIF
-         IF(acswdntc(i,j) .gt. bucket_J)THEN
-          acswdntc(i,j) = acswdntc(i,j) - bucket_J
-          i_acswdntc(i,j) =  i_acswdntc(i,j) + 1
-         ENDIF
-         IF(acswupb(i,j) .gt. bucket_J)THEN
-          acswupb(i,j) = acswupb(i,j) - bucket_J
-          i_acswupb(i,j) =  i_acswupb(i,j) + 1
-         ENDIF
-         IF(acswupbc(i,j) .gt. bucket_J)THEN
-          acswupbc(i,j) = acswupbc(i,j) - bucket_J
-          i_acswupbc(i,j) =  i_acswupbc(i,j) + 1
-         ENDIF
-         IF(acswdnb(i,j) .gt. bucket_J)THEN
-          acswdnb(i,j) = acswdnb(i,j) - bucket_J
-          i_acswdnb(i,j) =  i_acswdnb(i,j) + 1
-         ENDIF
-         IF(acswdnbc(i,j) .gt. bucket_J)THEN
-          acswdnbc(i,j) = acswdnbc(i,j) - bucket_J
-          i_acswdnbc(i,j) =  i_acswdnbc(i,j) + 1
-         ENDIF
-        ENDDO      
-        ENDDO
-       ENDIF
-      IF (PRESENT(ACLWUPT) .and. bucket_J .gt. 0.0)THEN
        DO j=j_start(ij),j_end(ij)
        DO i=i_start(ij),i_end(ij)
-        IF(aclwupt(i,j) .gt. bucket_J)THEN
-          aclwupt(i,j) = aclwupt(i,j) - bucket_J
-          i_aclwupt(i,j) =  i_aclwupt(i,j) + 1
-        ENDIF
-        IF(aclwuptc(i,j) .gt. bucket_J)THEN
-          aclwuptc(i,j) = aclwuptc(i,j) - bucket_J
-          i_aclwuptc(i,j) =  i_aclwuptc(i,j) + 1
-        ENDIF
-        IF(aclwdnt(i,j) .gt. bucket_J)THEN
-          aclwdnt(i,j) = aclwdnt(i,j) - bucket_J
-          i_aclwdnt(i,j) =  i_aclwdnt(i,j) + 1
-        ENDIF
-        IF(aclwdntc(i,j) .gt. bucket_J)THEN
-          aclwdntc(i,j) = aclwdntc(i,j) - bucket_J
-          i_aclwdntc(i,j) =  i_aclwdntc(i,j) + 1
-        ENDIF
-        IF(aclwupb(i,j) .gt. bucket_J)THEN
-          aclwupb(i,j) = aclwupb(i,j) - bucket_J
-          i_aclwupb(i,j) =  i_aclwupb(i,j) + 1
-        ENDIF
-        IF(aclwupbc(i,j) .gt. bucket_J)THEN
-          aclwupbc(i,j) = aclwupbc(i,j) - bucket_J
-          i_aclwupbc(i,j) =  i_aclwupbc(i,j) + 1
-        ENDIF
-        IF(aclwdnb(i,j) .gt. bucket_J)THEN
-          aclwdnb(i,j) = aclwdnb(i,j) - bucket_J
-          i_aclwdnb(i,j) =  i_aclwdnb(i,j) + 1
-        ENDIF
-        IF(aclwdnbc(i,j) .gt. bucket_J)THEN
-          aclwdnbc(i,j) = aclwdnbc(i,j) - bucket_J
-          i_aclwdnbc(i,j) =  i_aclwdnbc(i,j) + 1
-        ENDIF
+          IF(rainnc(i,j) .gt. bucket_mm)THEN
+             rainnc(i,j) = rainnc(i,j) - bucket_mm
+             i_rainnc(i,j) =  i_rainnc(i,j) + 1
+          ENDIF
+          IF(rainc(i,j) .gt. bucket_mm)THEN
+             rainc(i,j) = rainc(i,j) - bucket_mm
+             i_rainc(i,j) =  i_rainc(i,j) + 1
+          ENDIF
        ENDDO      
        ENDDO
-      ENDIF
+
+       !LIMIT THESE RADIATION DIAGS TO NON-REALTIME CONFIGURATION
+       IF (hrrr_diagnostics .eq. 1) THEN
+          !only set them == 0 for realtime application
+          !and avoid using them again
+          IF (xtime .eq. 0.0 .and. bucket_J .gt. 0.0 .and. PRESENT(ACSWUPT))THEN
+             DO j=j_start(ij),j_end(ij)
+             DO i=i_start(ij),i_end(ij)
+                i_acswupt(i,j) = 1
+                i_acswuptc(i,j) = 1
+                i_acswdnt(i,j) = 1
+                i_acswdntc(i,j) = 1
+                i_acswupb(i,j) = 1
+                i_acswupbc(i,j) = 1
+                i_acswdnb(i,j) = 1
+                i_acswdnbc(i,j) = 1
+                acswupt(i,j) = 0.0
+                acswuptc(i,j) = 0.0
+                acswdnt(i,j) = 0.0
+                acswdntc(i,j) = 0.0
+                acswupb(i,j) = 0.0
+                acswupbc(i,j) = 0.0
+                acswdnb(i,j) = 0.0
+                acswdnbc(i,j) = 0.0
+             ENDDO
+             ENDDO
+          ENDIF
+          IF (xtime .eq. 0.0  .and. bucket_J .gt. 0.0 .and. PRESENT(ACLWUPT))THEN
+             DO j=j_start(ij),j_end(ij)
+             DO i=i_start(ij),i_end(ij)
+                i_aclwupt(i,j) = 1
+                i_aclwuptc(i,j) = 1
+                i_aclwdnt(i,j) = 1
+                i_aclwdntc(i,j) = 1
+                i_aclwupb(i,j) = 1
+                i_aclwupbc(i,j) = 1
+                i_aclwdnb(i,j) = 1
+                i_aclwdnbc(i,j) = 1
+                aclwupt(i,j) = 0.0
+                aclwuptc(i,j) = 0.0
+                aclwdnt(i,j) = 0.0
+                aclwdntc(i,j) = 0.0
+                aclwupb(i,j) = 0.0
+                aclwupbc(i,j) = 0.0
+                aclwdnb(i,j) = 0.0
+                aclwdnbc(i,j) = 0.0
+             ENDDO
+             ENDDO
+          ENDIF
+       ELSEIF (hrrr_diagnostics .eq. 2) THEN
+          !For research (hrrr_diagnostics=2), calculate these fields
+          IF (xtime .eq. 0.0 .and. bucket_J .gt. 0.0 .and. PRESENT(ACSWUPT))THEN
+             DO j=j_start(ij),j_end(ij)
+             DO i=i_start(ij),i_end(ij)
+                i_acswupt(i,j) = 0
+                i_acswuptc(i,j) = 0
+                i_acswdnt(i,j) = 0
+                i_acswdntc(i,j) = 0
+                i_acswupb(i,j) = 0
+                i_acswupbc(i,j) = 0
+                i_acswdnb(i,j) = 0
+                i_acswdnbc(i,j) = 0
+             ENDDO      
+             ENDDO
+          ENDIF
+          IF (xtime .eq. 0.0  .and. bucket_J .gt. 0.0 .and. PRESENT(ACLWUPT))THEN
+             DO j=j_start(ij),j_end(ij)
+             DO i=i_start(ij),i_end(ij)
+                i_aclwupt(i,j) = 0
+                i_aclwuptc(i,j) = 0
+                i_aclwdnt(i,j) = 0
+                i_aclwdntc(i,j) = 0
+                i_aclwupb(i,j) = 0
+                i_aclwupbc(i,j) = 0
+                i_aclwdnb(i,j) = 0
+                i_aclwdnbc(i,j) = 0
+             ENDDO      
+             ENDDO
+          ENDIF
+          IF (PRESENT(ACSWUPT) .and. bucket_J .gt. 0.0)THEN
+             DO j=j_start(ij),j_end(ij)
+             DO i=i_start(ij),i_end(ij)
+                IF(acswupt(i,j) .gt. bucket_J)THEN
+                   acswupt(i,j) = acswupt(i,j) - bucket_J
+                   i_acswupt(i,j) =  i_acswupt(i,j) + 1
+                ENDIF
+                IF(acswuptc(i,j) .gt. bucket_J)THEN
+                   acswuptc(i,j) = acswuptc(i,j) - bucket_J
+                   i_acswuptc(i,j) =  i_acswuptc(i,j) + 1
+                ENDIF
+                IF(acswdnt(i,j) .gt. bucket_J)THEN
+                   acswdnt(i,j) = acswdnt(i,j) - bucket_J
+                   i_acswdnt(i,j) =  i_acswdnt(i,j) + 1
+                ENDIF
+                IF(acswdntc(i,j) .gt. bucket_J)THEN
+                   acswdntc(i,j) = acswdntc(i,j) - bucket_J
+                   i_acswdntc(i,j) =  i_acswdntc(i,j) + 1
+                ENDIF
+                IF(acswupb(i,j) .gt. bucket_J)THEN
+                   acswupb(i,j) = acswupb(i,j) - bucket_J
+                   i_acswupb(i,j) =  i_acswupb(i,j) + 1
+                ENDIF
+                IF(acswupbc(i,j) .gt. bucket_J)THEN
+                   acswupbc(i,j) = acswupbc(i,j) - bucket_J
+                   i_acswupbc(i,j) =  i_acswupbc(i,j) + 1
+                ENDIF
+                IF(acswdnb(i,j) .gt. bucket_J)THEN
+                   acswdnb(i,j) = acswdnb(i,j) - bucket_J
+                   i_acswdnb(i,j) =  i_acswdnb(i,j) + 1
+                ENDIF
+                IF(acswdnbc(i,j) .gt. bucket_J)THEN
+                   acswdnbc(i,j) = acswdnbc(i,j) - bucket_J
+                   i_acswdnbc(i,j) =  i_acswdnbc(i,j) + 1
+                ENDIF
+             ENDDO      
+             ENDDO
+          ENDIF
+          IF (PRESENT(ACLWUPT) .and. bucket_J .gt. 0.0)THEN
+             DO j=j_start(ij),j_end(ij)
+             DO i=i_start(ij),i_end(ij)
+                IF(aclwupt(i,j) .gt. bucket_J)THEN
+                aclwupt(i,j) = aclwupt(i,j) - bucket_J
+                i_aclwupt(i,j) =  i_aclwupt(i,j) + 1
+             ENDIF
+             IF(aclwuptc(i,j) .gt. bucket_J)THEN
+                aclwuptc(i,j) = aclwuptc(i,j) - bucket_J
+                i_aclwuptc(i,j) =  i_aclwuptc(i,j) + 1
+             ENDIF
+             IF(aclwdnt(i,j) .gt. bucket_J)THEN
+                aclwdnt(i,j) = aclwdnt(i,j) - bucket_J
+                i_aclwdnt(i,j) =  i_aclwdnt(i,j) + 1
+             ENDIF
+             IF(aclwdntc(i,j) .gt. bucket_J)THEN
+                aclwdntc(i,j) = aclwdntc(i,j) - bucket_J
+                i_aclwdntc(i,j) =  i_aclwdntc(i,j) + 1
+             ENDIF
+             IF(aclwupb(i,j) .gt. bucket_J)THEN
+                aclwupb(i,j) = aclwupb(i,j) - bucket_J
+                i_aclwupb(i,j) =  i_aclwupb(i,j) + 1
+             ENDIF
+             IF(aclwupbc(i,j) .gt. bucket_J)THEN
+                aclwupbc(i,j) = aclwupbc(i,j) - bucket_J
+                i_aclwupbc(i,j) =  i_aclwupbc(i,j) + 1
+             ENDIF
+             IF(aclwdnb(i,j) .gt. bucket_J)THEN
+                aclwdnb(i,j) = aclwdnb(i,j) - bucket_J
+                i_aclwdnb(i,j) =  i_aclwdnb(i,j) + 1
+             ENDIF
+             IF(aclwdnbc(i,j) .gt. bucket_J)THEN
+                aclwdnbc(i,j) = aclwdnbc(i,j) - bucket_J
+                i_aclwdnbc(i,j) =  i_aclwdnbc(i,j) + 1
+             ENDIF
+          ENDDO      
+          ENDDO
+       ENDIF
     ENDIF !hrrr_diagnostic check
-    ENDDO
+   ENDDO  !tile loop
 !  !$OMP END PARALLEL DO
-   ENDIF
+ENDIF !check:MOD(NINT(XTIME),360)
 
 !
 IF (prec_acc_dt .gt. 0.) THEN
@@ -778,8 +781,8 @@ IF (prec_acc_dt .gt. 0.) THEN
 !         acfrain(i,j) = acfrain(i,j) + frain(i,j)
 ! add convective precip to snow bucket if t2 < 273.15
          IF ( t2(i,j) .lt. 273.15 ) THEN
-         snow_acc_nc(i,j)   = snow_acc_nc(i,j) +  RAINCV(i,j)
-         acsnow(i,j) = acsnow(i,j) + RAINCV(i,j)
+            snow_acc_nc(i,j)   = snow_acc_nc(i,j) +  RAINCV(i,j)
+            acsnow(i,j) = acsnow(i,j) + RAINCV(i,j)
          ENDIF
          snow_acc_nc(i,j)   = MAX (snow_acc_nc(i,j), 0.0)
 !         graup_acc_nc(i,j)  = MAX (graup_acc_nc(i,j), 0.0)
@@ -801,10 +804,12 @@ IF (prec_acc_dt .gt. 0.) THEN
  idump = (history_interval * 60.) / dt
      time_minutes = MOD(xtime,60.)
 
-!   print *,' history_interval = ', history_interval
-!   print *,' itimestep        = ', itimestep
-!   print *,' idump            = ', idump
-!   print *,' xtime            = ', xtime
+   !print *,' in HRRR diagnostics:'
+   !print *,' diagflag         = ', diagflag
+   !print *,' history_interval = ', history_interval
+   !print *,' itimestep        = ', itimestep
+   !print *,' idump            = ', idump
+   !print *,' xtime            = ', xtime
 
 
 ! IF ( MOD(itimestep, idump) .eq. 0 ) THEN
@@ -824,22 +829,23 @@ IF (prec_acc_dt .gt. 0.) THEN
     DO ij = 1 , num_tiles
        DO j=j_start(ij),j_end(ij)
        DO i=i_start(ij),i_end(ij)
-          wspd10max(i,j)   = 0. 
-          up_heli_max(i,j) = 0. 
-          w_up_max(i,j)    = 0. 
-          w_dn_max(i,j)    = 0. 
-          w_mean_sum(i,j)  = 0. 
-          w_mean(i,j)      = 0. 
-          grpl_max(i,j)    = 0. 
-          refd_max(i,j)    = 0. 
-          hail_maxk1(i,j)  = 0. 
-          hail_max2d(i,j)  = 0. 
-          WSPD10(i,j)      =-99.
-          WSPD80(i,j)      =-99.
-          LWP(i,j)         = 0.
-          IWP(i,j)         = 0.
-          SWP(i,j)         = 0.
-          MAXCLDFRA(i,j)   = 0.
+          wspd10max(i,j)    = 0. 
+          up_heli_max(i,j)  = 0. 
+          w_up_max(i,j)     = 0. 
+          w_dn_max(i,j)     = 0. 
+          w_mean_sum(i,j)   = 0. 
+          w_mean(i,j)       = 0. 
+          grpl_max(i,j)     = 0. 
+          refd_max(i,j)     = 0. 
+          hail_maxk1(i,j)   = 0. 
+          hail_max2d(i,j)   = 0. 
+          WSPD10(i,j)       =-99.
+          WSPD80(i,j)       =-99.
+          LWP(i,j)          = 0.
+          IWP(i,j)          = 0.
+          SWP(i,j)          = 0.
+          MAXCLDFRA(i,j)    = 0.
+          MAXCLDFRA_pbl(i,j)= 0.
        ENDDO
        ENDDO
     ENDDO
@@ -873,10 +879,10 @@ IF (prec_acc_dt .gt. 0.) THEN
 
        IF ( p8w(i,k,j) .GT. 10000. .AND. w(i,k,j) .LT. w_dn_max(i,j) ) THEN
           w_dn_max(i,j) = w(i,k,j)
-      ENDIF
+       ENDIF
 
-      ! For the column mean vertical velocity calculation, first
-      ! total the vertical velocity between sigma levels 0.5 and 0.8
+       ! For the column mean vertical velocity calculation, first
+       ! total the vertical velocity between sigma levels 0.5 and 0.8
        IF ( znw(k) .GE. 0.5 .AND. znw(k) .LE. 0.8 ) THEN
           w_colmean(i,j) = w_colmean(i,j) + w(i,k,j)
        ENDIF
@@ -1067,7 +1073,8 @@ IF (prec_acc_dt .gt. 0.) THEN
 
 
 !Diagnostics for PBL/Cloud Development
-   IF (diagflag) THEN
+ IF (diagflag) THEN
+!   print*," doing 10, 80 m winds & lwp, iwp, swp..."
 !  !$OMP PARALLEL DO   &
 !  !$OMP PRIVATE ( ij )
    DO ij = 1 , num_tiles
@@ -1081,6 +1088,7 @@ IF (prec_acc_dt .gt. 0.) THEN
        sum2=0.
        sum3=0.
        sum4=0.
+       sum5=0.
 
        DO k=kms,kme-1
           !Note: ph & phb are defined at the layer interface, so we average to
@@ -1140,19 +1148,21 @@ IF (prec_acc_dt .gt. 0.) THEN
           sum2 = sum2 + MAX((dp/grav)*(qitotal+qstotal),0.0) !actually frozen water path
           sum3 = sum3 + MAX((dp/grav)*qstotal,0.0)
           sum4 = MAX(sum4,CLDFRA_BL(i,k,j))
+          if (zm < (pblh(i,j)+1000.)) sum5 = MAX(sum5,CLDFRA_BL(i,k,j))
        ENDDO
 
        LWP(i,j)=sum1*1000. ! kg m-2  --> g m-2
        IWP(i,j)=sum2*1000.
        SWP(i,j)=sum3*1000.
        MAXCLDFRA(i,j)=sum4
-
+       MAXCLDFRA_pbl(i,j)=sum5
+       
      ENDDO
      ENDDO
 
    ENDDO
 !  !$OMP END PARALLEL DO
-   ENDIF !check for diag flag
+ENDIF !check for diagflag
 !End extra diags for cloud/PBL development
 
 !+---+-----------------------------------------------------------------+ 
@@ -1370,14 +1380,6 @@ IF (prec_acc_dt .gt. 0.) THEN
        ENDDO
 !      !$OMP END PARALLEL DO
       endif
-
-     CASE (SBU_YLINSCHEME)
-!      scheme_has_graupel = .true.  ! Can be calculated from rime fraction variable.
-!      no time to implement
-
-     CASE (ETAMPNEW)
-!      scheme_has_graupel = .true.  ! Can be calculated from rime fraction variable.
-!      no time to implement
 
      CASE (THOMPSON, THOMPSONAERO)
 

@@ -1274,7 +1274,7 @@ END IF ! JOE: use hrrr_diagnostics OR nwp diags, not both
 
       select_mp: SELECT CASE(config_flags%mp_physics)
 
-      CASE (THOMPSON, THOMPSONAERO)
+      CASE (THOMPSON, THOMPSONAERO, THOMPSONGH)
 
       first_time_step = (grid%itimestep .eq. 1)
       IF (first_time_step .and. (config_flags%do_radar_ref .eq. 1)) THEN
@@ -1306,6 +1306,7 @@ END IF ! JOE: use hrrr_diagnostics OR nwp diags, not both
                 ,MU_2=grid%mu_2  ,MU_2M=grid%mu_2m                   &
                 ,U=grid%u_2    ,V=grid%v_2                           &
                 ,TEMP=grid%t_phy                                     &
+                ,pblh=grid%pblh                                      &
                 ,RAINCV=grid%raincv    ,RAINNCV=grid%rainncv         &
                 ,RAINC=grid%rainc    ,RAINNC=grid%rainnc             &
                 ,I_RAINC=grid%i_rainc    ,I_RAINNC=grid%i_rainnc     &
@@ -1362,6 +1363,7 @@ END IF ! JOE: use hrrr_diagnostics OR nwp diags, not both
                 ,WSPD10=grid%wspd10,WSPD80=grid%wspd80               & !joe-wfip
                 ,LWP=grid%lwp2d,IWP=grid%iwp2d,SWP=grid%swp2d        & !joe-wfip
                 ,MAXCLDFRA=grid%maxcldfra                            & !joe-wfip
+                ,MAXCLDFRA_pbl=grid%maxcldfra_pbl                    &
                 ,UP_HELI_MAX=grid%up_heli_max                        &
                 ,W_UP_MAX=grid%w_up_max,W_DN_MAX=grid%w_dn_max       &
                 ,ZNW=grid%znw,W_COLMEAN=grid%w_colmean               &
@@ -1396,6 +1398,7 @@ END IF ! JOE: use hrrr_diagnostics OR nwp diags, not both
                 ,NUM_TILES=grid%num_tiles                            &
                                                                      )                                                                                                                    
    END SELECT select_mp
+
    END IF HRRR_DIAGS
 
 
