@@ -78,15 +78,15 @@ MODULE module_sf_mynn
 !   REAL    , PARAMETER :: p1000mb      = 100000.
 !   REAL    , PARAMETER :: EP_2         = r_d/r_v
 
-  REAL, PARAMETER :: ep_3=1.-ep_2 
-  REAL, PARAMETER :: wmin=0.1    ! Minimum wind speed
-  REAL, PARAMETER :: VCONVC=1.25
-  REAL, PARAMETER :: SNOWZ0=0.011
-  REAL, PARAMETER :: COARE_OPT=3.5  ! 3.0 or 3.5
-  INTEGER, PARAMETER :: psi_opt = 0    ! 0 = stable: Cheng and Brustaert
-                                       !     unstable: blended COARE
-                                       ! 1 = GFS
-  REAL, PARAMETER :: qvmin = 1e-9
+  REAL, PARAMETER    :: ep_3     = 1.-ep_2 
+  REAL, PARAMETER    :: wmin     = 0.1     ! Minimum wind speed
+  REAL, PARAMETER    :: VCONVC   = 1.25
+  REAL, PARAMETER    :: SNOWZ0   = 0.011
+  REAL, PARAMETER    :: COARE_OPT= 3.5     ! 3.0 or 3.5
+  INTEGER, PARAMETER :: psi_opt  = 0       ! 0 = stable: Cheng and Brustaert
+                                           !     unstable: blended COARE
+                                           ! 1 = GFS
+  REAL, PARAMETER    :: qvmin    = 1e-9
   !For debugging purposes:
   LOGICAL, PARAMETER :: debug_code = .false.
 
@@ -565,7 +565,6 @@ CONTAINS
 
          !TGS:THVGB(I)=THGB(I)*(1.+EP1*QSFC(I)*MAVAIL(I)) 
          THVGB(I)=THGB(I)*(1.+EP1*QSFC(I))
-
          DTHDZ=(TH1D(I)-THGB(I))
          DTHVDZ=(THV1D(I)-THVGB(I))
 
@@ -958,7 +957,7 @@ CONTAINS
        PSIM10(I)=MIN(PSIM10(I),0.9*GZ10OZ0(I))
        PSIH10(I)=MIN(PSIH10(I),0.9*GZ10OZt(I))
 
-       RMOL(I) = ZOL(I)/ZA(I)  
+       RMOL(I) = ZOL(I)/ZA(I)
 
     ENDIF
 
@@ -1095,7 +1094,7 @@ CONTAINS
             ENDIF
          ENDIF
       ELSEIF(XLAND(I)-1.5.LT.0.)THEN  !LAND                               
-         HFX(I)=FLHC(I)*(THGB(I)-TH1D(I))                                
+         HFX(I)=FLHC(I)*(THGB(I)-TH1D(I))
          HFX(I)=MAX(HFX(I),-250.)                                       
       ENDIF
 

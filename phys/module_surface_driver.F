@@ -2358,8 +2358,7 @@ CONTAINS
 #if ( EM_CORE==1)
     CASE(MYNNSFCSCHEME)
 
-       IF (PRESENT(qv_curr)    .AND.  PRESENT(qc_curr)     &
-            & .AND.  PRESENT(qcg) ) THEN
+       IF (PRESENT(qv_curr)  .AND.  PRESENT(qcg) ) THEN
 
           CALL wrf_debug(100,'in MYNNSFC')
 
