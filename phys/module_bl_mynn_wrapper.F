@@ -100,7 +100,7 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
      &  edmf_thl,edmf_ent,edmf_qc,               &
      &  sub_thl3d,sub_sqv3d,                     &
      &  det_thl3d,det_sqv3d,                     &
-     &  maxwidth,maxMF,ztop_plume,ktop_plume,    &
+     &  maxwidth,maxMF,ztop_plume,               &
      &  rthraten,                                &
      &  tke_budget,         bl_mynn_tkeadvect,   &
      &  bl_mynn_cloudpdf,   bl_mynn_mixlength,   &
@@ -117,7 +117,7 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
      &  ims,ime,jms,jme,kms,kme,                 &
      &  its,ite,jts,jte,kts,kte                  )
 
-     use module_bl_mynn, only: mynn_bl_driver
+     use module_bl_mynn, only: mynnedmf
 
 !------------------------------------------------------------------- 
      implicit none
@@ -245,13 +245,18 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
      real(kind_phys), dimension(ims:ime,jms:jme), intent(out) ::                       &
      &       pblh,maxwidth,maxmf,ztop_plume
       integer, dimension(ims:ime,jms:jme), intent(out) ::                              &
-     &       kpbl,ktop_plume
+     &       kpbl
 
 !Local
       real(kind_phys), dimension(kts:kte)                 :: delp,sqv1,sqc1,sqi1,sqs1,kzero
-      real(kind_phys), dimension(ims:ime)                 :: dx
+!      real(kind_phys), dimension(ims:ime)                 :: dx
       logical, parameter                                  :: debug = .false.
-      real(kind_phys), dimension(ims:ime,kms:kme,jms:jme) :: ozone,rO3blten
+      real(kind_phys), dimension(its:ite,kts:kte,jts:jte) :: ozone,rO3blten
+
+!ccpp-requirements, but kept local, since WRF doesn't use them
+      !character(len=*) :: errmsg ! output error message (-).
+      character :: errmsg   ! output error message (-).
+      integer   :: errflg   ! output error flag (-).
 
    if (debug) then
       write(0,*)"=============================================="
@@ -259,6 +264,9 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
       write(0,*)"initflag=",initflag," restart =",restart
    endif
 
+   errmsg = " "
+   errflg = 0
+   
    jtf=MIN0(JTE,JDE-1)
    itf=MIN0(ITE,IDE-1)
 
@@ -272,7 +280,6 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
    maxmf            =0.0
    ztop_plume       =0.0
    kpbl             =0  !int
-   ktop_plume       =0  !int
    !initialize subgrid clouds:
    qc_bl1           =0.0
    qi_bl1           =0.0
@@ -449,7 +456,6 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
       emis_ant_no = 0.0
 #endif
 
-
       !find/fix negative mixing ratios
 !      call moisture_check2(kte, delt,                 &
 !                           delp(i,:), exner(i,:,j),   &
@@ -472,7 +478,7 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
 
       if (debug) then
          print*
-         write(0,*)"===CALLING mynn_bl_driver; input:"
+         write(0,*)"===CALLING mynnedmf; input:"
          print*,"tke_budget=",tke_budget
          print*,"bl_mynn_tkeadvect=",bl_mynn_tkeadvect
          print*,"bl_mynn_cloudpdf=",bl_mynn_cloudpdf
@@ -495,7 +501,7 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
          print*,"sqc:",sqc1(1),sqc1(2),sqc1(kte)
          print*,"sqi:",sqi1(1),sqi1(2),sqi1(kte)
          print*,"rmol:",rmol(i,j)," ust:",ust(i,j)
-         print*,"dx=",dx(i),"initflag=",initflag
+         print*,"dx=",dxc,"initflag=",initflag
          print*,"Thetasurf:",ts(i,j)
          print*,"HFX:",hfx(i,j)," qfx",qfx(i,j)
          print*,"qsfc:",qsfc(i,j)," ps:",ps(i,j)
@@ -511,7 +517,7 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
       endif
 
 !print*,"In mynn wrapper, calling mynn_bl_driver"
-              CALL  mynn_bl_driver(i=i,  j=j,                          &
+              CALL mynnedmf(i=i,         j=j,                          &
      &        initflag=initflag,         restart=restart,              &
      &        cycling=cycling,           delt=delt,                    &
      &        dz1=dz1,                   dx=dxc,                       &
@@ -581,19 +587,17 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
      &        sub_thl1=sub_thl1,         sub_sqv1=sub_sqv1,            & !output
      &        det_thl1=det_thl1,         det_sqv1=det_sqv1,            & !output
      &        maxwidth=maxwidth(i,j),    maxmf=maxMF(i,j),             & !output
-     &        ztop_plume=ztop_plume(i,j),ktop_plume=ktop_plume(i,j),   & !output
+     &        ztop_plume=ztop_plume(i,j),                              & !output
      &        spp_pbl=spp_pbl, pattern_spp_pbl1=pattern_spp_pbl1,      & !input
      &        rthraten1=rthraten1,                                     & !input
      &        FLAG_QI=flag_qi,FLAG_QNI=flag_qni,FLAG_QS=flag_qs,       & !input
      &        FLAG_QC=flag_qc,FLAG_QNC=flag_qnc,                       & !input
      &        FLAG_QNWFA=FLAG_QNWFA,FLAG_QNIFA=FLAG_QNIFA,             & !input
      &        FLAG_QNBCA=FLAG_QNBCA,FLAG_OZONE=flag_ozone,             & !input
-     &        IDS=ids,IDE=ide,JDS=jds,JDE=jde,KDS=kds,KDE=kde,         & !input
-     &        IMS=ims,IME=ime,JMS=jms,JME=jme,KMS=kms,KME=kme,         & !input
-     &        ITS=its,ITE=itf,JTS=jts,JTE=jtf,KTS=kts,KTE=kte          ) !input
+     &        KTS=kts , KTE=kte , errmsg = errmsg , errflg = errflg    ) !input
 
       if (debug) then
-        print*,"In mynn wrapper, after bl_mynn_driver"
+         print*,"In mynn wrapper, after bl_mynn_driver"
       endif
 
       ! update turbulence properties output
@@ -710,45 +714,45 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
          enddo
       endif
 #endif
-      
+
       if (debug) then
-          print*
-          print*,"===Finished with mynn_bl_driver; output:"
-          print*,"T:",t3d(i,1,j),t3d(i,2,j),t3d(i,kte,j)
-          print*,"TH:",th(i,1,j),th(i,2,j),th(i,kte,j)
-          print*,"rho:",rho(i,1,j),rho(i,2,j),rho(i,kte,j)
-          print*,"exner:",exner(i,1,j),exner(i,2,j),exner(i,kte,j)
-          print*,"p:",p(i,1,j),p(i,2,j),p(i,kte,j)
-          print*,"dz:",dz(i,1,j),dz(i,2,j),dz(i,kte,j)
-          print*,"u:",u(i,1,j),u(i,2,j),u(i,kte,j)
-          print*,"v:",v(i,1,j),v(i,2,j),v(i,kte,j)
-          print*,"sqv:",sqv1(1),sqv1(2),sqv1(kte)
-          print*,"sqc:",sqc1(1),sqc1(2),sqc1(kte)
-          print*,"sqi:",sqi1(1),sqi1(2),sqi1(kte)
-          print*,"rmol:",rmol(i,j)," ust:",ust(i,j)
-          print*,"dx(i,j)=",dx(i),"initflag=",initflag
-          print*,"Thetasurf:",ts(i,j)
-          print*,"HFX:",hfx(i,j)," qfx",qfx(i,j)
-          print*,"qsfc:",qsfc(i,j)," ps:",ps(i,j)
-          print*,"wspd:",wspd(i,j)
-          print*,"znt:",znt(i,j)," delt=",delt
-          print*,"im=",ite," kte=",kte
-          print*,"PBLH=",pblh(i,j)," KPBL=",KPBL(i,j)," xland=",xland(i,j)
-          print*,"ch=",ch(i,j)
-          print*,"qke:",qke(i,1,j),qke(i,2,j),qke(i,kte,j)
-          print*,"el_pbl:",el_pbl(i,1,j),el_pbl(i,2,j),el_pbl(i,kte,j)
-          print*,"Sh3d:",Sh3d(i,1,j),sh3d(i,2,j),sh3d(i,kte,j)
-          print*,"exch_h:",exch_h(i,1,j),exch_h(i,2,j),exch_h(i,kte,j)
-          print*,"exch_m:",exch_m(i,1,j),exch_m(i,2,j),exch_m(i,kte,j)
-          print*,"max cf_bl:",maxval(cldfra_bl(i,:,j))
-          print*,"max qc_bl:",maxval(qc_bl(i,:,j))
-          print*,"dtdt:",rthblten(i,1,j),rthblten(i,2,j),rthblten(i,kte,j)
-          print*,"dudt:",rublten(i,1,j),rublten(i,2,j),rublten(i,kte,j)
-          print*,"dvdt:",rvblten(i,1,j),rvblten(i,2,j),rvblten(i,kte,j)
-          print*,"dqdt:",rqvblten(i,1,j),rqvblten(i,2,j),rqvblten(i,kte,j)
-          print*,"ztop_plume:",ztop_plume(i,j)," maxmf:",maxmf(i,j)
-          print*
-       endif
+         print*
+         print*,"===Finished with mynn_bl_driver; output:"
+         print*,"T:",t3d(i,1,j),t3d(i,2,j),t3d(i,kte,j)
+         print*,"TH:",th(i,1,j),th(i,2,j),th(i,kte,j)
+         print*,"rho:",rho(i,1,j),rho(i,2,j),rho(i,kte,j)
+         print*,"exner:",exner(i,1,j),exner(i,2,j),exner(i,kte,j)
+         print*,"p:",p(i,1,j),p(i,2,j),p(i,kte,j)
+         print*,"dz:",dz(i,1,j),dz(i,2,j),dz(i,kte,j)
+         print*,"u:",u(i,1,j),u(i,2,j),u(i,kte,j)
+         print*,"v:",v(i,1,j),v(i,2,j),v(i,kte,j)
+         print*,"sqv:",sqv1(1),sqv1(2),sqv1(kte)
+         print*,"sqc:",sqc1(1),sqc1(2),sqc1(kte)
+         print*,"sqi:",sqi1(1),sqi1(2),sqi1(kte)
+         print*,"rmol:",rmol(i,j)," ust:",ust(i,j)
+         print*,"dx=",dxc,"initflag=",initflag
+         print*,"Thetasurf:",ts(i,j)
+         print*,"HFX:",hfx(i,j)," qfx",qfx(i,j)
+         print*,"qsfc:",qsfc(i,j)," ps:",ps(i,j)
+         print*,"wspd:",wspd(i,j)
+         print*,"znt:",znt(i,j)," delt=",delt
+         print*,"im=",ite," kte=",kte
+         print*,"PBLH=",pblh(i,j)," KPBL=",KPBL(i,j)," xland=",xland(i,j)
+         print*,"ch=",ch(i,j)
+         print*,"qke:",qke(i,1,j),qke(i,2,j),qke(i,kte,j)
+         print*,"el_pbl:",el_pbl(i,1,j),el_pbl(i,2,j),el_pbl(i,kte,j)
+         print*,"Sh3d:",Sh3d(i,1,j),sh3d(i,2,j),sh3d(i,kte,j)
+         print*,"exch_h:",exch_h(i,1,j),exch_h(i,2,j),exch_h(i,kte,j)
+         print*,"exch_m:",exch_m(i,1,j),exch_m(i,2,j),exch_m(i,kte,j)
+         print*,"max cf_bl:",maxval(cldfra_bl(i,:,j))
+         print*,"max qc_bl:",maxval(qc_bl(i,:,j))
+         print*,"dtdt:",rthblten(i,1,j),rthblten(i,2,j),rthblten(i,kte,j)
+         print*,"dudt:",rublten(i,1,j),rublten(i,2,j),rublten(i,kte,j)
+         print*,"dvdt:",rvblten(i,1,j),rvblten(i,2,j),rvblten(i,kte,j)
+         print*,"dqdt:",rqvblten(i,1,j),rqvblten(i,2,j),rqvblten(i,kte,j)
+         print*,"ztop_plume:",ztop_plume(i,j)," maxmf:",maxmf(i,j)
+         print*
+      endif
 
    enddo  !end j-loop
    enddo  !end i-loop
