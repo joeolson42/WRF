@@ -85,7 +85,7 @@ CONTAINS
                  ,qv_curr, qc_curr, qr_curr                        &
                  ,qi_curr, qs_curr, qg_curr                        &
                  ,rqvblten,rqcblten,rqiblten                       &
-                 ,rqrblten,rqsblten,rqgblten                       &
+                 ,rqrblten,rqgblten                                &
              !  Optional aerosol
                  ,qnwfa_curr,f_qnwfa                               &
                  ,qnifa_curr,f_qnifa                               &
@@ -691,10 +691,11 @@ CONTAINS
                      ,qi_curr, qs_curr, qg_curr                  &
                      ,qnc_curr,qni_curr                          & !used in CAMUWPBL
                      ,rqvblten,rqcblten,rqrblten                 &
-                     ,rqiblten,rqsblten,rqgblten,rqniblten         !rqniblten  used in CAMUWPBL
+                     ,rqiblten,rqgblten,rqniblten
 
    REAL, DIMENSION( ims:ime, kms:kme, jms:jme ) ::   & !local: added for MYNN
-                      rqncblten,rqnwfablten,rqnifablten,rqnbcablten
+                      rqncblten,rqnwfablten,                     &
+                      rqnifablten,rqnbcablten,rqsblten
 
    REAL,       DIMENSION( ims:ime, jms:jme )                    , &
                OPTIONAL                                         , &
@@ -1013,6 +1014,8 @@ CONTAINS
             RTHBLTEN(I,K,J)=0.
             RUBLTEN(I,K,J)=0.
             RVBLTEN(I,K,J)=0.
+            RQSBLTEN(I,K,J)=0.
+            RQNCBLTEN(I,K,J)=0.
             IF ( PRESENT( RQCBLTEN )) RQCBLTEN(I,K,J)=0.
             IF ( PRESENT( RQVBLTEN )) RQVBLTEN(I,K,J)=0.
          ENDDO

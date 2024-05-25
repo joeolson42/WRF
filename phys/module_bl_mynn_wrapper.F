@@ -387,7 +387,13 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
       else
          qke_adv1 = 0.0
       endif
-
+      !higher-order moments
+      do k=kts,kte
+         qsq1(k) = qsq(i,k,j)
+         tsq1(k) = tsq(i,k,j)
+         cov1(k) = cov(i,k,j)
+      enddo
+      
       !intialize moist species
       if (flag_qc) then
          do k=kts,kte
@@ -517,7 +523,7 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
       endif
 
 !print*,"In mynn wrapper, calling mynn_bl_driver"
-              CALL mynnedmf(i=i,         j=j,                          &
+      CALL mynnedmf(        i=i,         j=j,                          &
      &        initflag=initflag,         restart=restart,              &
      &        cycling=cycling,           delt=delt,                    &
      &        dz1=dz1,                   dx=dxc,                       &

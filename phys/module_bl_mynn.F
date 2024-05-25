@@ -663,36 +663,37 @@ CONTAINS
           qi_bl1(kts:kte)    =zero
           qke1(kts:kte)      =zero
        end if
-       dqc1(kts:kte)        =zero
-       dqi1(kts:kte)        =zero
-       dqni1(kts:kte)       =zero
-       dqnc1(kts:kte)       =zero
-       dqnwfa1(kts:kte)     =zero
-       dqnifa1(kts:kte)     =zero
-       dqnbca1(kts:kte)     =zero
-       dozone1(kts:kte)     =zero
-       qc_bl1_old(kts:kte)  =zero
+       dqc1(kts:kte)         =zero
+       dqi1(kts:kte)         =zero
+       dqni1(kts:kte)        =zero
+       dqnc1(kts:kte)        =zero
+       dqnwfa1(kts:kte)      =zero
+       dqnifa1(kts:kte)      =zero
+       dqnbca1(kts:kte)      =zero
+       dozone1(kts:kte)      =zero
+       qc_bl1_old(kts:kte)   =zero
        cldfra_bl1_old(kts:kte)=zero
-       edmf_a1(kts:kte)     =zero
-       edmf_w1(kts:kte)     =zero
-       edmf_qc1(kts:kte)    =zero
-       edmf_a_dd1(kts:kte)  =zero
-       edmf_w_dd1(kts:kte)  =zero
-       edmf_qc_dd1(kts:kte) =zero
-       sgm1(kts:kte)        =zero
-       vt1(kts:kte)         =zero
-       vq1(kts:kte)         =zero
-       km1(kts:kte)         =zero
-       kh1(kts:kte)         =zero
+       edmf_a1(kts:kte)      =zero
+       edmf_w1(kts:kte)      =zero
+       edmf_qc1(kts:kte)     =zero
+       edmf_a_dd1(kts:kte)   =zero
+       edmf_w_dd1(kts:kte)   =zero
+       edmf_qc_dd1(kts:kte)  =zero
+       sgm1(kts:kte)         =zero
+       vt1(kts:kte)          =zero
+       vq1(kts:kte)          =zero
+       km1(kts:kte)          =zero
+       kh1(kts:kte)          =zero
 
        if (tke_budget .eq. 1) then
-          qwt1   =zero
-          qshear1=zero
-          qbuoy1 =zero
-          qdiss1 =zero
-          dqke1  =zero
+          qwt1               =zero
+          qshear1            =zero
+          qbuoy1             =zero
+          qdiss1             =zero
+          dqke1              =zero
        endif
 
+       zw1(kts)=zero
        do k=kts,kte
           thv1(k)=th1(k)*(1.+p608*sqv1(k))
           !keep snow out for now - increases ceiling bias
@@ -704,19 +705,18 @@ CONTAINS
           !thl1(k)=th1(k)*(1.- xlvcp/MAX(tk1(k),TKmin)*sqc1(k) &
           !    &             - xlscp/MAX(tk1(k),TKmin)*sqi1(k))
           thlv1(k)=thl1(k)*(1.+p608*sqv1(k))
-          IF (k==kts) THEN
-             zw1(k)=zero
-          ELSE
-             zw1(k)=zw1(k-1)+dz1(k-1)
-          ENDIF
-          IF (INITIALIZE_QKE) THEN
-             !Initialize tke for initial PBLH calc only - using 
-             !simple PBLH form of Koracin and Berkowicz (1988, BLM)
-             !to linearly taper off tke towards top of PBL.
-             qke1(k)=5.*ust * MAX((ust*700. - zw1(k))/(MAX(ust,0.01)*700.), 0.01)
-          ENDIF
+          zw1(k+1)=zw1(k)+dz1(k)
        enddo
-       zw1(kte+1)=zw1(kte)+dz1(kte)
+
+       if (INITIALIZE_QKE) then
+          !Initialize tke for initial PBLH calc only - using
+          !simple PBLH form of Koracin and Berkowicz (1988, BLM)
+          !to linearly taper off tke towards top of PBL.
+          do k=kts,kte
+             qke1(k)=5.*ust * MAX((ust*700. - zw1(k))/(MAX(ust,0.01)*700.), 0.01)
+          enddo
+       endif
+
 
 !>  - Call get_pblh() to calculate hybrid (\f$\theta_{v}-TKE\f$) PBL height.
        CALL GET_PBLH(KTS,KTE,PBLH,thv1,qke1,zw1,dz1,xland,kpbl)
@@ -760,13 +760,13 @@ CONTAINS
        ENDIF
 
 !***  Begin debugging
-!             IF(I==IMD .AND. J==JMD)THEN
-!               PRINT*,"MYNN DRIVER INIT: k=",1," sh=",sh1(k)
-!               PRINT*," sqw=",sqw1(k)," thl=",thl1(k)," k_m=",km1(k)
-!               PRINT*," xland=",xland," rmol=",rmol," ust=",ust
-!               PRINT*," qke=",qke1(k)," el=",el1(k)," tsq=",tsq1(k)
-!               PRINT*," PBLH=",PBLH," u=",u1(k)," v=",v1(k)
-!             ENDIF
+!       IF (I==IMD .AND. J==JMD) THEN
+!          PRINT*,"MYNN DRIVER INIT: k=",1," sh=",sh1(k)
+!          PRINT*," sqw=",sqw1(k)," thl=",thl1(k)," k_m=",km1(k)
+!          PRINT*," xland=",xland," rmol=",rmol," ust=",ust
+!          PRINT*," qke=",qke1(k)," el=",el1(k)," tsq=",tsq1(k)
+!          PRINT*," PBLH=",PBLH," u=",u1(k)," v=",v1(k)
+!       ENDIF
 !***  End debugging
 
     ENDIF ! end initflag
@@ -774,12 +774,12 @@ CONTAINS
 !> - After initializing all required variables, the regular procedures 
 !! performed at every time step are ready for execution.
     IF (bl_mynn_tkeadvect) THEN
-       qke1=qke_adv1
+       qke1(kts:kte)=qke_adv1(kts:kte)
     ENDIF
 
     !Initialize some arrays
     if (tke_budget .eq. 1) then
-       dqke1(:)=qke1(:)
+       dqke1(kts:kte)=qke1(kts:kte)
     endif
     if (icloud_bl > 0) then
        cldfra_bl1_old(kts:kte)=cldfra_bl1(kts:kte)
@@ -847,12 +847,9 @@ CONTAINS
     det_u1     =zero
     det_v1     =zero
 
+    zw1(kts)=zero
     do k = kts,kte
-       if (k==kts) then
-           zw1(k)=zero
-       else
-           zw1(k)=zw1(k-1)+dz1(k-1)
-       endif
+       zw1(k+1)=zw1(k)+dz1(k)
        !keep snow out for now - increases ceiling bias
        sqw1(k)= sqv1(k)+sqc1(k)+sqi1(k)!+sqs1(k)
        thl1(k)= th1(k) - xlvcp/ex1(k)*sqc1(k) &
@@ -863,7 +860,6 @@ CONTAINS
        !    &               - xlscp/MAX(tk1(k),TKmin)*sqi1(k))
        thv1(k)=th1(k)*(1.+p608*sqv1(k))
     enddo ! end k
-    zw1(kte+1)=zw1(kte)+dz1(kte)
 
 !>  - Call get_pblh() to calculate the hybrid \f$\theta_{v}-TKE\f$
 !! PBL height diagnostic.
@@ -880,8 +876,8 @@ CONTAINS
        Psig_shcu=1.0
     endif
 
-    sqcg= 0.0   !ill-defined variable; qcg has been removed
-    cpm=cp*(1.+0.84*max(qv1(kts),1e-8))
+    sqcg= zero   !ill-defined variable; qcg has been removed
+    cpm=cp*(one + 0.84*max(qv1(kts),1e-8))
     exnerg=(ps/p1000mb)**rcp
 
     !-----------------------------------------------------
@@ -892,7 +888,7 @@ CONTAINS
     !    -ch(i)*(sqc(kts)   -sqcg )
     !-----------------------------------------------------
     flqv = qfx2/rho1(kts)
-    flqc = 0.0 !currently no sea-spray fluxes, fog settling handled elsewhere
+    flqc = zero !currently no sea-spray fluxes, fog settling handled elsewhere
     th_sfc = ts/ex1(kts)
 
     ! TURBULENT FLUX FOR TKE BOUNDARY CONDITIONS
@@ -908,12 +904,12 @@ CONTAINS
     !if(i.eq.idbg)print*,"updated z/L=",zet
     if (bl_mynn_stfunc == 0) then
        !Original Kansas-type stability functions
-       if ( zet >= 0.0 ) then
-          pmz = 1.0 + (cphm_st-1.0) * zet
-          phh = 1.0 +  cphh_st      * zet
+       if ( zet >= zero ) then
+          pmz = one + (cphm_st-one) * zet
+          phh = one +  cphh_st      * zet
        else
-          pmz = 1.0/    (1.0-cphm_unst*zet)**0.25 - zet
-          phh = 1.0/SQRT(1.0-cphh_unst*zet)
+          pmz = one/    (one-cphm_unst*zet)**0.25 - zet
+          phh = one/sqrt(one-cphh_unst*zet)
        end if
     else
        !Updated stability functions (Puhales, 2020)
@@ -1073,7 +1069,7 @@ CONTAINS
        enddo
        diss_heat1(kte) = 0.
     else
-       diss_heat1(1:kte) = 0.
+       diss_heat1(kts:kte) = 0.
     endif
 
 !>  - Call mynn_tendencies() to solve for tendencies of 
@@ -1154,7 +1150,7 @@ CONTAINS
     endif
  
     call retrieve_exchange_coeffs(kts,kte,               &
-         &dfm1, dfh1, dz1, km1, kh1                      )
+         dfm1, dfh1, dz1, km1, kh1                       )
 
     !update the TKE budget
     if (tke_budget .eq. 1) then
@@ -1223,7 +1219,7 @@ CONTAINS
 
 !ACF copy qke into qke_adv if using advection
     IF (bl_mynn_tkeadvect) THEN
-       qke_adv1=qke1
+       qke_adv1(kts:kte)=qke1(kts:kte)
     ENDIF
 !ACF-end
 
@@ -5657,7 +5653,7 @@ ENDIF
  logical, optional :: F_QC,F_QI,F_QNC,F_QNI,F_QNWFA,F_QNIFA,F_QNBCA
 
  ! outputs - updraft properties
- real(kind_phys),dimension(kts:kte), intent(out) ::                &
+ real(kind_phys),dimension(kts:kte), intent(inout) ::              &
       &edmf_a1,edmf_w1,edmf_qt1,edmf_thl1,edmf_ent1,edmf_qc1
  ! add one local edmf variable:
   real(kind_phys),dimension(kts:kte) :: edmf_th1

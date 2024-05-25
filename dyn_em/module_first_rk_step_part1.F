@@ -1119,31 +1119,31 @@ BENCH_START(pbl_driver_tim)
      &        ,EXCH_H=grid%exch_h     ,EXCH_M=grid%exch_m                           &
      &        ,FM=grid%fm         ,FHH=grid%fh                                      &
      &        ,F=grid%f  ,GRDFLX=grid%grdflx      &
-     &        ,GZ1OZ0=gz1oz0      ,HFX=grid%hfx            ,HT=grid%ht              &
+     &        ,GZ1OZ0=gz1oz0      ,HFX=grid%hfx            ,HT=grid%ht                   &
      &        ,ID=grid%id         ,ITIMESTEP=grid%itimestep     ,KPBL=grid%kpbl          &
-     &        ,LH=grid%lh              ,LOWLYR=grid%lowlyr      ,P8W=grid%p_hyd_w   &
-     &        ,PBLH=grid%pblh          ,PI_PHY=pi_phy      ,PSIH=psih          &
-     &        ,PSIM=psim          ,P_PHY=grid%p_hyd        ,QFX=grid%qfx            &
-     &        ,QSFC=grid%qsfc          ,QZ0=grid%qz0  ,MIXHT=mixht                  &
-     &        ,RA_LW_PHYSICS=config_flags%ra_lw_physics                   &
+     &        ,LH=grid%lh              ,LOWLYR=grid%lowlyr      ,P8W=grid%p_hyd_w        &
+     &        ,PBLH=grid%pblh          ,PI_PHY=pi_phy      ,PSIH=psih                    &
+     &        ,PSIM=psim          ,P_PHY=grid%p_hyd        ,QFX=grid%qfx                 &
+     &        ,QSFC=grid%qsfc          ,QZ0=grid%qz0  ,MIXHT=mixht                       &
+     &        ,RA_LW_PHYSICS=config_flags%ra_lw_physics                                  &
      &        ,RHO=grid%rho            ,RQCBLTEN=grid%rqcblten  ,RQIBLTEN=grid%rqiblten  &
      &        ,RQVBLTEN=grid%rqvblten  ,RTHBLTEN=grid%rthblten  ,RUBLTEN=grid%rublten    &
-     &        ,RVBLTEN=grid%rvblten    ,SNOW=grid%snow          ,STEPBL=grid%stepbl      &
-     &        ,THZ0=grid%thz0          ,TH_PHY=th_phy                               &
-     &        ,TSK=grid%tsk            ,T_PHY=grid%t_phy        ,UST=grid%ust       &
-     &        ,U10=grid%u10 ,UZ0=grid%uz0      ,U_FRAME=grid%u_frame    ,U_PHY=grid%u_phy   &
-     &        ,V10=grid%v10 ,VZ0=grid%vz0      ,V_FRAME=grid%v_frame    ,V_PHY=grid%v_phy   &
-     &        ,W=grid%w_2   ,UOCE=grid%uoce    ,VOCE=grid%voce                              &
-              ,T2=grid%t2 &
-     &        ,WARM_RAIN=grid%warm_rain                    ,WSPD=grid%wspd     &
+     &        ,RVBLTEN=grid%rvblten    ,SNOW=grid%snow                                   &
+     &        ,STEPBL=grid%stepbl      ,THZ0=grid%thz0          ,TH_PHY=th_phy           &
+     &        ,TSK=grid%tsk            ,T_PHY=grid%t_phy        ,UST=grid%ust            &
+     &        ,U10=grid%u10 ,UZ0=grid%uz0      ,U_FRAME=grid%u_frame    ,U_PHY=grid%u_phy&
+     &        ,V10=grid%v10 ,VZ0=grid%vz0      ,V_FRAME=grid%v_frame    ,V_PHY=grid%v_phy&
+     &        ,W=grid%w_2   ,UOCE=grid%uoce    ,VOCE=grid%voce                           &
+     &        ,T2=grid%t2 &
+     &        ,WARM_RAIN=grid%warm_rain                    ,WSPD=grid%wspd               &
      &        ,XICE=grid%xice          ,XLAND=grid%xland        ,Z=grid%z                &
-     &        ,ZNT=grid%znt                                                    &
-     &        ,ysu_topdown_pblmix=config_flags%ysu_topdown_pblmix              &
-     &        ,shinhong_tke_diag=config_flags%shinhong_tke_diag               &
+     &        ,ZNT=grid%znt                                                              &
+     &        ,ysu_topdown_pblmix=config_flags%ysu_topdown_pblmix                        &
+     &        ,shinhong_tke_diag=config_flags%shinhong_tke_diag                          &
 ! paj: topo_wind
-     &        ,CTOPO=grid%ctopo,CTOPO2=grid%ctopo2                                   &
+     &        ,CTOPO=grid%ctopo,CTOPO2=grid%ctopo2                                       &
 ! variables added for BEP
-     &          ,FRC_URB2D=grid%frc_urb2d                                                  &
+     &          ,FRC_URB2D=grid%frc_urb2d                                                &
      &          ,A_U_BEP=grid%a_u_bep,A_V_BEP=grid%a_v_bep,A_T_BEP=grid%a_t_bep          &
      &          ,A_Q_BEP=grid%a_q_bep                                                    &
      &          ,B_U_BEP=grid%b_u_bep,B_V_BEP=grid%b_v_bep,B_T_BEP=grid%b_t_bep          &
