@@ -99,7 +99,8 @@
 ! *     6. Puhales, Franciano S. and coauthors, 2020: Turbulent        *
 ! *        Kinetic Energy Budget for MYNN-EDMF PBL Scheme in WRF model.*
 ! *        Universidade Federal de Santa Maria Technical Note. 9 pp.   *
-! **********************************************************************
+! *        https://repositorio.ufsm.br/handle/1/28327                  *
+!***********************************************************************
 ! ==================================================================
 ! Notes on original implementation into WRF-ARW
 ! changes to original code:
@@ -622,6 +623,7 @@ CONTAINS
     det_sqv1(kts:kte)  =zero
     edmf_a_dd1(kts:kte)=zero
     edmf_w_dd1(kts:kte)=zero
+    edmf_qc_dd1(kts:kte)=zero
     !initialize 2d arrays
     ktop_plume         =0         !int
     ztop_plume         =zero
@@ -673,12 +675,6 @@ CONTAINS
        dozone1(kts:kte)      =zero
        qc_bl1_old(kts:kte)   =zero
        cldfra_bl1_old(kts:kte)=zero
-       edmf_a1(kts:kte)      =zero
-       edmf_w1(kts:kte)      =zero
-       edmf_qc1(kts:kte)     =zero
-       edmf_a_dd1(kts:kte)   =zero
-       edmf_w_dd1(kts:kte)   =zero
-       edmf_qc_dd1(kts:kte)  =zero
        sgm1(kts:kte)         =zero
        vt1(kts:kte)          =zero
        vq1(kts:kte)          =zero
@@ -1167,7 +1163,7 @@ CONTAINS
        enddo
        qSHEAR1      = dummy1
        qBUOY1       = dummy2
-       !! Upper boundary conditions               
+       !! Upper boundary conditions
        k=kte
        qSHEAR1(k)   =zero
        qBUOY1(k)    =zero
@@ -3657,9 +3653,9 @@ CONTAINS
            !Calculate sigma using higher-order moments:
            sgm(k) = SQRT( r3sq )
            !Set constraints on sigma relative to saturation water vapor
-           sgm(k) = min( sgm(k), qsat_tk*0.666 )
            !sgm(k) = max( sgm(k), qsat_tk*0.035 )
-
+           sgm(k) = min( sgm(k), qw(k)*0.666 )
+           
            !introduce vertical grid spacing dependence on min sgm
            wt     = max(500. - max(dz(k)-100., zero), zero)/500. !=1 for dz < 100 m, =0 for dz > 600 m
            sgm(k) = sgm(k) + sgm(k)*0.2*(1.0-wt) !inflate sgm for coarse dz
@@ -3670,8 +3666,8 @@ CONTAINS
            zsl    = min(max(50., 0.1*pblh2), 150.)          !crude ekman layer
            wt     = min(max( zagl - zsl, zero )/300., one)  !0 near sfc, 1 above 
            qpct   = qpct_sfc*(one-wt) + qpct*wt
-           sgm(k) = max( sgm(k), qsat_tk*qpct )
-
+           sgm(k) = max( sgm(k), qw(k)*qpct )
+           
            q1(k)  = qmq  / sgm(k)  ! Q1, the normalized saturation
 
            !Add condition for falling/settling into low-RH layers, so at least

@@ -359,40 +359,41 @@ SUBROUTINE mynnedmf_wrapper_run(                 &
          dz1(k)      = dz(i,k,j)
          rthraten1(k)= rthraten(i,k,j)
       enddo
-      
-      !update sgs cloud info.
-      if (icloud_bl > 0) then
-         do k=kts,kte
-            qc_bl1(k)     = qc_bl(i,k,j)
-            qi_bl1(k)     = qi_bl(i,k,j)
-            cldfra_bl1(k) = cldfra_bl(i,k,j)
-         enddo
-      endif
 
-      !spp input
+      !spp input                                                                                                                                                                                  
       if (spp_pbl > 0) then
          do k=kts,kte
             pattern_spp_pbl1(k) = pattern_spp_pbl(i,k,j)
          enddo
       endif
 
-      !tke
-      do k=kts,kte
-         qke1(k) = qke(i,k,j)
-      enddo
-      if (bl_mynn_tkeadvect) then
+      !when NOT cold-starting on the first time step, update input
+      if (initflag .eq. 0 .or. restart) THEN
+         !update sgs cloud info.
+         if (icloud_bl > 0) then
+            do k=kts,kte
+               qc_bl1(k)     = qc_bl(i,k,j)
+               qi_bl1(k)     = qi_bl(i,k,j)
+               cldfra_bl1(k) = cldfra_bl(i,k,j)
+            enddo
+         endif
+
+         !turbulennce variables
          do k=kts,kte
-            qke_adv1(k) = qke_adv(i,k,j)
+            qke1(k) = qke(i,k,j)
+            qsq1(k) = qsq(i,k,j)
+            tsq1(k) = tsq(i,k,j)
+            cov1(k) = cov(i,k,j)
+            sh1(k)  = sh3d(i,k,j)
+            sm1(k)  = sm3d(i,k,j)
+            el1(k)  = el_pbl(i,k,j)
          enddo
-      else
-         qke_adv1 = 0.0
+         if (bl_mynn_tkeadvect) then
+            qke_adv1(kts:kte) = qke_adv(i,kts:kte,j)
+         else
+            qke_adv1(kts:kte) = qke(i,kts:kte,j)
+         endif
       endif
-      !higher-order moments
-      do k=kts,kte
-         qsq1(k) = qsq(i,k,j)
-         tsq1(k) = tsq(i,k,j)
-         cov1(k) = cov(i,k,j)
-      enddo
       
       !intialize moist species
       if (flag_qc) then
