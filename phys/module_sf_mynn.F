@@ -579,17 +579,18 @@ CONTAINS
          !WSTAR(I) = vconvc*(g/TSK(i)*pblh(i)*fluxc)**.33
          IF (xland(i).gt.1.5 .or. QSFC(i).le.0.0) THEN   !WATER
             WSTAR(I) = vconvc*(g/TSK(i)*pblh(i)*fluxc)**.33
-         ELSE                                            !LAND
+            !--------------------------------------------------------
+            ! Mahrt and Sun low-res correction
+            ! (for 13 km ~ 0.37 m/s; for 3 km == 0 m/s)
+            !--------------------------------------------------------
+            vsgd = 0.25 * (max(dx/5000.-1.,0.))**.33
+         ELSE                   !LAND
             !increase height scale, assuming that the non-local transoport
             !from the mass-flux (plume) mixing exceedsd the PBLH.
             WSTAR(I) = vconvc*(g/TSK(i)*MIN(1.5*pblh(i),4000.)*fluxc)**.33
+            vsgd = 0.32 * (max(dx/5000.-1.,0.))**.33
          ENDIF
-         !--------------------------------------------------------
-         ! Mahrt and Sun low-res correction
-         ! (for 13 km ~ 0.37 m/s; for 3 km == 0 m/s)
-         !--------------------------------------------------------
-         VSGD = 0.32 * (max(dx/5000.-1.,0.))**.33
-         WSPD(I)=SQRT(WSPD(I)*WSPD(I)+WSTAR(I)*WSTAR(I)+vsgd*vsgd)
+         wspd(i)=sqrt(wspd(i)*wspd(i)+wstar(i)*wstar(i)+vsgd*vsgd)
          WSPD(I)=MAX(WSPD(I),wmin)
 
          !--------------------------------------------------------
@@ -600,7 +601,7 @@ CONTAINS
          IF (ITIMESTEP == 1) THEN
             !SET LIMITS ACCORDING TO Li et al. (2010) Boundary-Layer Meteorol (p.158)
             BR(I)=MAX(BR(I),-2.0)
-            BR(I)=MIN(BR(I),2.0)
+            BR(I)=MIN(BR(I), 2.0)
          ELSE
             BR(I)=MAX(BR(I),-4.0)
             BR(I)=MIN(BR(I), 4.0)

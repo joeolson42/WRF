@@ -1612,7 +1612,7 @@ CONTAINS
                 PRESENT( rqniblten ) .AND. PRESENT( qni_curr ) .AND.&
                 PRESENT(qke) .AND. PRESENT(tsq) .AND.               &
                 PRESENT(qsq) .AND. PRESENT(cov) .AND.               &
-                PRESENT(rmol) .AND. PRESENT(ch) .AND.               &
+                PRESENT(ch) .AND.                                   &
                 PRESENT(tke_budget) .AND. PRESENT(qke_adv) .AND.    &
                 PRESENT(bl_mynn_tkeadvect)  ) THEN
 
@@ -1645,7 +1645,7 @@ CONTAINS
 !                   &ozone=ozone,                                         &
                    &p=p_phy,exner=pi_phy,rho=rho,T3D=t_phy,              &
                    &xland=xland,ts=tsk,qsfc=qsfc,ps=psfc,                &
-                   &ust=ust,ch=ch,hfx=hfx,qfx=qfx,rmol=rmol,wspd=wspd,   &
+                   &ust=ust,ch=ch,hfx=hfx,qfx=qfx,wspd=wspd,             &
                    &uoce=uoce,voce=voce,                                 & !Ocean currents
                    &Qke=qke,qke_adv=qke_adv,Sh3d=Sh3d,Sm3d=Sm3d,         &
 #if (WRF_CHEM == 1)
@@ -1709,7 +1709,7 @@ CONTAINS
                   deallocate (qke_tmp)
               end if
            ELSE
-               WRITE ( message , FMT = '(A,17(L1,1X))' )            &
+               WRITE ( message , FMT = '(A,16(L1,1X))' )            &
                  'present: '//                                      &
                  'qv_curr, '//                                      &
                  'qc_curr, '//                                      &
@@ -1723,7 +1723,6 @@ CONTAINS
                  'tsq, '//                                          &
                  'qsq, '//                                          &
                  'cov, '//                                          &
-                 'rmol, '//                                         &
                  'ch, '//                                           &
                  'tke_budget, '//                                   &
                  'qke_adv, '//                                      &
@@ -1740,7 +1739,6 @@ CONTAINS
                   PRESENT( tsq      ) ,                             &
                   PRESENT( qsq      ) ,                             &
                   PRESENT( cov      ) ,                             &
-                  PRESENT( rmol     ) ,                             &
                   PRESENT( ch       ) ,                             &
                   PRESENT( tke_budget) ,                            &
                   PRESENT( qke_adv  ) ,                             &
