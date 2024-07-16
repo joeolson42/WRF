@@ -334,7 +334,7 @@ MODULE module_bl_mynn
 !>Adding top-down diffusion driven by cloud-top radiative cooling
  integer, parameter :: bl_mynn_topdown = 0
 !>Option to activate downdrafts, from Elynn Wu (0: deactive, 1: active)
- integer, parameter :: bl_mynn_edmf_dd = 1
+ integer, parameter :: bl_mynn_edmf_dd = 0
 
 !>Option to activate heating due to dissipation of TKE (1: active, 0: off)
  integer, parameter :: dheat_opt = 1
