@@ -874,13 +874,7 @@ CONTAINS
     flq =flqv+flqc                   !! LATENT
     flt =hfx/(rho1(kts)*cpm )-xlvcp*flqc/ex1(kts)  !! Temperature flux
     fltv=flt + flqv*p608*th_sfc      !! Virtual temperature flux
- if (i==idbg .and. j==jdbg) then
-    print*,"===incoming forcing in mynn driver:"
-    print*,"fltv=",fltv,"flt=",flt,"hfx=",hfx
-    print*,"flqv=",flqv,"flq=",flq,"qfx=",qfx
-    print*,"cpm=",cpm,"rho=",rho1(kts),"ts=",ts
-    print*,"cp=",cp,"qv=",sqv1(kts),"th1=",th1(kts)
- endif
+
     ! Update 1/L using updated sfc heat flux and friction velocity
     rmol = -karman*gtr*fltv/max(ust**3,1.0e-6_kind_phys)
     zet = half*dz1(kts)*rmol
@@ -3699,8 +3693,12 @@ CONTAINS
            cldfra_qsq    = cldfra_qsq0*(one-wt2) + cldfra_qsq1*wt2
 
            !For ceiling detection, apply minimum rh-based cloud fraction
-           cldfra_rh0    = min(one, max(zero, 0.56*tanh((rh(k)-0.976)/0.030)+half))
-           cldfra_rh1    = min(one, max(zero, 0.55*tanh((rh(k)-0.955)/0.055)+half))
+           !cldfra_rh0    = min(one, max(zero, 0.56*tanh((rh(k)-0.976)/0.030)+half)) !v0
+           !cldfra_rh0    = min(one, max(zero, 0.55*tanh((rh(k)-0.99)/0.012)+half)) !v1
+           cldfra_rh0    = min(one, max(zero, 0.53*tanh((rh(k)-0.992)/0.012)+half))
+           !cldfra_rh1    = min(one, max(zero, 0.55*tanh((rh(k)-0.955)/0.055)+half)) !v0
+           !cldfra_rh1    = min(one, max(zero, 0.56*tanh((rh(k)-0.96)/0.050)+half)) !v1
+           cldfra_rh1    = min(one, max(zero, 0.56*tanh((rh(k)-0.964)/0.050)+half))
            cldfra_rh     = cldfra_rh0*(one-wt2) + cldfra_rh1*wt2
 
            cldfra_bl1(k) = max(cldfra_qsq, cldfra_rh)
