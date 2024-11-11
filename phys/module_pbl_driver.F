@@ -193,7 +193,8 @@ CONTAINS
    USE module_bl_mfshconvpbl
    USE module_bl_gbmpbl
 #if (EM_CORE==1)
-   USE module_bl_mynn_wrapper
+!   USE module_bl_mynn_wrapper
+   USE module_bl_mynnedmf_driver
    USE module_bl_eeps
    USE module_bl_keps
    USE module_bl_fogdes
@@ -1635,7 +1636,7 @@ CONTAINS
                   ims, ime, jms, jme, kms, kme, kts, kte)
               end if
 
-              CALL mynnedmf_wrapper_run(                                 &
+              CALL mynnedmf_driver(                                      &
                    &initflag=initflag,restart=restart,cycling=cycling,   &
                    &delt=dtbl,dz=dz8w,dxc=dx,znt=znt,                    &
                    &u=u_phy,v=v_phy,w=w,th=th_phy,qv=qv_curr,            &
