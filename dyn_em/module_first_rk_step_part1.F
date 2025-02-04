@@ -1212,6 +1212,8 @@ BENCH_START(pbl_driver_tim)
      &        ,bl_mynn_edmf_mom=config_flags%bl_mynn_edmf_mom             &
      &        ,bl_mynn_edmf_tke=config_flags%bl_mynn_edmf_tke             &
      &        ,bl_mynn_mixscalars=config_flags%bl_mynn_mixscalars         &
+     &        ,bl_mynn_mixaerosols=config_flags%bl_mynn_mixaerosols       &
+     &        ,bl_mynn_mixnumcon=config_flags%bl_mynn_mixnumcon           &
      &        ,bl_mynn_output=config_flags%bl_mynn_output                 &
      &        ,bl_mynn_cloudmix=config_flags%bl_mynn_cloudmix             &
      &        ,bl_mynn_mixqt=config_flags%bl_mynn_mixqt                   &
