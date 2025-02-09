@@ -1755,7 +1755,7 @@ CONTAINS
 
            !fill scalar_tend array. The RQN*BLTEN arrays are no longer
            !passed to module_physics_addtendc.F (for MYNN)
-           IF (bl_mynn_mixscalars .eq. 1) THEN
+           IF (bl_mynn_mixnumcon .eq. 1) THEN
               IF (PRESENT( qni_curr ) .AND. Flag_qni) THEN
                 !print*,"Updating qni after mynn-edmf",P_QNI
                 DO j=j_start(ij),j_end(ij)
@@ -1776,6 +1776,8 @@ CONTAINS
                 enddo
                 enddo
               ENDIF
+           endif
+           if (bl_mynn_mixaerosols) then
               IF (PRESENT( qnwfa_curr ) .AND. Flag_qnwfa) THEN
                 !print*,"Updating qnwfa after mynn-edmf",P_QNWFA
                 DO j=j_start(ij),j_end(ij)
@@ -1806,7 +1808,7 @@ CONTAINS
                 enddo
                 enddo
               ENDIF
-           ENDIF
+           endif
 
         CASE (EEPSSCHEME)
 
