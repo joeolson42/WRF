@@ -1134,6 +1134,8 @@ state   real   det_sqv3D       ikj     misc        1         -      -         "d
 state   real   maxMF            ij     misc        1         -      h         "maxMF"            "Maximum mass-flux (neg:dry, pos:moist)""m/s * area"
 state   real   maxwidth         ij     misc        1         -      h         "maxwidth"         "Maximum plume width"                   "m"
 state   real   ztop_plume       ij     misc        1         -      h         "ztop_plume"       "Height of tallest plume"               "m"
+state   real   excess_h         ij     misc        1         -      h         "excess_h"         "Max heat excess of plume initialization" "K"
+state   real   excess_q         ij     misc        1         -      h         "excess_q"         "Max moisture excess of plume initialization" "kg/kg"
 
 #FogDES variables
 state   real   fgdp             ij     misc        1         -      -        "fgdp"                "Accumulated fog deposition"    "mm"
@@ -3145,8 +3147,8 @@ package   kepsscheme     bl_pbl_physics==17          -             scalar:tke_ad
 package   mrfscheme      bl_pbl_physics==99          -             -
 
 package   tkebudget      tke_budget==1               -             state:qSHEAR,qBUOY,qDISS,qWT,dqke
-package   mynn_dmp_edmf1 bl_mynn_edmf==1             -             state:ztop_plume,maxmf,maxwidth
-package   mynn_dmp_edmf2 bl_mynn_edmf==2             -             state:ztop_plume,maxmf,maxwidth
+package   mynn_dmp_edmf1 bl_mynn_edmf==1             -             state:ztop_plume,maxmf,maxwidth,excess_h,excess_q
+package   mynn_dmp_edmf2 bl_mynn_edmf==2             -             state:ztop_plume,maxmf,maxwidth,excess_h,excess_q
 package   mynn_3Doutput1 bl_mynn_output==1           -             state:edmf_a,edmf_w,edmf_thl,edmf_qt,edmf_ent,edmf_qc,sub_thl3D,sub_sqv3D,det_thl3D,det_sqv3D
 package   mynn_3Doutput2 bl_mynn_output==2           -             state:edmf_a,edmf_w,edmf_thl,edmf_qt,edmf_ent,edmf_qc,sub_thl3D,sub_sqv3D,det_thl3D,det_sqv3D
 package   pbl_cloud      icloud_bl==1                -             state:cldfra_bl,qc_bl,qi_bl

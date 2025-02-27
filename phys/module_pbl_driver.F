@@ -54,7 +54,7 @@ CONTAINS
                  ,sub_thl3D,sub_sqv3D                              &
                  ,det_thl3D,det_sqv3D                              &
                  ,vdfg                                             &
-                 ,maxwidth,maxMF,ztop_plume                        &
+                 ,maxwidth,maxMF,ztop_plume,excess_h,excess_q      &
                  ,spp_pbl,pattern_spp_pbl                          &
               ! EEPS
                  ,pek,pep,pek_adv,pep_adv                          &
@@ -589,7 +589,7 @@ CONTAINS
         &    INTENT(INOUT)::                               vdfg
 
    REAL, OPTIONAL, DIMENSION( ims:ime , jms:jme ),              &
-        &    INTENT(OUT) ::           maxwidth,maxMF,ztop_plume
+        &  INTENT(OUT) :: maxwidth,maxMF,ztop_plume,excess_h,excess_q
 
     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),     &
            INTENT(INOUT) ::         qnwfa_curr,qnifa_curr,qnbca_curr
@@ -1679,6 +1679,7 @@ CONTAINS
                    &det_thl3D=det_thl3D,det_sqv3D=det_sqv3D,             &
                    &maxwidth=maxwidth,maxMF=maxMF,                       &
                    &ztop_plume=ztop_plume,                               &
+                   &excess_h=excess_h,excess_q=excess_q,                 &
                    &RTHRATEN=RTHRATEN,                                   &
                    &bl_mynn_tkeadvect=bl_mynn_tkeadvect,                 &
                    &tke_budget=tke_budget,                               &
