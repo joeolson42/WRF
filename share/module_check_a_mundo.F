@@ -566,7 +566,8 @@
          IF ( .NOT. model_config_rec % grid_allowed(i) ) CYCLE
          IF ( model_config_rec % shcu_physics(i) == dengshcuscheme .AND. &
               (model_config_rec % bl_pbl_physics(i) /= myjpblscheme .AND. &
-               model_config_rec % bl_pbl_physics(i) /= mynnpblscheme ) ) THEN
+               model_config_rec % bl_pbl_physics(i) /= mynnpblscheme .AND. &
+               model_config_rec % bl_pbl_physics(i) /= mynnpblschemehrrr) ) THEN
             wrf_err_message = '--- ERROR: Deng shallow convection can only work with MYJ or MYNN (with bl_mynn_edmf off) PBL '
             CALL wrf_message ( wrf_err_message )
             wrf_err_message = '--- ERROR: Fix shcu_physics or bl_pbl_physics in namelist.input.'
@@ -1717,7 +1718,8 @@
          IF ( model_config_rec%shcu_physics(i) .EQ. GRIMSSHCUSCHEME ) THEN
             IF ( (model_config_rec%bl_pbl_physics(i) .EQ. YSUSCHEME) .OR. &
                  (model_config_rec%bl_pbl_physics(i) .EQ. SHINHONGSCHEME) .OR. &
-                 (model_config_rec%bl_pbl_physics(i) .EQ. MYNNPBLSCHEME ) ) THEN
+                 (model_config_rec%bl_pbl_physics(i) .EQ. MYNNPBLSCHEME ) .OR. &
+                 (model_config_rec%bl_pbl_physics(i) .EQ. MYNNPBLSCHEMEHRRR )) THEN
                !NO PROBLEM
             ELSE
                model_config_rec%shcu_physics(i) = 0
@@ -1737,7 +1739,8 @@
 
       DO i = 1, model_config_rec % max_dom
          IF ( .NOT. model_config_rec % grid_allowed(i) ) CYCLE
-         IF ( ( model_config_rec % bl_pbl_physics(i) .NE. MYNNPBLSCHEME  ) ) THEN
+         IF ( ( model_config_rec % bl_pbl_physics(i) .NE. MYNNPBLSCHEME  ) .AND. &
+         ( model_config_rec % bl_pbl_physics(i) .NE. MYNNPBLSCHEMEHRRR) ) THEN
               model_config_rec % bl_mynn_edmf(i) = 0
               model_config_rec % bl_mynn_output(i) = 0
          END IF
@@ -1769,7 +1772,8 @@
       DO i = 1, model_config_rec % max_dom
          IF ( .NOT. model_config_rec % grid_allowed(i) ) CYCLE
          IF ( model_config_rec%icloud_bl .eq. 1) THEN
-           IF ( model_config_rec%bl_pbl_physics(i) .EQ. MYNNPBLSCHEME ) THEN
+           IF ( (model_config_rec%bl_pbl_physics(i) .EQ. MYNNPBLSCHEME) .OR. &
+            (model_config_rec%bl_pbl_physics(i) .EQ. MYNNPBLSCHEMEHRRR)) THEN
               !CORRECTLY CONFIGURED
            ELSE
               model_config_rec%icloud_bl = 0
@@ -2477,7 +2481,8 @@
       oops = 0
       DO i = 1, model_config_rec % max_dom
          IF ( .NOT. model_config_rec % grid_allowed(i) ) CYCLE
-         IF ((model_config_rec%bl_pbl_physics(i) .EQ. MYNNPBLSCHEME) ) THEN
+         IF ((model_config_rec%bl_pbl_physics(i) .EQ. MYNNPBLSCHEME) .OR. &
+          (model_config_rec%bl_pbl_physics(i) .EQ. MYNNPBLSCHEMEHRRR) ) THEN
             IF ( model_config_rec%bl_mynn_mixscalars(i) .EQ. 1 ) THEN
                 model_config_rec%scalar_pblmix(i) = 0
                 oops = oops + 1
@@ -3404,7 +3409,8 @@
 #if (EM_CORE == 1)
       DO i = 1, model_config_rec % max_dom
          IF ( .NOT. model_config_rec % grid_allowed(i) ) CYCLE
-         IF ( ( model_config_rec % bl_pbl_physics(i) .NE. MYNNPBLSCHEME  ) ) THEN
+         IF ( ( model_config_rec % bl_pbl_physics(i) .NE. MYNNPBLSCHEME  ) .AND. &
+          ( model_config_rec % bl_pbl_physics(i) .NE. MYNNPBLSCHEMEHRRR ) ) THEN
             model_config_rec % bl_mynn_edmf = 0
          END IF
       ENDDO

@@ -2445,6 +2445,7 @@ rconfig   integer     irr_ph              namelist,physics      max_domains    0
 rconfig   integer     sf_surface_physics  namelist,physics	max_domains    -1      rh       "sf_surface_physics"            ""      ""
 rconfig   integer     bl_pbl_physics      namelist,physics	max_domains    -1      rh       "bl_pbl_physics"                ""      ""
 rconfig   integer     tke_budget          namelist,physics      max_domains    0       rh       "tke_budget"                    ""      ""
+rconfig   integer     bl_mynn_tkebudget   namelist,physics      max_domains    0       irh       "bl_mynn_tkebudget"             ""      ""
 rconfig   integer     ysu_topdown_pblmix  namelist,physics      1              1       rh       "ysu_topdown_pblmix"            ""      ""
 rconfig   integer     shinhong_tke_diag   namelist,physics      max_domains    0       rh       "shinhong_tke_diag"             ""      ""
 rconfig   logical     bl_mynn_tkeadvect   namelist,physics      max_domains    .false.  rh      "bl_mynn_tkeadvect"             ""      ""
@@ -3132,6 +3133,7 @@ package   myjpblscheme   bl_pbl_physics==2           -             state:tke_pbl
 package   gfsscheme      bl_pbl_physics==3           -             -
 package   qnsepblscheme  bl_pbl_physics==4           -             state:tke_pbl,el_pbl,massflux_EDKF,entr_EDKF,detr_EDKF,thl_up,thv_up,rv_up,rt_up,rc_up,u_up,v_up,frac_up,rc_mf
 package   mynnpblscheme  bl_pbl_physics==5           -             scalar:qke_adv;state:qke,sh3d,sm3d,tsq,qsq,cov,el_pbl,tke_pbl
+package   mynnpblschemehrrr    bl_pbl_physics==6           -             scalar:qke_adv;state:qke,sh3d,tsq,qsq,cov,el_pbl
 package   acmpblscheme   bl_pbl_physics==7           -             -
 package   boulacscheme   bl_pbl_physics==8           -             state:el_pbl,tke_pbl,wu_tur,wv_tur,wt_tur,wq_tur
 package   camuwpblscheme bl_pbl_physics==9           -             state:tauresx2d,tauresy2d,tpert2d,qpert2d,wpert2d,tke_pbl,smaw3d,wsedl3d,turbtype3d
@@ -3143,6 +3145,7 @@ package   kepsscheme     bl_pbl_physics==17          -             scalar:tke_ad
 package   mrfscheme      bl_pbl_physics==99          -             -
 
 package   tkebudget      tke_budget==1               -             state:qSHEAR,qBUOY,qDISS,qWT,dqke
+package   mynn_tkebudget bl_mynn_tkebudget==1        -             state:qSHEAR,qBUOY,qDISS,qWT,dqke
 package   mynn_dmp_edmf  bl_mynn_edmf==1             -             state:ztop_plume,maxmf,maxwidth
 package   mynn_3Doutput1 bl_mynn_output==1           -             state:edmf_a,edmf_w,edmf_thl,edmf_qt,edmf_ent,edmf_qc,sub_thl3D,sub_sqv3D,det_thl3D,det_sqv3D
 package   mynn_3Doutput2 bl_mynn_output==2           -             state:edmf_a,edmf_w,edmf_thl,edmf_qt,edmf_ent,edmf_qc,sub_thl3D,sub_sqv3D,det_thl3D,det_sqv3D
@@ -3152,6 +3155,7 @@ package   sms_3dtke      km_opt==5                   -             state:gamu,ga
 
 # dfi
 package   mynnpblscheme_dfi bl_pbl_physics_dfi==5   -             dfi_scalar:dfi_qke_adv
+package   mynnpblschemehrrr_dfi bl_pbl_physics_dfi==6   -             dfi_scalar:dfi_qke_adv
 
 package   nocuscheme     cu_physics==0               -             -
 package   kfetascheme    cu_physics==1               -             state:w0avg

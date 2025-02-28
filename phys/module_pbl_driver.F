@@ -42,6 +42,7 @@ CONTAINS
                  ,qke_adv,bl_mynn_tkeadvect                        & !ACF for QKE advection
                  ,tsq,qsq,cov,rmol,ch,qcg,grav_settling            & 
                  ,dqke,qWT,qSHEAR,qBUOY,qDISS,tke_budget           &
+                 ,bl_mynn_tkebudget                                &
                  ,bl_mynn_closure,bl_mynn_cloudpdf                 &
                  ,bl_mynn_mixlength                                &
                  ,icloud_bl,qc_bl,qi_bl,cldfra_bl                  &
@@ -54,6 +55,7 @@ CONTAINS
                  ,det_thl3D,det_sqv3D                              &
                  ,vdfg                                             &
                  ,maxwidth,maxMF,ztop_plume                        &
+                 ,nupdraft,ktop_plume,kbot_shallow,mf_at_base      &
                  ,spp_pbl,pattern_spp_pbl                          &
               ! EEPS
                  ,pek,pep,pek_adv,pep_adv                          &
@@ -151,7 +153,7 @@ CONTAINS
 #if (EM_CORE==1)
    USE module_state_description, ONLY :                            &
                    YSUSCHEME,MRFSCHEME,GFSSCHEME,MYJPBLSCHEME,ACMPBLSCHEME,&
-                   QNSEPBLSCHEME,MYNNPBLSCHEME,BOULACSCHEME,         &
+                   QNSEPBLSCHEME,MYNNPBLSCHEME,MYNNPBLSCHEMEHRRR,BOULACSCHEME,         &
                    CAMUWPBLSCHEME,BEPSCHEME,BEP_BEMSCHEME,MYJSFCSCHEME, &
                    FITCHSCHEME,SHINHONGSCHEME,                       &
                    TEMFPBLSCHEME,GBMPBLSCHEME,EEPSSCHEME,KEPSSCHEME,                  &
@@ -195,6 +197,7 @@ CONTAINS
 #if (EM_CORE==1)
 !   USE module_bl_mynn_wrapper
    USE module_bl_mynnedmf_driver
+   USE module_bl_mynn
    USE module_bl_eeps
    USE module_bl_keps
    USE module_bl_fogdes
@@ -574,7 +577,8 @@ CONTAINS
                                      bl_mynn_cloudmix,         &
                                      bl_mynn_mixqt,            &
                                      icloud_bl,                &
-                                     tke_budget
+                                     tke_budget,               &
+                                     bl_mynn_tkebudget
 
    REAL, OPTIONAL, INTENT(IN)  :: bl_mynn_closure
 
@@ -585,8 +589,13 @@ CONTAINS
    REAL, DIMENSION( ims:ime , jms:jme ), OPTIONAL,              &
         &    INTENT(INOUT)::                               vdfg
 
+   INTEGER, OPTIONAL, DIMENSION( ims:ime , jms:jme ),           &
+        &    INTENT(OUT) ::                           nupdraft, &
+                                                    ktop_plume, &
+                                                  kbot_shallow
    REAL, OPTIONAL, DIMENSION( ims:ime , jms:jme ),              &
-        &    INTENT(OUT) ::           maxwidth,maxMF,ztop_plume
+        &    INTENT(OUT) ::           maxwidth,maxMF,ztop_plume,&
+                                      mf_at_base
 
     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),     &
            INTENT(INOUT) ::         qnwfa_curr,qnifa_curr,qnbca_curr
@@ -1797,6 +1806,180 @@ CONTAINS
                 DO k=kts,kte
                 DO i=i_start(ij),i_end(ij)
                    scalar_tend(i,k,j,P_QNBCA)=RQNBCABLTEN(i,k,j)
+                enddo
+                enddo
+                enddo
+              ENDIF
+           ENDIF
+
+        CASE (MYNNPBLSCHEMEHRRR)
+
+           IF ( PRESENT( qv_curr )  .AND. PRESENT( qc_curr )  .AND. &
+                PRESENT( rqvblten ) .AND. PRESENT( rqcblten ) .AND. &
+                PRESENT( qi_curr ) .AND. PRESENT( rqiblten ) .AND.  &
+                PRESENT( rqniblten ) .AND. PRESENT( qni_curr ) .AND.&
+                PRESENT(qke) .AND. PRESENT(tsq) .AND.               &
+                PRESENT(qsq) .AND. PRESENT(cov) .AND.               &
+                PRESENT(rmol) .AND.                                 &
+                PRESENT(qcg) .AND. PRESENT(ch) .AND.                &
+                PRESENT(grav_settling) .AND.                        &
+                PRESENT(bl_mynn_tkebudget) .AND.                    &
+!ACF,JOE-QKE advection
+                PRESENT(qke_adv) .AND. PRESENT(bl_mynn_tkeadvect) .AND.&
+!ACF,JOE-end
+                PRESENT(vdfg) ) THEN
+
+              CALL wrf_debug(100,'in MYNNPBL')
+
+              IF (itimestep==1) THEN
+                 initflag=1
+              ELSE
+                 initflag=0
+              ENDIF
+              
+              CALL  mynn_bl_driver(&
+                   &initflag=initflag,restart=restart,cycling=cycling,   &
+                   &grav_settling=grav_settling,                         &
+                   &delt=dtbl,dz=dz8w,dx=dx,znt=znt,                     &
+                   &u=u_phy,v=v_phy,w=w,th=th_phy,qv=qv_curr,            &
+                   &qc=qc_curr,qi=qi_curr,                               &
+                   &qnc=qnc_curr,qni=qni_curr,                           &
+                   &QNWFA=qnwfa_curr,QNIFA=qnifa_curr,                   &
+                   &p=p_phy,exner=pi_phy,rho=rho,T3D=t_phy,              &
+                   &xland=xland,ts=tsk,qsfc=qsfc,qcg=qcg,ps=psfc,        &
+                   &ust=ust,ch=ch,hfx=hfx,qfx=qfx,rmol=rmol,wspd=wspd,   &
+                   &uoce=uoce,voce=voce,                                 & !Ocean currents
+                   &vdfg=vdfg,                                           & !Katata -added
+                   &Qke=qke,                                             &
+                   !&TKE_PBL=tke_pbl,                                     &
+                   &Sh3d=Sh3d,                                           &
+                   &qke_adv=qke_adv,bl_mynn_tkeadvect=bl_mynn_tkeadvect, &
+#if (WRF_CHEM == 1)
+                   &chem3d=chem,vd3d=vd,nchem=nchem,kdvel=kdvel,         & ! WA 7/31/15
+                   &ndvel=ndvel,num_vert_mix=num_vert_mix,               &
+#endif
+                   &Tsq=tsq,Qsq=qsq,Cov=cov,                             &
+                   &RUBLTEN=rublten,RVBLTEN=rvblten,RTHBLTEN=rthblten,   &
+                   &RQVBLTEN=rqvblten,RQCBLTEN=rqcblten,RQIBLTEN=rqiblten,&
+                   &RQNCBLTEN=rqncblten,RQNIBLTEN=rqniblten,             &
+                   &RQNWFABLTEN=rqnwfablten,RQNIFABLTEN=rqnifablten,     &
+                   &EXCH_H=exch_h,EXCH_M=exch_m,                         &
+                   &pblh=pblh,KPBL=KPBL                                  &
+                   &,el_pbl=el_pbl                                       &
+                   &,dqke=dqke                                           &
+                   &,qWT=qWT,qSHEAR=qSHEAR,qBUOY=qBUOY,qDISS=qDISS       &
+                   &,WSTAR=wstar,DELTA=delta                             & ! for grims shallow-cu
+                   &,bl_mynn_tkebudget=bl_mynn_tkebudget                 &
+                   &,bl_mynn_cloudpdf=bl_mynn_cloudpdf                   &
+                   &,bl_mynn_mixlength=bl_mynn_mixlength                 &
+                   &,icloud_bl=icloud_bl,qc_bl=qc_bl                     &
+                   &,cldfra_bl=cldfra_bl                                 &
+                   &,bl_mynn_edmf=bl_mynn_edmf                           &
+                   &,bl_mynn_edmf_mom=bl_mynn_edmf_mom                   &
+                   &,bl_mynn_edmf_tke=bl_mynn_edmf_tke                   &
+                   &,bl_mynn_mixscalars=bl_mynn_mixscalars               &
+                   &,bl_mynn_cloudmix=bl_mynn_cloudmix                   &
+                   &,bl_mynn_mixqt=bl_mynn_mixqt                         &
+                   &,edmf_a=edmf_a,edmf_w=edmf_w,edmf_qt=edmf_qt         &
+                   &,edmf_thl=edmf_thl,edmf_ent=edmf_ent,edmf_qc=edmf_qc &
+                   &,nupdraft=nupdraft,maxMF=maxMF                       &
+                   &,ktop_plume=ktop_plume                               &
+                   &,kbot_shallow=kbot_shallow,mf_at_base=mf_at_base     &
+                   &,spp_pbl=spp_pbl,pattern_spp_pbl=pattern_spp_pbl     &
+                   &,RTHRATEN=RTHRATEN                                   &
+                   &,FLAG_QC=flag_qc,FLAG_QI=flag_qi                     &
+                   &,FLAG_QNC=flag_qnc,FLAG_QNI=flag_qni                 &
+                   &,FLAG_QNWFA=flag_qnwfa,FLAG_QNIFA=flag_qnifa         &
+                   ,IDS=ids,IDE=ide,JDS=jds,JDE=jde,KDS=kds,KDE=kde      &
+                   ,IMS=ims,IME=ime,JMS=jms,JME=jme,KMS=kms,KME=kme      &
+                   ,ITS=its,ITE=ite,JTS=jts,JTE=jte,KTS=kts,KTE=kte      &
+                   )
+           ELSE
+               WRITE ( message , FMT = '(A,20(L1,1X))' )            &
+                 'present: '//                                      &
+                 'qv_curr, '//                                      &
+                 'qc_curr, '//                                      &
+                 'qi_curr, '//                                      &
+                 'qni_curr, '//                                     &
+                 'rqvblten, '//                                     &
+                 'rqcblten, '//                                     &
+                 'rqiblten, '//                                     &
+                 'rqniblten, '//                                    &
+                 'qke, '//                                          &
+                 'tsq, '//                                          &
+                 'qsq, '//                                          &
+                 'cov, '//                                          &
+                 'rmol, '//                                         &
+                 'qcg, '//                                          &
+                 'ch, '//                                           &
+                 'grav_settling, '//                                &
+                 'bl_mynn_tkebudget, '//                            &
+                 'qke_adv, '//                                      &
+                 'bl_mynn_tkeadvect, '//                            &
+                 'vdfg = ' ,                                        &
+                  PRESENT( qv_curr ) ,                              &
+                  PRESENT( qc_curr ) ,                              &
+                  PRESENT( qi_curr ) ,                              &
+                  PRESENT( qni_curr ) ,                             &
+                  PRESENT( rqvblten ) ,                             &
+                  PRESENT( rqcblten ) ,                             &
+                  PRESENT( rqiblten ) ,                             &
+                  PRESENT( rqniblten ) ,                            &
+                  PRESENT( qke      ) ,                             &
+                  PRESENT( tsq      ) ,                             &
+                  PRESENT( qsq      ) ,                             &
+                  PRESENT( cov      ) ,                             &
+                  PRESENT( rmol     ) ,                             &
+                  PRESENT( qcg      ) ,                             &
+                  PRESENT( ch       ) ,                             &
+                  PRESENT( grav_settling),                          &
+                  PRESENT( bl_mynn_tkebudget) ,                     &
+                  PRESENT( qke_adv  ) ,                             &
+                  PRESENT( bl_mynn_tkeadvect) ,                     &
+                  PRESENT( vdfg )
+               CALL wrf_debug(0,message)
+              CALL wrf_error_fatal('Lack arguments to call MYNN pbl')
+           ENDIF
+
+           !fill scalar_tend array. The RQN*BLTEN arrays are no longer
+           !passed to module_physics_addtendc.F (for MYNN)
+           IF (bl_mynn_mixscalars .eq. 1) THEN
+              IF (PRESENT( qni_curr ) .AND. Flag_qni) THEN
+                !print*,"Updating qni after mynn-edmf",P_QNI
+                DO j=j_start(ij),j_end(ij)
+                DO k=kts,kte 
+                DO i=i_start(ij),i_end(ij)
+                   scalar_tend(i,k,j,P_QNI)=RQNIBLTEN(i,k,j)
+                enddo
+                enddo
+                enddo
+              ENDIF
+              IF (PRESENT( qnc_curr ) .AND. Flag_qnc) THEN
+                !print*,"Updating qnc after mynn-edmf",P_QNC
+                DO j=j_start(ij),j_end(ij)
+                DO k=kts,kte
+                DO i=i_start(ij),i_end(ij)
+                   scalar_tend(i,k,j,P_QNC)=RQNCBLTEN(i,k,j)
+                enddo
+                enddo
+                enddo
+              ENDIF
+              IF (PRESENT( qnwfa_curr ) .AND. Flag_qnwfa) THEN
+                !print*,"Updating qnwfa after mynn-edmf",P_QNWFA
+                DO j=j_start(ij),j_end(ij)
+                DO k=kts,kte
+                DO i=i_start(ij),i_end(ij)
+                   scalar_tend(i,k,j,P_QNWFA)=RQNWFABLTEN(i,k,j)
+                enddo
+                enddo
+                enddo
+              ENDIF
+              IF (PRESENT( qnifa_curr ) .AND. Flag_qnifa) THEN
+                !print*,"Updating qnifa after mynn-edmf",P_QNIFA
+                DO j=j_start(ij),j_end(ij)
+                DO k=kts,kte
+                DO i=i_start(ij),i_end(ij)
+                   scalar_tend(i,k,j,P_QNIFA)=RQNIFABLTEN(i,k,j)
                 enddo
                 enddo
                 enddo
