@@ -1829,7 +1829,7 @@ CONTAINS
 !ACF,JOE-end
                 PRESENT(vdfg) ) THEN
 
-              CALL wrf_debug(100,'in MYNNPBL')
+              CALL wrf_debug(100,'in MYNNPBLHRRR')
 
               IF (itimestep==1) THEN
                  initflag=1

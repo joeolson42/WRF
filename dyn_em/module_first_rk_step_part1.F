@@ -1204,7 +1204,7 @@ BENCH_START(pbl_driver_tim)
      &        ,DQKE=grid%dqke,QWT=grid%qWT                                &
      &        ,QSHEAR=grid%qSHEAR,QBUOY=grid%qBUOY,QDISS=grid%qDISS       &
      &        ,tke_budget=config_flags%tke_budget                         &
-     &        ,bl_mynn_tkebudget=config_flags%tke_budget                  &
+     &        ,bl_mynn_tkebudget=config_flags%bl_mynn_tkebudget           &
      &        ,bl_mynn_cloudpdf=config_flags%bl_mynn_cloudpdf             &
      &        ,bl_mynn_mixlength=config_flags%bl_mynn_mixlength           &
      &        ,icloud_bl=config_flags%icloud_bl                           &
@@ -1226,6 +1226,8 @@ BENCH_START(pbl_driver_tim)
      &        ,qcg=grid%qcg, grav_settling=config_flags%grav_settling     &
 !    &        ,K_m=grid%K_m, K_h=grid%K_h, K_q=grid%K_q                   &
      &        ,vdfg=grid%vdfg,maxwidth=grid%maxwidth,maxMF=grid%maxmf     &
+     &        ,ktop_plume=grid%ktop_plume,nupdraft=grid%nupdraft          & 
+     &        ,kbot_shallow=grid%kbot_shallow,mf_at_base=grid%mf_at_base  &
      &        ,ztop_plume=grid%ztop_plume                                 &
      &        ,spp_pbl=config_flags%spp_pbl                               &
      &        ,pattern_spp_pbl=grid%pattern_spp_pbl                       &
