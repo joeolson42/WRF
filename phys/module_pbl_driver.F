@@ -47,7 +47,8 @@ CONTAINS
                  ,bl_mynn_mixlength                                &
                  ,icloud_bl,qc_bl,qi_bl,cldfra_bl                  &
                  ,bl_mynn_edmf,bl_mynn_edmf_mom,bl_mynn_edmf_tke   &
-                 ,bl_mynn_mixscalars,bl_mynn_output                &
+                 ,bl_mynn_mixscalars,bl_mynn_mixaerosols           &
+                 ,bl_mynn_mixnumcon,bl_mynn_output                 &
                  ,bl_mynn_cloudmix,bl_mynn_mixqt                   &
                  ,edmf_a,edmf_w,edmf_thl                           &
                  ,edmf_qt,edmf_ent,edmf_qc                         &
@@ -56,6 +57,7 @@ CONTAINS
                  ,vdfg                                             &
                  ,maxwidth,maxMF,ztop_plume                        &
                  ,nupdraft,ktop_plume,kbot_shallow,mf_at_base      &
+                 ,excess_h,excess_q      &
                  ,spp_pbl,pattern_spp_pbl                          &
               ! EEPS
                  ,pek,pep,pek_adv,pep_adv                          &
@@ -573,6 +575,8 @@ CONTAINS
                                      bl_mynn_edmf_mom,         &
                                      bl_mynn_edmf_tke,         &
                                      bl_mynn_mixscalars,       &
+                                     bl_mynn_mixaerosols,      &
+                                     bl_mynn_mixnumcon,        &
                                      bl_mynn_output,           &
                                      bl_mynn_cloudmix,         &
                                      bl_mynn_mixqt,            &
@@ -595,7 +599,7 @@ CONTAINS
                                                   kbot_shallow
    REAL, OPTIONAL, DIMENSION( ims:ime , jms:jme ),              &
         &    INTENT(OUT) ::           maxwidth,maxMF,ztop_plume,&
-                                      mf_at_base
+                                      mf_at_base,excess_h,excess_q
 
     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),     &
            INTENT(INOUT) ::         qnwfa_curr,qnifa_curr,qnbca_curr
@@ -1685,6 +1689,7 @@ CONTAINS
                    &det_thl3D=det_thl3D,det_sqv3D=det_sqv3D,             &
                    &maxwidth=maxwidth,maxMF=maxMF,                       &
                    &ztop_plume=ztop_plume,                               &
+                   &excess_h=excess_h,excess_q=excess_q,                 &
                    &RTHRATEN=RTHRATEN,                                   &
                    &bl_mynn_tkeadvect=bl_mynn_tkeadvect,                 &
                    &tke_budget=tke_budget,                               &
@@ -1695,6 +1700,8 @@ CONTAINS
                    &bl_mynn_edmf_mom=bl_mynn_edmf_mom,                   &
                    &bl_mynn_edmf_tke=bl_mynn_edmf_tke,                   &
                    &bl_mynn_mixscalars=bl_mynn_mixscalars,               &
+                   &bl_mynn_mixaerosols=bl_mynn_mixaerosols,             &
+                   &bl_mynn_mixnumcon=bl_mynn_mixnumcon,                 &
                    &bl_mynn_output=bl_mynn_output,                       &
                    &bl_mynn_cloudmix=bl_mynn_cloudmix,                   &
                    &bl_mynn_mixqt=bl_mynn_mixqt,                         &
@@ -1759,7 +1766,7 @@ CONTAINS
 
            !fill scalar_tend array. The RQN*BLTEN arrays are no longer
            !passed to module_physics_addtendc.F (for MYNN)
-           IF (bl_mynn_mixscalars .eq. 1) THEN
+           IF (bl_mynn_mixnumcon .eq. 1) THEN
               IF (PRESENT( qni_curr ) .AND. Flag_qni) THEN
                 !print*,"Updating qni after mynn-edmf",P_QNI
                 DO j=j_start(ij),j_end(ij)
@@ -1780,6 +1787,8 @@ CONTAINS
                 enddo
                 enddo
               ENDIF
+           endif
+           if (bl_mynn_mixaerosols) then
               IF (PRESENT( qnwfa_curr ) .AND. Flag_qnwfa) THEN
                 !print*,"Updating qnwfa after mynn-edmf",P_QNWFA
                 DO j=j_start(ij),j_end(ij)
@@ -1810,7 +1819,7 @@ CONTAINS
                 enddo
                 enddo
               ENDIF
-           ENDIF
+           endif
 
         CASE (MYNNPBLSCHEMEHRRR)
 

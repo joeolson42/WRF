@@ -2481,16 +2481,14 @@
       oops = 0
       DO i = 1, model_config_rec % max_dom
          IF ( .NOT. model_config_rec % grid_allowed(i) ) CYCLE
-         IF ((model_config_rec%bl_pbl_physics(i) .EQ. MYNNPBLSCHEME) .OR. &
-          (model_config_rec%bl_pbl_physics(i) .EQ. MYNNPBLSCHEMEHRRR) ) THEN
-            IF ( model_config_rec%bl_mynn_mixscalars(i) .EQ. 1 ) THEN
-                model_config_rec%scalar_pblmix(i) = 0
-                oops = oops + 1
-            END IF
+         IF ((model_config_rec%bl_pbl_physics(i) .EQ. MYNNPBLSCHEME)  .OR. &
+          (model_config_rec%bl_pbl_physics(i) .EQ. MYNNPBLSCHEMEHRRR)  ) THEN
+            model_config_rec%scalar_pblmix(i) = 0
+            oops = oops + 1
          END IF
       ENDDO      ! Loop over domains
       IF ( oops .GT. 0 ) THEN
-         wrf_err_message = '--- WARNING: MYNN is set to mix scalars, turning off scalar_pblmix'
+         wrf_err_message = '--- WARNING: MYNN can regulate scalar mixing, turning off scalar_pblmix'
          CALL wrf_message ( wrf_err_message )
       END IF
 
