@@ -42,7 +42,6 @@ CONTAINS
                  ,qke_adv,bl_mynn_tkeadvect                        & !ACF for QKE advection
                  ,tsq,qsq,cov,rmol,ch,qcg,grav_settling            & 
                  ,dqke,qWT,qSHEAR,qBUOY,qDISS,tke_budget           &
-                 ,bl_mynn_tkebudget                                &
                  ,bl_mynn_closure,bl_mynn_cloudpdf                 &
                  ,bl_mynn_mixlength                                &
                  ,icloud_bl,qc_bl,qi_bl,cldfra_bl                  &
@@ -581,8 +580,7 @@ CONTAINS
                                      bl_mynn_cloudmix,         &
                                      bl_mynn_mixqt,            &
                                      icloud_bl,                &
-                                     tke_budget,               &
-                                     bl_mynn_tkebudget
+                                     tke_budget
 
    REAL, OPTIONAL, INTENT(IN)  :: bl_mynn_closure
 
@@ -1832,7 +1830,7 @@ CONTAINS
                 PRESENT(rmol) .AND.                                 &
                 PRESENT(qcg) .AND. PRESENT(ch) .AND.                &
                 PRESENT(grav_settling) .AND.                        &
-                PRESENT(bl_mynn_tkebudget) .AND.                    &
+                PRESENT(tke_budget) .AND.                           &
 !ACF,JOE-QKE advection
                 PRESENT(qke_adv) .AND. PRESENT(bl_mynn_tkeadvect) .AND.&
 !ACF,JOE-end
@@ -1878,7 +1876,7 @@ CONTAINS
                    &,dqke=dqke                                           &
                    &,qWT=qWT,qSHEAR=qSHEAR,qBUOY=qBUOY,qDISS=qDISS       &
                    &,WSTAR=wstar,DELTA=delta                             & ! for grims shallow-cu
-                   &,bl_mynn_tkebudget=bl_mynn_tkebudget                 &
+                   &,bl_mynn_tkebudget=tke_budget                        &
                    &,bl_mynn_cloudpdf=bl_mynn_cloudpdf                   &
                    &,bl_mynn_mixlength=bl_mynn_mixlength                 &
                    &,icloud_bl=icloud_bl,qc_bl=qc_bl                     &
@@ -1942,7 +1940,7 @@ CONTAINS
                   PRESENT( qcg      ) ,                             &
                   PRESENT( ch       ) ,                             &
                   PRESENT( grav_settling),                          &
-                  PRESENT( bl_mynn_tkebudget) ,                     &
+                  PRESENT( tke_budget) ,                            &
                   PRESENT( qke_adv  ) ,                             &
                   PRESENT( bl_mynn_tkeadvect) ,                     &
                   PRESENT( vdfg )

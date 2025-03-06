@@ -1204,7 +1204,6 @@ BENCH_START(pbl_driver_tim)
      &        ,DQKE=grid%dqke,QWT=grid%qWT                                &
      &        ,QSHEAR=grid%qSHEAR,QBUOY=grid%qBUOY,QDISS=grid%qDISS       &
      &        ,tke_budget=config_flags%tke_budget                         &
-     &        ,bl_mynn_tkebudget=config_flags%bl_mynn_tkebudget           &
      &        ,bl_mynn_cloudpdf=config_flags%bl_mynn_cloudpdf             &
      &        ,bl_mynn_mixlength=config_flags%bl_mynn_mixlength           &
      &        ,icloud_bl=config_flags%icloud_bl                           &
