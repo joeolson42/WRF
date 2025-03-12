@@ -45,7 +45,8 @@ CONTAINS
                  ,bl_mynn_closure,bl_mynn_cloudpdf                 &
                  ,bl_mynn_mixlength                                &
                  ,icloud_bl,qc_bl,qi_bl,cldfra_bl                  &
-                 ,bl_mynn_edmf,bl_mynn_edmf_mom,bl_mynn_edmf_tke   &
+                 ,bl_mynn_edmf,bl_mynn_edmf_dd                     &
+                 ,bl_mynn_edmf_mom,bl_mynn_edmf_tke                &
                  ,bl_mynn_mixscalars,bl_mynn_mixaerosols           &
                  ,bl_mynn_mixnumcon,bl_mynn_output                 &
                  ,bl_mynn_cloudmix,bl_mynn_mixqt                   &
@@ -571,6 +572,7 @@ CONTAINS
                                      bl_mynn_cloudpdf,         &
                                      bl_mynn_mixlength,        &
                                      bl_mynn_edmf,             &
+                                     bl_mynn_edmf_dd,          &
                                      bl_mynn_edmf_mom,         &
                                      bl_mynn_edmf_tke,         &
                                      bl_mynn_mixscalars,       &
@@ -1695,6 +1697,7 @@ CONTAINS
                    &bl_mynn_mixlength=bl_mynn_mixlength,                 &
                    &icloud_bl=icloud_bl,                                 &
                    &bl_mynn_edmf=bl_mynn_edmf,                           &
+                   &bl_mynn_edmf_dd=bl_mynn_edmf_dd,                     &
                    &bl_mynn_edmf_mom=bl_mynn_edmf_mom,                   &
                    &bl_mynn_edmf_tke=bl_mynn_edmf_tke,                   &
                    &bl_mynn_mixscalars=bl_mynn_mixscalars,               &
