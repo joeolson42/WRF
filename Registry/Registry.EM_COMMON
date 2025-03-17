@@ -3141,7 +3141,7 @@ package   myjpblscheme   bl_pbl_physics==2           -             state:tke_pbl
 package   gfsscheme      bl_pbl_physics==3           -             -
 package   qnsepblscheme  bl_pbl_physics==4           -             state:tke_pbl,el_pbl,massflux_EDKF,entr_EDKF,detr_EDKF,thl_up,thv_up,rv_up,rt_up,rc_up,u_up,v_up,frac_up,rc_mf
 package   mynnpblscheme  bl_pbl_physics==5           -             scalar:qke_adv;state:qke,sh3d,sm3d,tsq,qsq,cov,el_pbl,tke_pbl
-package   mynnpblschemehrrr    bl_pbl_physics==6           -             scalar:qke_adv;state:qke,sh3d,tsq,qsq,cov,el_pbl
+package   mynnpblschemehrrr  bl_pbl_physics==6       -             scalar:qke_adv;state:qke,sh3d,tsq,qsq,cov,el_pbl
 package   acmpblscheme   bl_pbl_physics==7           -             -
 package   boulacscheme   bl_pbl_physics==8           -             state:el_pbl,tke_pbl,wu_tur,wv_tur,wt_tur,wq_tur
 package   camuwpblscheme bl_pbl_physics==9           -             state:tauresx2d,tauresy2d,tpert2d,qpert2d,wpert2d,tke_pbl,smaw3d,wsedl3d,turbtype3d
@@ -3163,7 +3163,7 @@ package   sms_3dtke      km_opt==5                   -             state:gamu,ga
 
 # dfi
 package   mynnpblscheme_dfi bl_pbl_physics_dfi==5   -             dfi_scalar:dfi_qke_adv
-package   mynnpblschemehrrr_dfi bl_pbl_physics_dfi==6   -             dfi_scalar:dfi_qke_adv
+package   mynnpblschemehrrr_dfi bl_pbl_physics_dfi==6   -         dfi_scalar:dfi_qke_adv
 
 package   nocuscheme     cu_physics==0               -             -
 package   kfetascheme    cu_physics==1               -             state:w0avg

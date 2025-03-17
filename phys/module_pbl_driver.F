@@ -198,8 +198,8 @@ CONTAINS
    USE module_bl_gbmpbl
 #if (EM_CORE==1)
 !   USE module_bl_mynn_wrapper
-   USE module_bl_mynnedmf_driver
-   USE module_bl_mynn
+   USE module_bl_mynnedmf_driver, only: mynnedmf_driver
+   USE module_bl_mynn, only: mynn_bl_driver
    USE module_bl_eeps
    USE module_bl_keps
    USE module_bl_fogdes
@@ -594,12 +594,14 @@ CONTAINS
         &    INTENT(INOUT)::                               vdfg
 
    INTEGER, OPTIONAL, DIMENSION( ims:ime , jms:jme ),           &
-        &    INTENT(OUT) ::                           nupdraft, &
+        &    INTENT(INOUT) ::                         nupdraft, &
                                                     ktop_plume, &
                                                   kbot_shallow
    REAL, OPTIONAL, DIMENSION( ims:ime , jms:jme ),              &
         &    INTENT(OUT) ::           maxwidth,maxMF,ztop_plume,&
-                                      mf_at_base,excess_h,excess_q
+                                              excess_h,excess_q
+   REAL, OPTIONAL, DIMENSION( ims:ime , jms:jme ),              &
+        &    INTENT(INOUT) :: mf_at_base
 
     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),     &
            INTENT(INOUT) ::         qnwfa_curr,qnifa_curr,qnbca_curr
@@ -1834,9 +1836,7 @@ CONTAINS
                 PRESENT(qcg) .AND. PRESENT(ch) .AND.                &
                 PRESENT(grav_settling) .AND.                        &
                 PRESENT(tke_budget) .AND.                           &
-!ACF,JOE-QKE advection
                 PRESENT(qke_adv) .AND. PRESENT(bl_mynn_tkeadvect) .AND.&
-!ACF,JOE-end
                 PRESENT(vdfg) ) THEN
 
               CALL wrf_debug(100,'in MYNNPBLHRRR')
@@ -1847,7 +1847,7 @@ CONTAINS
                  initflag=0
               ENDIF
               
-              CALL  mynn_bl_driver(&
+              CALL mynn_bl_driver(&
                    &initflag=initflag,restart=restart,cycling=cycling,   &
                    &grav_settling=grav_settling,                         &
                    &delt=dtbl,dz=dz8w,dx=dx,znt=znt,                     &
@@ -1882,7 +1882,7 @@ CONTAINS
                    &,bl_mynn_tkebudget=tke_budget                        &
                    &,bl_mynn_cloudpdf=bl_mynn_cloudpdf                   &
                    &,bl_mynn_mixlength=bl_mynn_mixlength                 &
-                   &,icloud_bl=icloud_bl,qc_bl=qc_bl                     &
+                   &,icloud_bl=icloud_bl,qc_bl=qc_bl,qi_bl=qi_bl         &
                    &,cldfra_bl=cldfra_bl                                 &
                    &,bl_mynn_edmf=bl_mynn_edmf                           &
                    &,bl_mynn_edmf_mom=bl_mynn_edmf_mom                   &

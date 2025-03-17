@@ -1412,7 +1412,7 @@ CONTAINS
                  ENDDO
                  ENDDO
               ENDIF
-
+              !will be converted to in-cloud in the radiation scheme
               DO j = jts,jte
               DO k = kts,kte
               DO i = its,ite

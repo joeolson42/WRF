@@ -293,6 +293,8 @@ MODULE module_bl_mynn
 
   INTEGER, PARAMETER :: kdebug=27
 
+  PRIVATE :: mym_length, mynn_tendencies, mym_condensation, mym_predict, dmp_mf
+      
 CONTAINS
 
 ! **********************************************************************
@@ -2296,7 +2298,8 @@ CONTAINS
     &            p,exner,                 &
     &            tsq, qsq, cov,           &
     &            Sh, el, bl_mynn_cloudpdf,&
-    &            qc_bl1D, cldfra_bl1D,    &
+    &            qc_bl1D, qi_bl1d,        &
+    &            cldfra_bl1D,             &
     &            PBLH1,HFX1,              &
     &            Vt, Vq, th, sgm, rmo,    &
     &            spp_pbl,rstoch_col       )
@@ -2319,7 +2322,7 @@ CONTAINS
     REAL, DIMENSION(kts:kte), INTENT(INOUT) :: vt,vq,sgm
 
     REAL, DIMENSION(kts:kte) :: qmq,alp,a,bet,b,ql,q1,cld,RH
-    REAL, DIMENSION(kts:kte), INTENT(OUT) :: qc_bl1D,cldfra_bl1D
+    REAL, DIMENSION(kts:kte), INTENT(OUT) :: qc_bl1D,qi_bl1d,cldfra_bl1D
     DOUBLE PRECISION :: t3sq, r3sq, c3sq
 
     REAL :: qsl,esat,qsat,tlk,qsat_tl,dqsl,cld0,q1k,eq1,qll,&
@@ -2596,9 +2599,12 @@ CONTAINS
            !ESTIMATED LIQUID WATER CONTENT (UNNORMALIZED)
            ql (k) = alp(k)*sgm(k)*qll
            if(cldfra_bl1D(k)>0.01 .and. ql(k)<1.E-6)ql(k)=1.E-6
-           qc_bl1D(k)=ql(k)*damp
+           !qc_bl1D(k)=ql(k)*damp
            !qc_bl1D(k)=ql(k) ! JAYMES: use this form to retain the Sommeria-Deardorff value
-       
+           !sort liq from ice, keeping hrrrv4 bug
+           qc_bl1D(k)=ql(k)*(MIN(1., MAX(0., (t-254.)/15.)))*cldfra_bl1D(k)
+           qi_bl1d(k)=ql(k)*(1. - MIN(1., MAX(0., (t-254.)/15.)))*cldfra_bl1D(k)
+      
            !now recompute estimated lwc for PBL scheme's use
            !qll IS THE NORMALIZED LIQUID WATER CONTENT (Sommeria and
            !Deardorff (1977, eq 29a). rrp = 1/(sqrt(2*pi)) = 0.3989
@@ -2708,8 +2714,10 @@ CONTAINS
 
            ! return a cloud condensate and cloud fraction for icloud_bl option:
            cldfra_bl1D(k) = cld(k)
-           qc_bl1D(k) = ql(k)
-
+!insert bug to behave like hrrrv4           qc_bl1D(k) = ql(k)
+           !sort liq from ice, keeping hrrv4 bug
+           qc_bl1D(k)=ql(k)*(MIN(1., MAX(0., (t-254.)/15.)))*cldfra_bl1D(k)
+           qi_bl1d(k)=ql(k)*(1. - MIN(1., MAX(0., (t-254.)/15.)))*cldfra_bl1D(k)
          END DO
 
       END SELECT !end cloudPDF option
@@ -2719,6 +2727,7 @@ CONTAINS
          DO k = kts,kte-1
               cldfra_bl1D(k) = 0.0
               qc_bl1D(k) = 0.0
+              qi_bl1D(k) = 0.0
          END DO
       ENDIF
 !
@@ -2727,6 +2736,7 @@ CONTAINS
       vt(kte) = vt(kte-1)
       vq(kte) = vq(kte-1)
       qc_bl1D(kte)=0.
+      qi_bl1D(kte)=0.
       cldfra_bl1D(kte)=0.
 
     RETURN
@@ -3787,7 +3797,7 @@ ENDIF
        &bl_mynn_tkebudget,              &
        &bl_mynn_cloudpdf,Sh3D,          &
        &bl_mynn_mixlength,              &
-       &icloud_bl,qc_bl,cldfra_bl,      &
+       &icloud_bl,qc_bl,qi_bl,cldfra_bl,&
        &bl_mynn_edmf,                   &
        &bl_mynn_edmf_mom,bl_mynn_edmf_tke, &
        &bl_mynn_mixscalars,             &
@@ -3896,8 +3906,8 @@ ENDIF
     REAL, DIMENSION(IMS:IME,KMS:KME,JMS:JME) :: Sh3D
 
     REAL, DIMENSION(IMS:IME,KMS:KME,JMS:JME), INTENT(inout) :: &
-         &qc_bl,cldfra_bl
-    REAL, DIMENSION(KTS:KTE) :: qc_bl1D,cldfra_bl1D,&
+         &qc_bl,qi_bl,cldfra_bl
+    REAL, DIMENSION(KTS:KTE) :: qc_bl1D,qi_bl1d,cldfra_bl1D,&
                             qc_bl1D_old,cldfra_bl1D_old
 
 ! WA 7/29/15 Mix chemical arrays
@@ -4029,6 +4039,7 @@ ENDIF
        dqnwfa1(kts:kte)=0.0
        dqnifa1(kts:kte)=0.0
        qc_bl1D(kts:kte)=0.0
+       qi_bl1D(kts:kte)=0.0
        cldfra_bl1D(kts:kte)=0.0
        qc_bl1D_old(kts:kte)=0.0
        cldfra_bl1D_old(kts:kte)=0.0
@@ -4086,8 +4097,8 @@ ENDIF
                    !    &               - xlscp/MAX(tk1(k),TKmin)*sqi(k))
                    !COMPUTE THL USING SGS CLOUDS FOR PBLH DIAG
                    IF(sqc(k)<1e-6 .and. sqi(k)<1e-8 .and. CLDFRA_BL(i,k,j)>0.001)THEN
-                      sqc9=QC_BL(i,k,j)*(MIN(1., MAX(0., (tk1(k)-254.)/15.)))*CLDFRA_BL(i,k,j)
-                      sqi9=QC_BL(i,k,j)*(1. - MIN(1., MAX(0., (tk1(k)-254.)/15.)))*CLDFRA_BL(i,k,j)
+                      sqc9=QC_BL(i,k,j)
+                      sqi9=QI_BL(i,k,j)
                    ELSE
                       sqc9=sqc(k)
                       sqi9=sqi(k)
@@ -4103,8 +4114,8 @@ ENDIF
                    !thl(k)=th(i,k,j)*(1.- xlvcp/MAX(tk1(k),TKmin)*sqc(k))
                    !COMPUTE THL USING SGS CLOUDS FOR PBLH DIAG
                    IF(sqc(k)<1e-6 .and. CLDFRA_BL(i,k,j)>0.001)THEN
-		      sqc9=QC_BL(i,k,j)*(MIN(1., MAX(0., (tk1(k)-254.)/15.)))*CLDFRA_BL(i,k,j)
-                      sqi9=QC_BL(i,k,j)*(1. - MIN(1., MAX(0., (tk1(k)-254.)/15.)))*CLDFRA_BL(i,k,j)
+		      sqc9=QC_BL(i,k,j)
+                      sqi9=QI_BL(i,k,j)
                    ELSE
                       sqc9=sqc(k)
                       sqi9=0.0
@@ -4238,8 +4249,8 @@ ENDIF
                 !    &               - xlscp/MAX(tk1(k),TKmin)*sqi(k))
                 !COMPUTE THL USING SGS CLOUDS FOR PBLH DIAG
                 IF(sqc(k)<1e-6 .and. sqi(k)<1e-8 .and. CLDFRA_BL(i,k,j)>0.001)THEN
-                   sqc9=QC_BL(i,k,j)*(MIN(1., MAX(0., (tk1(k)-254.)/15.)))*CLDFRA_BL(i,k,j)
-                   sqi9=QC_BL(i,k,j)*(1. - MIN(1., MAX(0., (tk1(k)-254.)/15.)))*CLDFRA_BL(i,k,j)
+                   sqc9=QC_BL(i,k,j)
+                   sqi9=QI_BL(i,k,j)
                 ELSE
                    sqc9=sqc(k)
                    sqi9=sqi(k)
@@ -4256,8 +4267,8 @@ ENDIF
                 !thl(k)=th(i,k,j)*(1.- xlvcp/MAX(tk1(k),TKmin)*sqc(k))
                 !COMPUTE THL USING SGS CLOUDS FOR PBLH DIAG
                 IF(sqc(k)<1e-6 .and. CLDFRA_BL(i,k,j)>0.001)THEN
-                   sqc9=QC_BL(i,k,j)*(MIN(1., MAX(0., (tk1(k)-254.)/15.)))*CLDFRA_BL(i,k,j)
-                   sqi9=QC_BL(i,k,j)*(1. - MIN(1., MAX(0., (tk1(k)-254.)/15.)))*CLDFRA_BL(i,k,j)
+                   sqc9=QC_BL(i,k,j)
+                   sqi9=QI_BL(i,k,j)
                 ELSE
                    sqc9=sqc(k)
                    sqi9=0.0
@@ -4435,7 +4446,7 @@ ENDIF
                &dx,dz1,zw,thl,sqw,p1,ex1,        &
                &tsq1, qsq1, cov1,                &
                &Sh,el,bl_mynn_cloudpdf,          &
-               &qc_bl1D,cldfra_bl1D,             &
+               &qc_bl1D,qi_bl1d,cldfra_bl1D,     &
                &PBLH(i,j),HFX(i,j),              &
                &Vt, Vq, th1, sgm, rmol(i,j),     &
                &spp_pbl, rstoch_col              )
@@ -4703,13 +4714,17 @@ ENDIF
                   IF (cldfra_bl(i,k,j) < 0.005) THEN
                     CLDFRA_BL(i,k,j)= 0.
                     QC_BL(i,k,j)    = 0.
+                    QI_BL(i,k,j)    = 0.
                   ENDIF
                ENDIF
 
                !Reapply checks on cldfra_bl and qc_bl to avoid FPEs in radiation driver
                ! when these two quantities are multiplied by eachother (they may have changed
                ! in the MF scheme:
-               IF (QC_BL(i,k,j) < 1E-8 .AND. CLDFRA_BL(i,k,j) > 0.005) QC_BL(i,k,j)= 1E-8
+               IF ((QC_BL(i,k,j)+QI_BL(i,k,j)) < 1E-8  .AND. CLDFRA_BL(i,k,j) > 0.005) then
+                  qc_bl(i,k,j) =1e-8 * (MIN(1., MAX(0., (tk1(k)-254.)/15.)))*cldfra_bl(i,k,j)
+                  qi_bl(i,k,j) =1e-8 * (1. - MIN(1., MAX(0., (tk1(k)-254.)/15.)))*cldfra_bl(i,k,j)
+               ENDIF
              ENDIF
 
              el_pbl(i,k,j)=el(k)
@@ -5840,10 +5855,12 @@ ENDIF
             IF (cldfra_bl1d(k) < 0.5) THEN
                IF (mf_cf > 0.5*(edmf_a(k)+edmf_a(k-1))) THEN
                   cldfra_bl1d(k) = mf_cf
-                  qc_bl1d(k) = QCp*0.5*(edmf_a(k)+edmf_a(k-1))/mf_cf 
+!output grid mean qc_bl1d(k) = QCp*0.5*(edmf_a(k)+edmf_a(k-1))/mf_cf
+                  qc_bl1d(k) = QCp*0.5*(edmf_a(k)+edmf_a(k-1))
                ELSE
                   cldfra_bl1d(k)=0.5*(edmf_a(k)+edmf_a(k-1))
-                  qc_bl1d(k) = QCp
+!output grid mean qc_bl1d(k) = QCp
+                  qc_bl1d(k) = QCp*cldfra_bl1d(k)
                ENDIF
             ENDIF
 
