@@ -285,16 +285,6 @@ submodules :
 	else \
 		echo No action required for MYNN-EDMF submodule ; \
 	fi
-	@if [ \( ! -f module_bl_mynnedmf.F \) -o \( ! -f module_bl_mynedmf_common.F \) -o \
-	      \( ! -f module_bl_mynnedmf_driver.F \) ] ; then \
-	      	echo Pulling in MYNN-EDMF submodule ; \
-		( cd .. ; git submodule update --init --recursive ) ; \
-		ln -sf MYNN-EDMF/module_bl_mynnedmf.F90 module_bl_mynnedmf.F ; \
-		ln -sf MYNN-EDMF/WRF/module_bl_mynnedmf_common.F90 module_bl_mynnedmf_common.F ; \
-		ln -sf MYNN-EDMF/WRF/module_bl_mynnedmf_driver.F90 module_bl_mynnedmf_driver.F ; \
-	else \
-		echo No action required for MYNN-EDMF submodule ; \
-	fi
 
 clean:
 	@ echo 'use the clean script'
