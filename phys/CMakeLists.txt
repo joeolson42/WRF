@@ -42,6 +42,7 @@ target_sources(
                   module_bl_mrf.F
                   module_bl_myjpbl.F
                   module_bl_myjurb.F
+		  module_bl_mynn.F
                   module_bl_qnsepbl.F
                   module_bl_shinhong.F
                   module_bl_temf.F
