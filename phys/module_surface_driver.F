@@ -43,7 +43,7 @@ CONTAINS
      &          ,pxlsm_smois_init, pxlsm_soil_nudge                   & ! PX-LSM
      &          ,pxlsm_modis_veg, lai_px, wwlt_px, wfc_px                           & ! PX-LSM
      &          ,wsat_px, clay_px, csand_px, fmsand_px                              & ! PX-LSM
-     &          ,idveg    ,iopt_crs  ,iopt_trs  ,iopt_btr  ,iopt_run  ,iopt_sfc  ,iopt_frz     &
+     &          ,idveg    ,iopt_crs  ,iopt_btr  ,iopt_run  ,iopt_sfc  ,iopt_frz     &
      &          ,iopt_inf ,iopt_rad  ,iopt_alb  ,iopt_snf  ,iopt_tbot ,iopt_stc     &
      &          ,iopt_gla ,iopt_rsf  ,iopt_soil ,iopt_pedo ,iopt_crop ,iopt_irr     &
      &          ,iopt_irrm,iopt_infdv,iopt_tdrn ,soiltstep                          &
@@ -880,7 +880,7 @@ CONTAINS
 
 !  NoahMP specific fields
 
-   INTEGER, OPTIONAL, INTENT(IN) ::    idveg, iopt_crs, iopt_trs, iopt_btr, iopt_run, iopt_sfc , iopt_frz, &
+   INTEGER, OPTIONAL, INTENT(IN) ::    idveg, iopt_crs, iopt_btr, iopt_run, iopt_sfc , iopt_frz, &
                                     iopt_inf, iopt_rad, iopt_alb, iopt_snf, iopt_tbot, iopt_stc, &
 				    iopt_gla, iopt_rsf, iopt_soil,iopt_pedo,iopt_crop, iopt_irr, &
                                     iopt_irrm,iopt_infdv,iopt_tdrn
@@ -1232,10 +1232,6 @@ CONTAINS
 
    REAL,       DIMENSION( ims:ime, kms:kme, jms:jme ) ::v_phytmp
    REAL,       DIMENSION( ims:ime, kms:kme, jms:jme ) ::u_phytmp
-!pi_phy(i,k,j) = (p_phy(i,k,j)/p1000mb)**rcp
-   REAL,       DIMENSION( ims:ime, jms:jme )          ::prslkix
-   REAL,       DIMENSION( ims:ime, jms:jme )          ::prsik1x
-   REAL,       DIMENSION( ims:ime, jms:jme )          ::prslk1x
 
    REAL,       DIMENSION( ims:ime, jms:jme )          ::          &
                                                              QGH, &
@@ -1549,12 +1545,7 @@ CONTAINS
           u_phytmp(i, k, j) = 0.
         ENDDO
       ENDDO
-!Currently, these are not used, but they will need to be fixed
-!Note: pi_phy(i,k,j) = (p_phy(i,k,j)/p1000mb)**rcp 
       DO i = i_start(ij),i_end(ij)
-         prslkix(i, j) = pi_phy(i, kts, j)  !(p1/ps)
-         prsik1x(i, j) = pi_phy(i, kts, j)  !(1000/ps)
-         prslk1x(i, j) = pi_phy(i, kts, j)  !
          QGH(i,j) = 0.
          CHS(i,j) = 0.
          CPM(i,j) = 0.
@@ -3138,7 +3129,7 @@ CONTAINS
 		 IVGTYP,   ISLTYP,   VEGFRA,   SHDMAX,       TMN,             &
 		  XLAND,     XICE,     XICE_THRESHOLD,   CROPCAT,             &
                PLANTING,  HARVEST,SEASON_GDD,                               &
-                  IDVEG, IOPT_CRS, IOPT_TRS, IOPT_BTR, IOPT_RUN,  IOPT_SFC,   IOPT_FRZ, &
+                  IDVEG, IOPT_CRS, IOPT_BTR, IOPT_RUN,  IOPT_SFC,   IOPT_FRZ, &
 	       IOPT_INF, IOPT_RAD, IOPT_ALB, IOPT_SNF, IOPT_TBOT,   IOPT_STC, &
 	       IOPT_GLA, IOPT_RSF, IOPT_SOIL,IOPT_PEDO,IOPT_CROP,   IOPT_IRR, &
               IOPT_IRRM, IOPT_INFDV, IOPT_TDRN, soiltstep,                    &
@@ -3148,9 +3139,6 @@ CONTAINS
                 SWDDIF,     GLW,                                              &
 		    P8W,   RAINBL,       SR,                                  &
 		IRFRACT,  SIFRACT,  MIFRACT,  FIFRACT,                        &
-!mynn-sfcdiff4
-                 areaxy,  prslkix,  prsik1x,  prslk1x,       ust,             & ! in : forcing
-                   pblh,     rmol,     flhc,     flqc,                        &
                     TSK,      HFX,      QFX,       LH,    GRDFLX,     SMSTAV, &
 		 SMSTOT,SFCRUNOFF, UDRUNOFF,   ALBEDO,     SNOWC,      SMOIS, &
 		   SH2O,     TSLB,     SNOW,    SNOWH,    CANWAT,     ACSNOM, &
