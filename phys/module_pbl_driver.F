@@ -1791,7 +1791,7 @@ CONTAINS
                 enddo
               ENDIF
            endif
-           if (bl_mynn_mixaerosols) then
+           if (bl_mynn_mixaerosols .eq. 1) then
               IF (PRESENT( qnwfa_curr ) .AND. Flag_qnwfa) THEN
                 !print*,"Updating qnwfa after mynn-edmf",P_QNWFA
                 DO j=j_start(ij),j_end(ij)
