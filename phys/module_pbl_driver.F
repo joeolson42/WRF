@@ -50,7 +50,7 @@ CONTAINS
                  ,bl_mynn_edmf_mom,bl_mynn_edmf_tke                &
                  ,bl_mynn_mixscalars,bl_mynn_mixaerosols           &
                  ,bl_mynn_mixnumcon,bl_mynn_output                 &
-                 ,bl_mynn_cloudmix,bl_mynn_mixqt,bl_mynn_mss       &
+                 ,bl_mynn_cloudmix,bl_mynn_mixqt,bl_mynn_ess       &
                  ,edmf_a,edmf_w,edmf_thl                           &
                  ,edmf_qt,edmf_ent,edmf_qc                         &
                  ,sub_thl3D,sub_sqv3D                              &
@@ -592,7 +592,7 @@ CONTAINS
                                      bl_mynn_output,           &
                                      bl_mynn_cloudmix,         &
                                      bl_mynn_mixqt,            &
-                                     bl_mynn_mss,              &
+                                     bl_mynn_ess,              &
                                      icloud_bl,                &
                                      tke_budget
 
@@ -1733,7 +1733,7 @@ CONTAINS
                    &bl_mynn_cloudmix=bl_mynn_cloudmix,                   &
                    &bl_mynn_mixqt=bl_mynn_mixqt,                         &
                    &bl_mynn_closure=bl_mynn_closure,                     &
-                   &bl_mynn_mss=bl_mynn_mss,                             &
+                   &bl_mynn_ess=bl_mynn_ess,                             &
                    &spp_pbl=spp_pbl,pattern_spp_pbl=pattern_spp_pbl,     &
                    &FLAG_QC=flag_qc,FLAG_QI=flag_qi,FLAG_QS=flag_qs,     &
                    &FLAG_QNC=flag_qnc,FLAG_QNI=flag_qni,                 &

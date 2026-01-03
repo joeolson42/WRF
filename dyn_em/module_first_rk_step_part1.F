@@ -1227,7 +1227,7 @@ BENCH_START(pbl_driver_tim)
      &        ,bl_mynn_output=config_flags%bl_mynn_output                 &
      &        ,bl_mynn_cloudmix=config_flags%bl_mynn_cloudmix             &
      &        ,bl_mynn_mixqt=config_flags%bl_mynn_mixqt                   &
-     &        ,bl_mynn_mss=config_flags%bl_mynn_mss                       &     
+     &        ,bl_mynn_ess=config_flags%bl_mynn_ess                       &     
      &        ,bl_mynn_closure=config_flags%bl_mynn_closure               &
      &        ,edmf_a=grid%edmf_a,edmf_w=grid%edmf_w                      &
      &        ,edmf_thl=grid%edmf_thl,edmf_qt=grid%edmf_qt                &
