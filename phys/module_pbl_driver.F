@@ -2762,7 +2762,7 @@ CONTAINS
        call diff(kms,kme,kts,kte,dt,v1d,rho1d,rhoz1d,exch_m1d,a_v1d,b_v1d,sf1d, &
      &            vl1d,dz1d,wv1d) 
 
-! solve the diffusion for equivalent potential temperature ! JC 11/25 (investigate further) 
+! solve the diffusion for equivalent potential temperature 
 
        call diff(kms,kme,kts,kte,dt,the1d,rho1d,rhoz1d,exch_h1d,a_t1d,b_t1d,sf1d, &
      &            vl1d,dz1d,wt1d) 
@@ -2977,7 +2977,6 @@ CONTAINS
           izf=1
 
           do iz=iz1,kte-1
-           ! JC 11/25 TO-DO: Add MYNN Non-local components
            dzv=vl(iz)*dz(iz)
            a(iz,1)=-cddz(iz)*dt/dzv/da(iz)
            a(iz,2)=1+dt*(cddz(iz)+cddz(iz+1))/dzv/da(iz)-aa(iz)*dt
