@@ -1141,8 +1141,6 @@ CONTAINS
             a_v(i,1,j)=(-ust(I,J)*ust(I,J))/dz8w(i,1,j)/((u_phy(i,1,j)**2+v_phy(i,1,j)**2.)**.5)
             b_t(i,1,j)=hfx(i,j)/rho(i,1,j)/CP/dz8w(i,1,j)
             b_q(i,1,j)=qfx(i,j)/rho(i,1,j)/dz8w(i,1,j)
-
-
 !! if you want to solve also the heat and moisture fluxes implicitely, uncomment the following lines.
 !! (of course you will need the values of thz0,qz0,akhs).
 !             b_t(i,1,j)=akhs(i,j)*(thz0(I,J))/dz8w(i,1,j)
@@ -1704,7 +1702,7 @@ CONTAINS
                    &RQSBLTEN=rqsblten,                                   &
                    &RQNWFABLTEN=rqnwfablten,RQNIFABLTEN=rqnifablten,     &
                    &RQNBCABLTEN=rqnbcablten,                             &
-                   !&Ro3BLTEN=ro3blten,                                    &
+!                  &Ro3BLTEN=ro3blten,                                   &
                    &EXCH_H=exch_h,EXCH_M=exch_m,                         &
                    &pblh=pblh,KPBL=KPBL,                                 &
                    &el_pbl=el_pbl,                                       &
@@ -1935,9 +1933,9 @@ CONTAINS
                    &,FLAG_QC=flag_qc,FLAG_QI=flag_qi                     &
                    &,FLAG_QNC=flag_qnc,FLAG_QNI=flag_qni                 &
                    &,FLAG_QNWFA=flag_qnwfa,FLAG_QNIFA=flag_qnifa         &
-                   &,IDS=ids,IDE=ide,JDS=jds,JDE=jde,KDS=kds,KDE=kde     &
-                   &,IMS=ims,IME=ime,JMS=jms,JME=jme,KMS=kms,KME=kme     &
-                   &,ITS=its,ITE=ite,JTS=jts,JTE=jte,KTS=kts,KTE=kte     &
+                   ,IDS=ids,IDE=ide,JDS=jds,JDE=jde,KDS=kds,KDE=kde      &
+                   ,IMS=ims,IME=ime,JMS=jms,JME=jme,KMS=kms,KME=kme      &
+                   ,ITS=its,ITE=ite,JTS=jts,JTE=jte,KTS=kts,KTE=kte      &
                    )
            ELSE
                WRITE ( message , FMT = '(A,20(L1,1X))' )            &
