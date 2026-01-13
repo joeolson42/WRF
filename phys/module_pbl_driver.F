@@ -2412,9 +2412,9 @@ CONTAINS
    ENDIF
 !JOE-END
 #endif
-
-     IF (idiff.eq.1) THEN
-
+    
+    IF (idiff.eq.1) THEN
+       IF (bl_pbl_physics .NE. 5) THEN   ! JC 01/2026 - MYNN changes, bypass diff3d call if MYNN called
 !Alberto: here we call the general routine to solve the diffusion
 ! + all the source/sink terms.
 ! the only thing that should be passed from the PBL schemes is the value of the exch_h, and exch_m 
@@ -2424,8 +2424,7 @@ CONTAINS
 ! As I explain below, in the routine, here we could extract the vertical turbulent 
 ! fluxes (something that will be general for all the routines).
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    
-   IF (bl_pbl_physics .NE. 5) THEN   ! JC 01/2026 - MYNN changes, bypass diff3d call if MYNN called
+
           CALL diff3d  (DT=dtbl,CP=cp,DZ=dz8w,TH=th_phy,QV=qv_curr,QC=qc_curr,T=t_phy  &
               ,U=u_phy,V=v_phy,RHO=rho,EXCH_H=exch_h                  &
               ,EXCH_M=exch_m                                          &
@@ -2449,29 +2448,9 @@ CONTAINS
           DEALLOCATE (b_q)       ! Explicit component for the water vapor
           DEALLOCATE (sf )       ! surfaces
           DEALLOCATE (vl )       ! volumes
-     ENDIF       !idiff
-      
-          IF(scalar_pblmix .GT. 0)THEN
-            CALL diff4d  (DT=dtbl,DZ=dz8w, SCALAR=scalar, is_scalar=.true.  &
-              ,RHO=rho,EXCH_H=exch_h        &
-              ,EXCH_M=exch_m                &
-              ,SCALAR_TEND=scalar_tend      &
-              ,NUM_SCALAR=num_scalar, PARAM_FIRST_SCALAR=param_first_scalar &
-              ,IDS=ids,IDE=ide,JDS=jds,JDE=jde,KDS=kds,KDE=kde        &
-              ,IMS=ims,IME=ime,JMS=jms,JME=jme,KMS=kms,KME=kme        &
-              ,ITS=its,ITE=ite,JTS=jts,JTE=jte,KTS=kts,KTE=kte)
-          ENDIF
-          IF(tracer_pblmix .GT. 0)THEN
-            CALL diff4d  (DT=dtbl,DZ=dz8w, SCALAR=tracer, is_scalar=.false.  &
-              ,RHO=rho,EXCH_H=exch_h        &
-              ,EXCH_M=exch_m                &
-              ,SCALAR_TEND=tracer_tend      &
-              ,NUM_SCALAR=num_tracer, PARAM_FIRST_SCALAR=param_first_scalar &
-              ,IDS=ids,IDE=ide,JDS=jds,JDE=jde,KDS=kds,KDE=kde        &
-              ,IMS=ims,IME=ime,JMS=jms,JME=jme,KMS=kms,KME=kme        &
-              ,ITS=its,ITE=ite,JTS=jts,JTE=jte,KTS=kts,KTE=kte)
-          ENDIF
-   ELSE
+       
+       ELSE
+       
           ! Free up arrays
           DEALLOCATE (a_u)       ! Implicit component for the momemtum in X-direction
           DEALLOCATE (a_v)       ! Implicit component for the momemtum in Y-direction
@@ -2483,7 +2462,35 @@ CONTAINS
           DEALLOCATE (b_q)       ! Explicit component for the water vapor
           DEALLOCATE (sf )       ! surfaces
           DEALLOCATE (vl )       ! volumes
-   ENDIF ! End MYNN Changes
+       
+       ENDIF ! End MYNN Changes
+     
+     ENDIF       !idiff
+
+          IF(scalar_pblmix .GT. 0)THEN
+            IF (bl_pbl_physics .NE. 5) THEN   ! JC 01/2026 - Bypass diff call if MYNN called
+               CALL diff4d  (DT=dtbl,DZ=dz8w, SCALAR=scalar, is_scalar=.true.  &
+                  ,RHO=rho,EXCH_H=exch_h        &
+                  ,EXCH_M=exch_m                &
+                  ,SCALAR_TEND=scalar_tend      &
+                  ,NUM_SCALAR=num_scalar, PARAM_FIRST_SCALAR=param_first_scalar &
+                  ,IDS=ids,IDE=ide,JDS=jds,JDE=jde,KDS=kds,KDE=kde        &
+                  ,IMS=ims,IME=ime,JMS=jms,JME=jme,KMS=kms,KME=kme        &
+                  ,ITS=its,ITE=ite,JTS=jts,JTE=jte,KTS=kts,KTE=kte)
+            ENDIF ! End MYNN Changes
+          ENDIF
+          IF(tracer_pblmix .GT. 0)THEN
+            IF (bl_pbl_physics .NE. 5) THEN   ! JC 01/2026 - Bypass diff call if MYNN called
+               CALL diff4d  (DT=dtbl,DZ=dz8w, SCALAR=tracer, is_scalar=.false.  &
+                  ,RHO=rho,EXCH_H=exch_h        &
+                  ,EXCH_M=exch_m                &
+                  ,SCALAR_TEND=tracer_tend      &
+                  ,NUM_SCALAR=num_tracer, PARAM_FIRST_SCALAR=param_first_scalar &
+                  ,IDS=ids,IDE=ide,JDS=jds,JDE=jde,KDS=kds,KDE=kde        &
+                  ,IMS=ims,IME=ime,JMS=jms,JME=jme,KMS=kms,KME=kme        &
+                  ,ITS=its,ITE=ite,JTS=jts,JTE=jte,KTS=kts,KTE=kte)
+            ENDIF
+          ENDIF
      IF (distributed_ahe_opt == 1) THEN
        call cal_mon_day(julday, julyr, jmonth, jday)
        ihour = (jmonth - 1) * 24 + MOD(INT(gmt + xtime / 60.0), 24)
