@@ -2425,7 +2425,7 @@ CONTAINS
 ! fluxes (something that will be general for all the routines).
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     
-            
+   IF (bl_pbl_physics .NE. 5) THEN   ! JC 01/2026 - MYNN changes, bypass diff3d call if MYNN called
           CALL diff3d  (DT=dtbl,CP=cp,DZ=dz8w,TH=th_phy,QV=qv_curr,QC=qc_curr,T=t_phy  &
               ,U=u_phy,V=v_phy,RHO=rho,EXCH_H=exch_h                  &
               ,EXCH_M=exch_m                                          &
@@ -2471,7 +2471,19 @@ CONTAINS
               ,IMS=ims,IME=ime,JMS=jms,JME=jme,KMS=kms,KME=kme        &
               ,ITS=its,ITE=ite,JTS=jts,JTE=jte,KTS=kts,KTE=kte)
           ENDIF
-
+   ELSE
+          ! Free up arrays
+          DEALLOCATE (a_u)       ! Implicit component for the momemtum in X-direction
+          DEALLOCATE (a_v)       ! Implicit component for the momemtum in Y-direction
+          DEALLOCATE (a_t)       ! Implicit component for the Pot. Temp.
+          DEALLOCATE (a_q)       ! Implicit component for the water vapor
+          DEALLOCATE (b_u)       ! Explicit component for the momemtum in X-direction
+          DEALLOCATE (b_v)       ! Explicit component for the momemtum in Y-direction
+          DEALLOCATE (b_t)       ! Explicit component for the Pot. Temp.
+          DEALLOCATE (b_q)       ! Explicit component for the water vapor
+          DEALLOCATE (sf )       ! surfaces
+          DEALLOCATE (vl )       ! volumes
+   ENDIF ! End MYNN Changes
      IF (distributed_ahe_opt == 1) THEN
        call cal_mon_day(julday, julyr, jmonth, jday)
        ihour = (jmonth - 1) * 24 + MOD(INT(gmt + xtime / 60.0), 24)
