@@ -2230,7 +2230,7 @@ CONTAINS
 
            CALL surface_drag(                                     &
              RUBLTEN=rublten,RVBLTEN=rvblten                      &  !
-            ,U_PHY=u_phy, V_PHY=v_phy, Z=z                        &  !
+            ,U_PHY=u_phy, V_PHY=v_phy, Z=z                                &  !
             ,XLAND=xland, HT=ht, KPBL2D=kpbl                      &  !
             ,IDS=ids,IDE=ide,JDS=jds,JDE=jde,KDS=kds,KDE=kde      &
             ,IMS=ims,IME=ime,JMS=jms,JME=jme,KMS=kms,KME=kme      &
@@ -2414,7 +2414,7 @@ CONTAINS
 #endif
     
     IF (idiff.eq.1) THEN
-       IF (bl_pbl_physics .NE. 5) THEN   ! JC 01/2026 - MYNN changes, bypass diff3d call if MYNN called
+       
 !Alberto: here we call the general routine to solve the diffusion
 ! + all the source/sink terms.
 ! the only thing that should be passed from the PBL schemes is the value of the exch_h, and exch_m 
@@ -2424,6 +2424,7 @@ CONTAINS
 ! As I explain below, in the routine, here we could extract the vertical turbulent 
 ! fluxes (something that will be general for all the routines).
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 
           CALL diff3d  (DT=dtbl,CP=cp,DZ=dz8w,TH=th_phy,QV=qv_curr,QC=qc_curr,T=t_phy  &
               ,U=u_phy,V=v_phy,RHO=rho,EXCH_H=exch_h                  &
@@ -2448,27 +2449,9 @@ CONTAINS
           DEALLOCATE (b_q)       ! Explicit component for the water vapor
           DEALLOCATE (sf )       ! surfaces
           DEALLOCATE (vl )       ! volumes
-       
-       ELSE
-       
-          ! Free up arrays
-          DEALLOCATE (a_u)       ! Implicit component for the momemtum in X-direction
-          DEALLOCATE (a_v)       ! Implicit component for the momemtum in Y-direction
-          DEALLOCATE (a_t)       ! Implicit component for the Pot. Temp.
-          DEALLOCATE (a_q)       ! Implicit component for the water vapor
-          DEALLOCATE (b_u)       ! Explicit component for the momemtum in X-direction
-          DEALLOCATE (b_v)       ! Explicit component for the momemtum in Y-direction
-          DEALLOCATE (b_t)       ! Explicit component for the Pot. Temp.
-          DEALLOCATE (b_q)       ! Explicit component for the water vapor
-          DEALLOCATE (sf )       ! surfaces
-          DEALLOCATE (vl )       ! volumes
-       
-       ENDIF ! End MYNN Changes
-     
      ENDIF       !idiff
 
           IF(scalar_pblmix .GT. 0)THEN
-            IF (bl_pbl_physics .NE. 5) THEN   ! JC 01/2026 - Bypass diff call if MYNN called
                CALL diff4d  (DT=dtbl,DZ=dz8w, SCALAR=scalar, is_scalar=.true.  &
                   ,RHO=rho,EXCH_H=exch_h        &
                   ,EXCH_M=exch_m                &
@@ -2477,10 +2460,8 @@ CONTAINS
                   ,IDS=ids,IDE=ide,JDS=jds,JDE=jde,KDS=kds,KDE=kde        &
                   ,IMS=ims,IME=ime,JMS=jms,JME=jme,KMS=kms,KME=kme        &
                   ,ITS=its,ITE=ite,JTS=jts,JTE=jte,KTS=kts,KTE=kte)
-            ENDIF ! End MYNN Changes
           ENDIF
           IF(tracer_pblmix .GT. 0)THEN
-            IF (bl_pbl_physics .NE. 5) THEN   ! JC 01/2026 - Bypass diff call if MYNN called
                CALL diff4d  (DT=dtbl,DZ=dz8w, SCALAR=tracer, is_scalar=.false.  &
                   ,RHO=rho,EXCH_H=exch_h        &
                   ,EXCH_M=exch_m                &
@@ -2490,7 +2471,7 @@ CONTAINS
                   ,IMS=ims,IME=ime,JMS=jms,JME=jme,KMS=kms,KME=kme        &
                   ,ITS=its,ITE=ite,JTS=jts,JTE=jte,KTS=kts,KTE=kte)
             ENDIF
-          ENDIF
+     
      IF (distributed_ahe_opt == 1) THEN
        call cal_mon_day(julday, julyr, jmonth, jday)
        ihour = (jmonth - 1) * 24 + MOD(INT(gmt + xtime / 60.0), 24)
@@ -2613,7 +2594,7 @@ CONTAINS
    end subroutine  Remove_multi_perturb_pbl_perturbations
 
 !=============================================================================
-          SUBROUTINE diff3d(DT,CP,DZ,TH,QV,QC,T,U,V,RHO                              &
+          SUBROUTINE diff3d(DT,CP,DZ,TH ,QV,QC,T,U,V,RHO                              &
               ,EXCH_H,EXCH_M                   &  
               ,RUBLTEN,RVBLTEN,RTHBLTEN    &
               ,RQVBLTEN,RQCBLTEN                  &
@@ -2994,6 +2975,7 @@ CONTAINS
           izf=1
 
           do iz=iz1,kte-1
+          
            dzv=vl(iz)*dz(iz)
            a(iz,1)=-cddz(iz)*dt/dzv/da(iz)
            a(iz,2)=1+dt*(cddz(iz)+cddz(iz+1))/dzv/da(iz)-aa(iz)*dt
