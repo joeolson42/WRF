@@ -100,6 +100,7 @@ target_sources(
                   module_diag_functions.F
                   module_diag_hailcast.F
                   module_diag_misc.F
+		  module_diag_hrrr.F
                   module_diag_nwp.F
                   module_diag_pld.F
                   module_diag_rasm.F
