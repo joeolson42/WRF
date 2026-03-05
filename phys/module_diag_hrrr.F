@@ -22,7 +22,7 @@ CONTAINS
                     ,refl_10cm                                         )    
 !----------------------------------------------------------------------
 
-  USE module_state_description, ONLY : THOMPSON,THOMPSONAERO
+  USE module_state_description, ONLY : THOMPSON,THOMPSONAERO,TEMPO
   USE module_mp_thompson, ONLY : calc_refl10cm
 
    IMPLICIT NONE 
@@ -115,7 +115,9 @@ CONTAINS
      &             0.640961647/)
 
 
-   IF ( mp_physics .EQ. THOMPSON .or. mp_physics .EQ. THOMPSONAERO ) THEN 
+   IF ( mp_physics .EQ. THOMPSON   .or. &
+      mp_physics .EQ. THOMPSONAERO ) THEN !.or. &
+      !mp_physics .EQ. TEMPO) THEN 
 
       cge(1,:) = bm_g + 1.
       cge(2,:) = mu_g + 1.
@@ -211,8 +213,8 @@ CONTAINS
 
    ELSE 
 
-     print*, 'mp_physics = ', mp_physics
-     CALL wrf_error_fatal('This microphysics scheme is not supported in refl_first_time_step.')
+     print*, 'skipping this procedure for mp_physics = ', mp_physics
+     !CALL wrf_error_fatal('This microphysics scheme is not supported in refl_first_time_step.')
 
    ENDIF   ! IF ( mp_physics .EQ. THOMPSON )
 
@@ -286,8 +288,7 @@ CONTAINS
       KESSLERSCHEME, LINSCHEME, SBU_YLINSCHEME, WSM3SCHEME, WSM5SCHEME, &
       WSM6SCHEME, ETAMPNEW, THOMPSON, THOMPSONAERO,                     &
       MORR_TWO_MOMENT, GSFCGCESCHEME, WDM5SCHEME, WDM6SCHEME,           &
-      NSSL_2MOM, NSSL_2MOMG, NSSL_2MOMCCN, NSSL_1MOM, NSSL_1MOMLFO,                 &
-      MILBRANDT2MOM , CAMMGMPSCHEME, TEMPO    !,MILBRANDT3MOM, NSSL_3MOM
+      NSSL_2MOM, MILBRANDT2MOM , CAMMGMPSCHEME, TEMPO    !,MILBRANDT3MOM, NSSL_3MOM
 
    IMPLICIT NONE
 !======================================================================
@@ -506,7 +507,7 @@ CONTAINS
                ,refl_10cm_1km,refl_10cm_4km,composite_refl_10cm  &  ! dcd
                                                             ,ht  &  ! dcd
                              ,wspd10,wspd80,wspd160,LWP,IWP,SWP  &
-                                       ,maxcldfra,maxcldfra_pb   &
+                                       ,maxcldfra,maxcldfra_pbl  &
                                                  ,cloud_regime
 
    INTEGER ::           ntimesteps
@@ -1397,7 +1398,7 @@ ENDIF !check for diagflag
 !      !$OMP END PARALLEL DO
       endif
 
-     CASE (THOMPSON, THOMPSONAERO)
+     CASE (THOMPSON, THOMPSONAERO, TEMPO)
 
        scheme_has_graupel = .true.
        xmu_g = 1.
@@ -1449,7 +1450,7 @@ ENDIF !check for diagflag
 !    CASE (MILBRANDT3MOM)
 !      coming in future?
 
-     CASE (NSSL_1MOMLFO, NSSL_1MOM, NSSL_2MOM, NSSL_2MOMG, NSSL_2MOMCCN)
+     CASE (NSSL_2MOM)
 
        scheme_has_graupel = .true.
        xrho_g = nssl_rho_qh
@@ -1492,20 +1493,6 @@ ENDIF !check for diagflag
 !      !$OMP END PARALLEL DO
        endif
 
-!    CASE (NSSL_3MOM)
-!      coming in future?
-
-     CASE (CAMMGMPSCHEME)
-!      nothing to do here
-
-!     CASE (FULL_KHAIN_LYNN)
-!      explicit bin scheme so code below not applicable
-!      scheme authors need to implement if desired.
-
-!     CASE (FAST_KHAIN_LYNN)
-!      explicit bin scheme so code below not applicable
-!      scheme authors need to implement if desired.
-
      CASE DEFAULT
 
    END SELECT mp_select
@@ -1528,17 +1515,17 @@ ENDIF !check for diagflag
 
 !  !$OMP PARALLEL DO   &
 !  !$OMP PRIVATE ( ij )
-      DO ij = 1 , num_tiles
-        DO j=j_start(ij),j_end(ij)
-        DO k=kms,kme-1
-        DO i=i_start(ij),i_end(ij)
-           if (temp_qg(i,k,j) .LT. 1.E-6) CYCLE
+      do ij = 1 , num_tiles
+        do j=j_start(ij),j_end(ij)
+        do k=kms,kme-1
+        do i=i_start(ij),i_end(ij)
+           if (temp_qg(i,k,j) .lt. 1.e-6) cycle
            lamg = (xam_g*cgg(3)/cgg(2)*temp_ng(i,k,j)/temp_qg(i,k,j))**(1./xbm_g)
-           N0_g = temp_ng(i,k,j)/cgg(2)*lamg**cge(2)
+           n0_g = temp_ng(i,k,j)/cgg(2)*lamg**cge(2)
            sum_ng = 0.0d0
            sum_t  = 0.0d0
            do ng = ngbins, 1, -1
-              f_d = N0_g*xxDg(ng)**xmu_g * DEXP(-lamg*xxDg(ng))*xdtg(ng)
+              f_d = n0_g*xxdg(ng)**xmu_g * dexp(-lamg*xxdg(ng))*xdtg(ng)
               sum_ng = sum_ng + f_d
               if (sum_ng .gt. thresh_conc) then
                  exit
@@ -1546,32 +1533,30 @@ ENDIF !check for diagflag
               sum_t = sum_ng
            enddo
            if (ng .ge. ngbins) then
-              hail_max = xxDg(ngbins)
-           elseif (xxDg(ng+1) .gt. 1.E-3) then
-              hail_max = xxDg(ng) - (sum_ng-thresh_conc)/(sum_ng-sum_t) &
-     &                              * (xxDg(ng)-xxDg(ng+1))
+              hail_max = xxdg(ngbins)
+           elseif (xxdg(ng+1) .gt. 1.e-3) then
+              hail_max = xxdg(ng) - (sum_ng-thresh_conc)/(sum_ng-sum_t) &
+     &                              * (xxdg(ng)-xxdg(ng+1))
            else
-              hail_max = 1.E-4
+              hail_max = 1.e-4
            endif
-           if (hail_max .gt. 1E-2) then
-            WRITE(outstring,*) 'GT-Debug-Hail, ', hail_max*1000.
-            CALL wrf_debug (350, TRIM(outstring))
+           if (hail_max .gt. 1e-2) then
+            write(outstring,*) 'gt-debug-hail, ', hail_max*1000.
+            call wrf_debug (350, trim(outstring))
            endif
            hail_max_sp = hail_max
            if (k.eq.kms) then
-              hail_maxk1(i,j) = MAX(hail_maxk1(i,j), hail_max_sp)
+              hail_maxk1(i,j) = max(hail_maxk1(i,j), hail_max_sp)
            endif
-           hail_max2d(i,j) = MAX(hail_max2d(i,j), hail_max_sp)
-        ENDDO
-        ENDDO
-        ENDDO
-      ENDDO
+           hail_max2d(i,j) = max(hail_max2d(i,j), hail_max_sp)
+        enddo
+        enddo
+        enddo
+      enddo
 !  !$OMP END PARALLEL DO
 
    endif
 
-
-!JOE:removed nwp_diagnostics    ENDIF
 
 ! NSSL
 
@@ -1579,14 +1564,14 @@ ENDIF !check for diagflag
 
    IF ( xtime .ne. 0. ) THEN
 
-    if(diag_print.eq.1) then
-       prfreq = dt
-!      prfreq = max(2,int(dt/60.))   ! in min
-    else
-       prfreq=10                   ! in min
-    endif
+      if(diag_print.eq.1) then
+         prfreq = dt
+!        prfreq = max(2,int(dt/60.))   ! in min
+      else
+         prfreq=10                   ! in min
+      endif
    
-    IF (MOD(nint(dt),prfreq) == 0) THEN
+      IF (MOD(nint(dt),prfreq) == 0) THEN
 
 ! COMPUTE THE NUMBER OF MASS GRID POINTS
    no_points = float((ide-ids)*(jde-jds))
@@ -1596,11 +1581,9 @@ ENDIF !check for diagflag
 !  !$OMP PRIVATE ( ij )
 
    dmumax = 0.
-   DO ij = 1 , num_tiles
-
-!     print *, i_start(ij),i_end(ij),j_start(ij),j_end(ij)
-      DO j=j_start(ij),j_end(ij)
-      DO i=i_start(ij),i_end(ij)
+   do ij = 1 , num_tiles
+      do j=j_start(ij),j_end(ij)
+      do i=i_start(ij),i_end(ij)
          dpsdt(i,j)=(p8w(i,kms,j)-pk1m(i,j))/dt
          dmudt(i,j)=(mu_2(i,j)-mu_2m(i,j))/dt
          if(abs(dmudt(i,j)*dt).gt.dmumax)then
@@ -1608,10 +1591,9 @@ ENDIF !check for diagflag
            idp=i
            jdp=j
          endif
-      ENDDO      
-      ENDDO
-
-   ENDDO
+      enddo      
+      enddo
+   enddo
 !  !$OMP END PARALLEL DO
 
 ! convert DMUMAX from (PA) to (bars) per time step
@@ -1624,12 +1606,12 @@ ENDIF !check for diagflag
    dpsdt_sum = 0.
    dmudt_sum = 0.
 
-   DO j = jps, min(jpe,jde-1)
-     DO i = ips, min(ipe,ide-1)
+   do j = jps, min(jpe,jde-1)
+     do i = ips, min(ipe,ide-1)
        dpsdt_sum = dpsdt_sum + abs(dpsdt(i,j))
        dmudt_sum = dmudt_sum + abs(dmudt(i,j))
-     ENDDO
-   ENDDO
+     enddo
+   enddo
 
 ! compute global sum
    dpsdt_sum = wrf_dm_sum_real ( dpsdt_sum )
