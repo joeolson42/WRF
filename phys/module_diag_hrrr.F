@@ -506,7 +506,11 @@ CONTAINS
                                                       ,refd_max  &
                ,refl_10cm_1km,refl_10cm_4km,composite_refl_10cm  &  ! dcd
                                                             ,ht  &  ! dcd
+<<<<<<< HEAD
                              ,wspd10,wspd80,wspd160,lwp,iwp,swp  &
+=======
+                             ,wspd10,wspd80,wspd160,LWP,IWP,SWP  &
+>>>>>>> e8b75b7c312f9e5dc4b2650916c48e97da3cbe39
                                        ,maxcldfra,maxcldfra_pbl  &
                                                  ,cloud_regime
 
@@ -1372,6 +1376,35 @@ ENDIF !check for diagflag
        ENDDO
 !      !$OMP END PARALLEL DO
 
+<<<<<<< HEAD
+=======
+     CASE (GSFCGCESCHEME)
+      if (gsfcgce_2ice.eq.0 .OR. gsfcgce_2ice.eq.2) then
+       scheme_has_graupel = .true.
+       if (gsfcgce_hail .eq. 1) then
+          xrho_g = 900.
+       else
+          xrho_g = 400.
+       endif
+       xam_g = 3.1415926536/6.0*xrho_g
+       N0exp = 4.e4
+!      !$OMP PARALLEL DO   &
+!      !$OMP PRIVATE ( ij )
+       DO ij = 1 , num_tiles
+         DO j=j_start(ij),j_end(ij)
+         DO k=kme-1, kms, -1
+         DO i=i_start(ij),i_end(ij)
+           if (temp_qg(i,k,j) .LT. 1.E-6) CYCLE
+           lam_exp = (N0exp*xam_g*cgg(1)/temp_qg(i,k,j))**(1./cge(1))
+           temp_ng(i,k,j) = N0exp*cgg(2)*lam_exp**(-cge(2))
+         ENDDO
+         ENDDO
+         ENDDO
+       ENDDO
+!      !$OMP END PARALLEL DO
+      endif
+
+>>>>>>> e8b75b7c312f9e5dc4b2650916c48e97da3cbe39
      CASE (THOMPSON, THOMPSONAERO, TEMPO)
 
        scheme_has_graupel = .true.
@@ -1404,6 +1437,29 @@ ENDIF !check for diagflag
 !  !$OMP END PARALLEL DO
 
 
+<<<<<<< HEAD
+=======
+!    CASE (MORR_MILB_P3)
+!      scheme_has_graupel = .true.
+!      either Hugh or Jason need to implement.
+
+     CASE (MORR_TWO_MOMENT)
+       scheme_has_graupel = .true.
+       xrho_g = 400.
+       if (mpuse_hail .eq. 1) xrho_g = 900.
+       xam_g = 3.1415926536/6.0*xrho_g
+
+     CASE (MILBRANDT2MOM)
+       WRITE(outstring,*) 'Using Milbrandt2mom, which has 2-moment hail'
+       CALL wrf_debug (150, TRIM(outstring))
+       scheme_has_graupel = .true.
+       xrho_g = 900.
+       xam_g = 3.1415926536/6.0*xrho_g
+
+!    CASE (MILBRANDT3MOM)
+!      coming in future?
+
+>>>>>>> e8b75b7c312f9e5dc4b2650916c48e97da3cbe39
      CASE (NSSL_2MOM)
 
        scheme_has_graupel = .true.
@@ -1520,7 +1576,11 @@ ENDIF !check for diagflag
 
       if(diag_print.eq.1) then
          prfreq = dt
+<<<<<<< HEAD
          !prfreq = max(2,int(dt/60.))   ! in min
+=======
+!        prfreq = max(2,int(dt/60.))   ! in min
+>>>>>>> e8b75b7c312f9e5dc4b2650916c48e97da3cbe39
       else
          prfreq=10                   ! in min
       endif
@@ -1534,6 +1594,7 @@ ENDIF !check for diagflag
         !  !$OMP PARALLEL DO   &
         !  !$OMP PRIVATE ( ij )
 
+<<<<<<< HEAD
         dmumax = 0.
         do ij = 1 , num_tiles
           do j=j_start(ij),j_end(ij)
@@ -1557,6 +1618,23 @@ ENDIF !check for diagflag
 
         dpsdt_sum = 0.
         dmudt_sum = 0.
+=======
+   dmumax = 0.
+   do ij = 1 , num_tiles
+      do j=j_start(ij),j_end(ij)
+      do i=i_start(ij),i_end(ij)
+         dpsdt(i,j)=(p8w(i,kms,j)-pk1m(i,j))/dt
+         dmudt(i,j)=(mu_2(i,j)-mu_2m(i,j))/dt
+         if(abs(dmudt(i,j)*dt).gt.dmumax)then
+           dmumax=abs(dmudt(i,j)*dt)
+           idp=i
+           jdp=j
+         endif
+      enddo      
+      enddo
+   enddo
+!  !$OMP END PARALLEL DO
+>>>>>>> e8b75b7c312f9e5dc4b2650916c48e97da3cbe39
 
         do j = jps, min(jpe,jde-1)
         do i = ips, min(ipe,ide-1)
@@ -1569,6 +1647,7 @@ ENDIF !check for diagflag
         dpsdt_sum = wrf_dm_sum_real ( dpsdt_sum )
         dmudt_sum = wrf_dm_sum_real ( dmudt_sum )
 
+<<<<<<< HEAD
         IF ( diag_print .eq. 2 ) THEN
            dardt_sum = 0.
            drcdt_sum = 0.
@@ -1581,6 +1660,14 @@ ENDIF !check for diagflag
            lh_sum = 0.
            raincmax = 0.
            rainncmax = 0.
+=======
+   do j = jps, min(jpe,jde-1)
+     do i = ips, min(ipe,ide-1)
+       dpsdt_sum = dpsdt_sum + abs(dpsdt(i,j))
+       dmudt_sum = dmudt_sum + abs(dmudt(i,j))
+     enddo
+   enddo
+>>>>>>> e8b75b7c312f9e5dc4b2650916c48e97da3cbe39
 
            DO j = jps, min(jpe,jde-1)
            DO i = ips, min(ipe,ide-1)
