@@ -22,7 +22,7 @@ CONTAINS
                     ,refl_10cm                                         )    
 !----------------------------------------------------------------------
 
-  USE module_state_description, ONLY : THOMPSON,THOMPSONAERO
+  USE module_state_description, ONLY : THOMPSON,THOMPSONAERO,TEMPO
   USE module_mp_thompson, ONLY : calc_refl10cm
 
    IMPLICIT NONE 
@@ -63,59 +63,61 @@ CONTAINS
 !-- vt_dbz_wt             reflectivity-weighted precipitation fall speed (m s-1)
 !======================================================================
 
-   INTEGER,      INTENT(IN   )    ::                             &    
+   integer,      intent(in   )    ::                             &    
                              ims,ime, jms,jme, kms,kme, kts,kte, &
                                                       num_tiles
 
-   INTEGER, DIMENSION(num_tiles), INTENT(IN) ::                  &    
+   integer, dimension(num_tiles), intent(in) ::                  &    
      &           i_start,i_end,j_start,j_end
 
-   INTEGER, INTENT(IN) :: mp_physics
+   integer, intent(in) :: mp_physics
 
-   REAL, DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(IN) ::   &
+   real, dimension( ims:ime, kms:kme, jms:jme ), intent(in) ::   &
                                 qv_curr,qr_curr,qs_curr,qg_curr  &
                                               ,qc_curr,qnr_curr  &
                                              ,rho_curr,th,pii,p
 
-   REAL, DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(OUT) :: refl_10cm
- !  REAL, DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(OUT) :: vt_dbz_wt
+   real, dimension( ims:ime, kms:kme, jms:jme ), intent(inout) :: refl_10cm
+ !  real, dimension( ims:ime, kms:kme, jms:jme ), intent(out) :: vt_dbz_wt
 
-   REAL    :: rand1
-   INTEGER :: i,j,k,ij,m,n
+   real    :: rand1
+   integer :: i,j,k,ij,m,n
 
-   REAL, DIMENSION(kts:kte) :: qv1d, qc1d, qr1d, nr1d, qs1d, qg1d, &
+   real, dimension(kts:kte) :: qv1d, qc1d, qr1d, nr1d, qs1d, qg1d, &
             ng1d, qb1d, t1d, p1d, dbz, fallspd, rho
-   LOGICAL :: qnr_initialized
+   logical :: qnr_initialized
 
    !thompson parameters:
-   REAL :: ygra1,zans1,N0_exp,lam_exp,lamg
-   REAL,    PARAMETER:: R1    = 1.E-12
-   REAL,    PARAMETER:: R2    = 1.E-6
-   REAL,    PARAMETER:: PI    = 3.1415926536
-!..Densities of rain, snow, graupel, and cloud ice.
-   REAL,    PARAMETER:: rho_w = 1000.0
-   REAL,    PARAMETER:: rho_s = 100.0
-   REAL,    PARAMETER:: rho_i = 890.0
-   INTEGER, PARAMETER:: NRHG  = 9
-   INTEGER, PARAMETER:: NRHG1 = 1
-   INTEGER :: dimNRHG
-   REAL, DIMENSION(NRHG), PARAMETER:: &
+   real :: ygra1,zans1,n0_exp,lam_exp,lamg
+   real,    parameter:: r1    = 1.e-12
+   real,    parameter:: r2    = 1.e-6
+   real,    parameter:: pi    = 3.1415926536
+!..densities of rain, snow, graupel, and cloud ice.
+   real,    parameter:: rho_w = 1000.0
+   real,    parameter:: rho_s = 100.0
+   real,    parameter:: rho_i = 890.0
+   integer, parameter:: nrhg  = 9
+   integer, parameter:: nrhg1 = 1
+   integer :: dimnrhg
+   real, dimension(nrhg), parameter:: &
          rho_g = (/50., 100., 200., 300., 400., 500., 600., 700., 800./)
-   INTEGER, PARAMETER :: idx_bg1 = 5 ! index for rhog when mp=8 or 28
-   REAL, DIMENSION(NRHG), PARAMETER:: am_g = (/                       &
-   &            PI*rho_g(1)/6.0, PI*rho_g(2)/6.0, PI*rho_g(3)/6.0,    &
-   &            PI*rho_g(4)/6.0, PI*rho_g(5)/6.0, PI*rho_g(6)/6.0,    &
-   &            PI*rho_g(7)/6.0, PI*rho_g(8)/6.0, PI*rho_g(9)/6.0 /)
-   REAL, PARAMETER:: bm_g = 3.0, mu_g = 0.0
-   REAL, DIMENSION(12,NRHG):: cge, cgg
-   REAL:: oge1, ogg1, ogg2, ogg3, obmg
-   REAL, DIMENSION(NRHG):: & ! Computed from A. Heymsfield: Best - Reynolds relation
+   integer, parameter :: idx_bg1 = 5 ! index for rhog when mp=8 or 28
+   real, dimension(nrhg), parameter:: am_g = (/                       &
+   &            pi*rho_g(1)/6.0, pi*rho_g(2)/6.0, pi*rho_g(3)/6.0,    &
+   &            pi*rho_g(4)/6.0, pi*rho_g(5)/6.0, pi*rho_g(6)/6.0,    &
+   &            pi*rho_g(7)/6.0, pi*rho_g(8)/6.0, pi*rho_g(9)/6.0 /)
+   real, parameter:: bm_g = 3.0, mu_g = 0.0
+   real, dimension(12,nrhg):: cge, cgg
+   real:: oge1, ogg1, ogg2, ogg3, obmg
+   real, dimension(nrhg):: & ! computed from a. heymsfield: best - reynolds relation
      &    bv_g = (/0.640961647, 0.640961647, 0.640961647, 0.640961647,  &
      &             0.640961647, 0.640961647, 0.640961647, 0.640961647,  &
      &             0.640961647/)
 
 
-   IF ( mp_physics .EQ. THOMPSON .or. mp_physics .EQ. THOMPSONAERO ) THEN 
+   if ( mp_physics .eq. thompson   .or. &
+      mp_physics .eq. thompsonaero .or. &
+      mp_physics .eq. tempo) then 
 
       cge(1,:) = bm_g + 1.
       cge(2,:) = mu_g + 1.
@@ -211,8 +213,8 @@ CONTAINS
 
    ELSE 
 
-     print*, 'mp_physics = ', mp_physics
-     CALL wrf_error_fatal('This microphysics scheme is not supported in refl_first_time_step.')
+     print*, 'skipping this procedure for mp_physics = ', mp_physics
+     !CALL wrf_error_fatal('This microphysics scheme is not supported in refl_first_time_step.')
 
    ENDIF   ! IF ( mp_physics .EQ. THOMPSON )
 
@@ -286,8 +288,7 @@ CONTAINS
       KESSLERSCHEME, LINSCHEME, SBU_YLINSCHEME, WSM3SCHEME, WSM5SCHEME, &
       WSM6SCHEME, ETAMPNEW, THOMPSON, THOMPSONAERO,                     &
       MORR_TWO_MOMENT, GSFCGCESCHEME, WDM5SCHEME, WDM6SCHEME,           &
-      NSSL_2MOM, NSSL_2MOMG, NSSL_2MOMCCN, NSSL_1MOM, NSSL_1MOMLFO,                 &
-      MILBRANDT2MOM , CAMMGMPSCHEME, TEMPO    !,MILBRANDT3MOM, NSSL_3MOM
+      NSSL_2MOM, MILBRANDT2MOM , CAMMGMPSCHEME, TEMPO    !,MILBRANDT3MOM, NSSL_3MOM
 
    IMPLICIT NONE
 !======================================================================
@@ -368,110 +369,110 @@ CONTAINS
 !
 !======================================================================
 
-   INTEGER,   INTENT(IN)    ::                                   &
+   integer,   intent(in)    ::                                   &
                                       ids,ide, jds,jde, kds,kde, &
                                       ims,ime, jms,jme, kms,kme, &
                                       ips,ipe, jps,jpe, kps,kpe, &
                                                         kts,kte, &
                                                       num_tiles
 
-   INTEGER, DIMENSION(num_tiles), INTENT(IN) ::                  &
+   integer, dimension(num_tiles), intent(in) ::                  &
      &           i_start,i_end,j_start,j_end
 
-   INTEGER,   INTENT(IN)    :: diag_print
-   INTEGER,   INTENT(IN)    :: dfi_stage
-   REAL,      INTENT(IN)    :: bucket_mm, bucket_J
-   INTEGER,   INTENT(IN)    :: mphysics_opt
-   INTEGER,   INTENT(IN)    :: gsfcgce_hail, gsfcgce_2ice, mpuse_hail
-   REAL,      INTENT(IN)    ::    nssl_cnoh, nssl_cnohl          &
+   integer,   intent(in)    :: diag_print
+   integer,   intent(in)    :: dfi_stage
+   real,      intent(in)    :: bucket_mm, bucket_j
+   integer,   intent(in)    :: mphysics_opt
+   integer,   intent(in)    :: gsfcgce_hail, gsfcgce_2ice, mpuse_hail
+   real,      intent(in)    ::    nssl_cnoh, nssl_cnohl          &
                                ,nssl_rho_qh, nssl_rho_qhl        &
                                ,nssl_alphah, nssl_alphahl
-   INTEGER,   INTENT(IN)    ::   icloud_bl
-   INTEGER,   INTENT(IN)    ::   hrrr_diagnostics
-   LOGICAL,   INTENT(IN)    ::   diagflag
+   integer,   intent(in)    ::   icloud_bl
+   integer,   intent(in)    ::   hrrr_diagnostics
+   logical,   intent(in)    ::   diagflag
 
-   REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                 &
-         INTENT(IN ) ::                                       u  &
+   real, dimension( ims:ime, kms:kme, jms:jme ),                 &
+         intent(in ) ::                                       u  &
                                                     ,         v  &
                                                     ,       p8w
 
-   REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN) ::           &
-                                                           MU_2  &
-                                                    ,   RAINNCV  &
-                                                    ,    RAINCV  &
-                                                    ,   SNOWNCV  &
-                                                    ,GRAUPELNCV  &
-                                                    ,       HFX  &
-                                                    ,        LH  &
-                                                    ,    SFCEVP  &  
-                                                    ,        T2  &
+   real, dimension( ims:ime , jms:jme ), intent(in) ::           &
+                                                           mu_2  &
+                                                    ,   rainncv  &
+                                                    ,    raincv  &
+                                                    ,   snowncv  &
+                                                    ,graupelncv  &
+                                                    ,       hfx  &
+                                                    ,        lh  &
+                                                    ,    sfcevp  &  
+                                                    ,        t2  &
                                                     ,      pblh
 
-   REAL, DIMENSION( ims:ime, kms:kme, jms:jme ), OPTIONAL,       &
-         INTENT(IN ) ::         CLDFRA, CLDFRA_BL, QC_BL, QI_BL     
+   real, dimension( ims:ime, kms:kme, jms:jme ), optional,       &
+         intent(in ) ::         cldfra, cldfra_bl, qc_bl, qi_bl     
 
-   REAL, DIMENSION( ims:ime , jms:jme ),                         &
-          INTENT(INOUT) ::                                DPSDT  &
-                                                    ,     DMUDT  &
-                                                    ,    RAINNC  &
-                                                    ,     RAINC  &
-                                                    ,     MU_2M  &
-                                                    ,      PK1M
+   real, dimension( ims:ime , jms:jme ),                         &
+          intent(inout) ::                                dpsdt  &
+                                                    ,     dmudt  &
+                                                    ,    rainnc  &
+                                                    ,     rainc  &
+                                                    ,     mu_2m  &
+                                                    ,      pk1m
  
-   REAL,  INTENT(IN   ) :: DT, XTIME
-   INTEGER,  INTENT(IN   ) :: SBW
-   INTEGER, DIMENSION( ims:ime , jms:jme ), INTENT(INOUT) ::     &
-                                                       I_RAINC,  &
-                                                       I_RAINNC
+   real,  intent(in   ) :: dt, xtime
+   integer,  intent(in   ) :: sbw
+   integer, dimension( ims:ime , jms:jme ), intent(inout) ::     &
+                                                       i_rainc,  &
+                                                       i_rainnc
 
 ! these optional radiation variables should only be used when
 ! hrrr_diagnostics == 2
-   REAL, DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(INOUT) ::&
-                      ACSWUPT,ACSWUPTC,ACSWDNT,ACSWDNTC,          &
-                      ACSWUPB,ACSWUPBC,ACSWDNB,ACSWDNBC,          &
-                      ACLWUPT,ACLWUPTC,ACLWDNT,ACLWDNTC,          &
-                      ACLWUPB,ACLWUPBC,ACLWDNB,ACLWDNBC
-   INTEGER, DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(INOUT) ::&
-                      I_ACSWUPT,I_ACSWUPTC,I_ACSWDNT,I_ACSWDNTC,  &
-                      I_ACSWUPB,I_ACSWUPBC,I_ACSWDNB,I_ACSWDNBC,  &
-                      I_ACLWUPT,I_ACLWUPTC,I_ACLWDNT,I_ACLWDNTC,  &
-                      I_ACLWUPB,I_ACLWUPBC,I_ACLWDNB,I_ACLWDNBC
+   real, dimension( ims:ime, jms:jme ), optional, intent(inout) ::&
+                      acswupt,acswuptc,acswdnt,acswdntc,          &
+                      acswupb,acswupbc,acswdnb,acswdnbc,          &
+                      aclwupt,aclwuptc,aclwdnt,aclwdntc,          &
+                      aclwupb,aclwupbc,aclwdnb,aclwdnbc
+   integer, dimension( ims:ime, jms:jme ), optional, intent(inout) ::&
+                      i_acswupt,i_acswuptc,i_acswdnt,i_acswdntc,  &
+                      i_acswupb,i_acswupbc,i_acswdnb,i_acswdnbc,  &
+                      i_aclwupt,i_aclwuptc,i_aclwdnt,i_aclwdntc,  &
+                      i_aclwupb,i_aclwupbc,i_aclwdnb,i_aclwdnbc
 
-   REAL, DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(INOUT) ::&
-                      PREC_ACC_C, PREC_ACC_NC, SNOW_ACC_NC        &
-                                                   , ACSNOW       &
-                                                   , ACRUNOFF     &
-                                                   , SFCRUNOFF    &
-                                                   , UDRUNOFF
+   real, dimension( ims:ime, jms:jme ), optional, intent(inout) ::&
+                      prec_acc_c, prec_acc_nc, snow_acc_nc        &
+                                                   , acsnow       &
+                                                   , acrunoff     &
+                                                   , sfcrunoff    &
+                                                   , udrunoff
 
 
-   REAL, OPTIONAL, INTENT(IN)::  PREC_ACC_DT, CURR_SECS2
+   real, optional, intent(in)::  prec_acc_dt, curr_secs2
 
-   INTEGER           :: i,j,k,its,ite,jts,jte,ij
-   INTEGER           :: idp,jdp,irc,jrc,irnc,jrnc,isnh,jsnh
-   INTEGER           :: prfreq
-   REAL, PARAMETER   :: dbzmin=-10.0          ! dcd
-   INTEGER           :: k1, k2                ! dcd
-   REAL              :: h_agl                 ! dcd
-   REAL              :: cuprate               ! dcd
-   REAL              :: ze, ze_conv, dbz_sum  ! dcd
-   LOGICAL           :: found_1km, found_4km  ! dcd
-   REAL              :: no_points
-   REAL              :: dpsdt_sum, dmudt_sum, dardt_sum, drcdt_sum, drndt_sum
-   REAL              :: hfx_sum, lh_sum, sfcevp_sum, rainc_sum, rainnc_sum, raint_sum
-   REAL              :: dmumax, raincmax, rainncmax, snowhmax
-   LOGICAL, EXTERNAL :: wrf_dm_on_monitor
+   integer           :: i,j,k,its,ite,jts,jte,ij
+   integer           :: idp,jdp,irc,jrc,irnc,jrnc,isnh,jsnh
+   integer           :: prfreq
+   real, parameter   :: dbzmin=-10.0          ! dcd
+   integer           :: k1, k2                ! dcd
+   real              :: h_agl                 ! dcd
+   real              :: cuprate               ! dcd
+   real              :: ze, ze_conv, dbz_sum  ! dcd
+   logical           :: found_1km, found_4km  ! dcd
+   real              :: no_points
+   real              :: dpsdt_sum, dmudt_sum, dardt_sum, drcdt_sum, drndt_sum
+   real              :: hfx_sum, lh_sum, sfcevp_sum, rainc_sum, rainnc_sum, raint_sum
+   real              :: dmumax, raincmax, rainncmax, snowhmax
+   logical, external :: wrf_dm_on_monitor
 
-   CHARACTER*256     :: outstring
-   CHARACTER*6       :: grid_str
+   character*256     :: outstring
+   character*6       :: grid_str
 
-   INTEGER, INTENT(IN) ::                                        &
+   integer, intent(in) ::                                        &
                      history_interval,itimestep
 
-   REAL, DIMENSION( kms:kme ), INTENT(IN) ::                     &
+   real, dimension( kms:kme ), intent(in) ::                     &
                                                             znw
 
-   REAL, DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(IN) ::   &
+   real, dimension( ims:ime, kms:kme, jms:jme ), intent(in) ::   &
                                                               w  &
                                                           ,temp  &
                                                ,qs_curr,qg_curr  &
@@ -481,21 +482,21 @@ CONTAINS
                                                           ,p,pb  &
                                                  ,t,u_phy,v_phy
 
-   REAL, DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(INOUT) :: & !dcd
+   real, dimension( ims:ime, kms:kme, jms:jme ), intent(inout) :: & !dcd
                                                       refl_10cm
 
-   REAL, DIMENSION(ims:ime,kms:kme,jms:jme), OPTIONAL, INTENT(IN) ::    &
+   real, dimension(ims:ime,kms:kme,jms:jme), optional, intent(in) ::    &
                                        ng_curr, qh_curr, nh_curr        &
                                                ,qr_curr, nr_curr
 
-   REAL, DIMENSION( ims:ime, jms:jme ), INTENT(IN) ::            &
+   real, dimension( ims:ime, jms:jme ), intent(in) ::            &
                                                             u10  &
                                                            ,v10  &
                                                            ,msft
 
-   REAL, INTENT(IN) :: grav
+   real, intent(in) :: grav
 
-   REAL, DIMENSION( ims:ime , jms:jme ), INTENT(INOUT) ::        &
+   real, dimension( ims:ime , jms:jme ), intent(inout) ::        &
                                                       wspd10max  &
                                                    ,up_heli_max  &
                                              ,w_up_max,w_dn_max  &
@@ -505,61 +506,61 @@ CONTAINS
                                                       ,refd_max  &
                ,refl_10cm_1km,refl_10cm_4km,composite_refl_10cm  &  ! dcd
                                                             ,ht  &  ! dcd
-                             ,wspd10,wspd80,wspd160,LWP,IWP,SWP  &
-                                       ,maxcldfra,maxcldfra_pb   &
+                             ,wspd10,wspd80,wspd160,lwp,iwp,swp  &
+                                       ,maxcldfra,maxcldfra_pbl  &
                                                  ,cloud_regime
 
-   INTEGER ::           ntimesteps
-   REAL, DIMENSION(ims:ime,kms:kme,jms:jme):: temp_qg, temp_ng,   &
+   integer ::           ntimesteps
+   real, dimension(ims:ime,kms:kme,jms:jme):: temp_qg, temp_ng,   &
                                               temp_qr, temp_nr
 
-!   INTEGER, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT) ::      &    
+!   integer, dimension( ims:ime, jms:jme ), intent(inout) ::      &    
 !                                        ltg1_calc
 
-   REAL, DIMENSION(ims:ime,jms:jme):: w_mean_sum
+   real, dimension(ims:ime,jms:jme):: w_mean_sum
 
-   INTEGER :: idump
+   integer :: idump
 
-   REAL :: time_minutes
-   REAL :: afrac
-   REAL :: uh, vh, wind_vel
-   REAL :: depth, zm
-   REAL :: tval2,tval1
-   REAL :: qr_val, qs_val, qg_val, rho_val
-   REAL :: thr1mx, thr2mx, thr1, thr2
-   REAL :: dbz,dbzr,dbzs,dbzg
-   REAL, PARAMETER :: tm10c=263.15
+   real :: time_minutes
+   real :: afrac
+   real :: uh, vh, wind_vel
+   real :: depth, zm
+   real :: tval2,tval1
+   real :: qr_val, qs_val, qg_val, rho_val
+   real :: thr1mx, thr2mx, thr1, thr2
+   real :: dbz,dbzr,dbzs,dbzg
+   real, parameter :: tm10c=263.15
 
-   INTEGER :: ithr1mx,jthr1mx,ithr2mx,jthr2mx
-   INTEGER :: ithr1,jthr1,ithr2,jthr2
+   integer :: ithr1mx,jthr1mx,ithr2mx,jthr2mx
+   integer :: ithr1,jthr1,ithr2,jthr2
 
-! Derived composite radar reflectivity every 5 minutes
+! derived composite radar reflectivity every 5 minutes
 
-   REAL, PARAMETER :: refddt=5.
+   real, parameter :: refddt=5.
 
-! Constants used in ltg threat calculations
+! constants used in ltg threat calculations
 
-   REAL, PARAMETER    :: coef1=0.042*1000.*1.22
-   REAL, PARAMETER    :: coef2=0.20*1.22
-   REAL, PARAMETER    :: clim1=1.50
-   REAL, PARAMETER    :: clim2=0.40*1.22
-   REAL, PARAMETER    :: clim3=0.02*1.22
-   REAL, PARAMETER    :: capa=0.28589641e0
+   real, parameter    :: coef1=0.042*1000.*1.22
+   real, parameter    :: coef2=0.20*1.22
+   real, parameter    :: clim1=1.50
+   real, parameter    :: clim2=0.40*1.22
+   real, parameter    :: clim3=0.02*1.22
+   real, parameter    :: capa=0.28589641e0
 
-   DOUBLE PRECISION:: hail_max
-   REAL:: hail_max_sp
-   DOUBLE PRECISION, PARAMETER:: thresh_conc = 0.0005d0                 ! number conc. of graupel/hail per cubic meter
-   LOGICAL:: scheme_has_graupel
-   INTEGER, PARAMETER:: ngbins=50
-   DOUBLE PRECISION, DIMENSION(ngbins+1):: xxDx
-   DOUBLE PRECISION, DIMENSION(ngbins):: xxDg, xdtg
-   REAL:: xrho_g, xam_g, xbm_g, xmu_g
-   REAL, DIMENSION(3):: cge, cgg
-   DOUBLE PRECISION:: f_d, sum_ng, sum_t, lamg, ilamg, N0_g, lam_exp, N0exp
-   DOUBLE PRECISION:: lamr, N0min
-   REAL:: mvd_r, xslw1, ygra1, zans1
-   INTEGER:: ng, n
-   REAL :: dp,sum1,sum2,sum3,sum4,sum5,zm0,wt1,ter,u100,v100,t100, &
+   double precision:: hail_max
+   real:: hail_max_sp
+   double precision, parameter:: thresh_conc = 0.0005d0                 ! number conc. of graupel/hail per cubic meter
+   logical:: scheme_has_graupel
+   integer, parameter:: ngbins=50
+   double precision, dimension(ngbins+1):: xxdx
+   double precision, dimension(ngbins):: xxdg, xdtg
+   real:: xrho_g, xam_g, xbm_g, xmu_g
+   real, dimension(3):: cge, cgg
+   double precision:: f_d, sum_ng, sum_t, lamg, ilamg, n0_g, lam_exp, n0exp
+   double precision:: lamr, n0min
+   real:: mvd_r, xslw1, ygra1, zans1
+   integer:: ng, n
+   real :: dp,sum1,sum2,sum3,sum4,sum5,zm0,wt1,ter,u100,v100,t100, &
            qctotal,qitotal,qstotal
 
 !-----------------------------------------------------------------
@@ -1371,33 +1372,7 @@ ENDIF !check for diagflag
        ENDDO
 !      !$OMP END PARALLEL DO
 
-     CASE (GSFCGCESCHEME)
-      if (gsfcgce_2ice.eq.0 .OR. gsfcgce_2ice.eq.2) then
-       scheme_has_graupel = .true.
-       if (gsfcgce_hail .eq. 1) then
-          xrho_g = 900.
-       else
-          xrho_g = 400.
-       endif
-       xam_g = 3.1415926536/6.0*xrho_g
-       N0exp = 4.e4
-!      !$OMP PARALLEL DO   &
-!      !$OMP PRIVATE ( ij )
-       DO ij = 1 , num_tiles
-         DO j=j_start(ij),j_end(ij)
-         DO k=kme-1, kms, -1
-         DO i=i_start(ij),i_end(ij)
-           if (temp_qg(i,k,j) .LT. 1.E-6) CYCLE
-           lam_exp = (N0exp*xam_g*cgg(1)/temp_qg(i,k,j))**(1./cge(1))
-           temp_ng(i,k,j) = N0exp*cgg(2)*lam_exp**(-cge(2))
-         ENDDO
-         ENDDO
-         ENDDO
-       ENDDO
-!      !$OMP END PARALLEL DO
-      endif
-
-     CASE (THOMPSON, THOMPSONAERO)
+     CASE (THOMPSON, THOMPSONAERO, TEMPO)
 
        scheme_has_graupel = .true.
        xmu_g = 1.
@@ -1429,27 +1404,7 @@ ENDIF !check for diagflag
 !  !$OMP END PARALLEL DO
 
 
-!    CASE (MORR_MILB_P3)
-!      scheme_has_graupel = .true.
-!      either Hugh or Jason need to implement.
-
-     CASE (MORR_TWO_MOMENT)
-       scheme_has_graupel = .true.
-       xrho_g = 400.
-       if (mpuse_hail .eq. 1) xrho_g = 900.
-       xam_g = 3.1415926536/6.0*xrho_g
-
-     CASE (MILBRANDT2MOM)
-       WRITE(outstring,*) 'Using Milbrandt2mom, which has 2-moment hail'
-       CALL wrf_debug (150, TRIM(outstring))
-       scheme_has_graupel = .true.
-       xrho_g = 900.
-       xam_g = 3.1415926536/6.0*xrho_g
-
-!    CASE (MILBRANDT3MOM)
-!      coming in future?
-
-     CASE (NSSL_1MOMLFO, NSSL_1MOM, NSSL_2MOM, NSSL_2MOMG, NSSL_2MOMCCN)
+     CASE (NSSL_2MOM)
 
        scheme_has_graupel = .true.
        xrho_g = nssl_rho_qh
@@ -1492,20 +1447,6 @@ ENDIF !check for diagflag
 !      !$OMP END PARALLEL DO
        endif
 
-!    CASE (NSSL_3MOM)
-!      coming in future?
-
-     CASE (CAMMGMPSCHEME)
-!      nothing to do here
-
-!     CASE (FULL_KHAIN_LYNN)
-!      explicit bin scheme so code below not applicable
-!      scheme authors need to implement if desired.
-
-!     CASE (FAST_KHAIN_LYNN)
-!      explicit bin scheme so code below not applicable
-!      scheme authors need to implement if desired.
-
      CASE DEFAULT
 
    END SELECT mp_select
@@ -1528,17 +1469,17 @@ ENDIF !check for diagflag
 
 !  !$OMP PARALLEL DO   &
 !  !$OMP PRIVATE ( ij )
-      DO ij = 1 , num_tiles
-        DO j=j_start(ij),j_end(ij)
-        DO k=kms,kme-1
-        DO i=i_start(ij),i_end(ij)
-           if (temp_qg(i,k,j) .LT. 1.E-6) CYCLE
+      do ij = 1 , num_tiles
+        do j=j_start(ij),j_end(ij)
+        do k=kms,kme-1
+        do i=i_start(ij),i_end(ij)
+           if (temp_qg(i,k,j) .lt. 1.e-6) cycle
            lamg = (xam_g*cgg(3)/cgg(2)*temp_ng(i,k,j)/temp_qg(i,k,j))**(1./xbm_g)
-           N0_g = temp_ng(i,k,j)/cgg(2)*lamg**cge(2)
+           n0_g = temp_ng(i,k,j)/cgg(2)*lamg**cge(2)
            sum_ng = 0.0d0
            sum_t  = 0.0d0
            do ng = ngbins, 1, -1
-              f_d = N0_g*xxDg(ng)**xmu_g * DEXP(-lamg*xxDg(ng))*xdtg(ng)
+              f_d = n0_g*xxdg(ng)**xmu_g * dexp(-lamg*xxdg(ng))*xdtg(ng)
               sum_ng = sum_ng + f_d
               if (sum_ng .gt. thresh_conc) then
                  exit
@@ -1546,32 +1487,30 @@ ENDIF !check for diagflag
               sum_t = sum_ng
            enddo
            if (ng .ge. ngbins) then
-              hail_max = xxDg(ngbins)
-           elseif (xxDg(ng+1) .gt. 1.E-3) then
-              hail_max = xxDg(ng) - (sum_ng-thresh_conc)/(sum_ng-sum_t) &
-     &                              * (xxDg(ng)-xxDg(ng+1))
+              hail_max = xxdg(ngbins)
+           elseif (xxdg(ng+1) .gt. 1.e-3) then
+              hail_max = xxdg(ng) - (sum_ng-thresh_conc)/(sum_ng-sum_t) &
+     &                              * (xxdg(ng)-xxdg(ng+1))
            else
-              hail_max = 1.E-4
+              hail_max = 1.e-4
            endif
-           if (hail_max .gt. 1E-2) then
-            WRITE(outstring,*) 'GT-Debug-Hail, ', hail_max*1000.
-            CALL wrf_debug (350, TRIM(outstring))
+           if (hail_max .gt. 1e-2) then
+            write(outstring,*) 'gt-debug-hail, ', hail_max*1000.
+            call wrf_debug (350, trim(outstring))
            endif
            hail_max_sp = hail_max
            if (k.eq.kms) then
-              hail_maxk1(i,j) = MAX(hail_maxk1(i,j), hail_max_sp)
+              hail_maxk1(i,j) = max(hail_maxk1(i,j), hail_max_sp)
            endif
-           hail_max2d(i,j) = MAX(hail_max2d(i,j), hail_max_sp)
-        ENDDO
-        ENDDO
-        ENDDO
-      ENDDO
+           hail_max2d(i,j) = max(hail_max2d(i,j), hail_max_sp)
+        enddo
+        enddo
+        enddo
+      enddo
 !  !$OMP END PARALLEL DO
 
    endif
 
-
-!JOE:removed nwp_diagnostics    ENDIF
 
 ! NSSL
 
@@ -1579,170 +1518,162 @@ ENDIF !check for diagflag
 
    IF ( xtime .ne. 0. ) THEN
 
-    if(diag_print.eq.1) then
-       prfreq = dt
-!      prfreq = max(2,int(dt/60.))   ! in min
-    else
-       prfreq=10                   ! in min
-    endif
+      if(diag_print.eq.1) then
+         prfreq = dt
+         !prfreq = max(2,int(dt/60.))   ! in min
+      else
+         prfreq=10                   ! in min
+      endif
    
-    IF (MOD(nint(dt),prfreq) == 0) THEN
+      IF (MOD(nint(dt),prfreq) == 0) THEN
 
-! COMPUTE THE NUMBER OF MASS GRID POINTS
-   no_points = float((ide-ids)*(jde-jds))
+        ! COMPUTE THE NUMBER OF MASS GRID POINTS
+        no_points = float((ide-ids)*(jde-jds))
 
-! SET START AND END POINTS FOR TILES
-!  !$OMP PARALLEL DO   &
-!  !$OMP PRIVATE ( ij )
+        ! SET START AND END POINTS FOR TILES
+        !  !$OMP PARALLEL DO   &
+        !  !$OMP PRIVATE ( ij )
 
-   dmumax = 0.
-   DO ij = 1 , num_tiles
+        dmumax = 0.
+        do ij = 1 , num_tiles
+          do j=j_start(ij),j_end(ij)
+          do i=i_start(ij),i_end(ij)
+             dpsdt(i,j)=(p8w(i,kms,j)-pk1m(i,j))/dt
+             dmudt(i,j)=(mu_2(i,j)-mu_2m(i,j))/dt
+             if(abs(dmudt(i,j)*dt).gt.dmumax)then
+               dmumax=abs(dmudt(i,j)*dt)
+               idp=i
+               jdp=j
+             endif
+          enddo      
+          enddo
+        enddo
+        !  !$OMP END PARALLEL DO
 
-!     print *, i_start(ij),i_end(ij),j_start(ij),j_end(ij)
-      DO j=j_start(ij),j_end(ij)
-      DO i=i_start(ij),i_end(ij)
-         dpsdt(i,j)=(p8w(i,kms,j)-pk1m(i,j))/dt
-         dmudt(i,j)=(mu_2(i,j)-mu_2m(i,j))/dt
-         if(abs(dmudt(i,j)*dt).gt.dmumax)then
-           dmumax=abs(dmudt(i,j)*dt)
-           idp=i
-           jdp=j
-         endif
-      ENDDO      
-      ENDDO
+        ! convert DMUMAX from (PA) to (bars) per time step
+        dmumax = dmumax*1.e-5
+        ! compute global MAX
+        CALL wrf_dm_maxval ( dmumax,  idp, jdp )
 
-   ENDDO
-!  !$OMP END PARALLEL DO
+        dpsdt_sum = 0.
+        dmudt_sum = 0.
 
-! convert DMUMAX from (PA) to (bars) per time step
-   dmumax = dmumax*1.e-5
-! compute global MAX
-   CALL wrf_dm_maxval ( dmumax,  idp, jdp )
+        do j = jps, min(jpe,jde-1)
+        do i = ips, min(ipe,ide-1)
+           dpsdt_sum = dpsdt_sum + abs(dpsdt(i,j))
+           dmudt_sum = dmudt_sum + abs(dmudt(i,j))
+        enddo
+        enddo
 
-!  print *, 'p8w(30,1,30),pk1m(30,30) : ', p8w(30,1,30),pk1m(30,30)
-!  print *, 'mu_2(30,30),mu_2m(30,30) : ', mu_2(30,30),mu_2m(30,30)
-   dpsdt_sum = 0.
-   dmudt_sum = 0.
+        ! compute global sum
+        dpsdt_sum = wrf_dm_sum_real ( dpsdt_sum )
+        dmudt_sum = wrf_dm_sum_real ( dmudt_sum )
 
-   DO j = jps, min(jpe,jde-1)
-     DO i = ips, min(ipe,ide-1)
-       dpsdt_sum = dpsdt_sum + abs(dpsdt(i,j))
-       dmudt_sum = dmudt_sum + abs(dmudt(i,j))
-     ENDDO
-   ENDDO
+        IF ( diag_print .eq. 2 ) THEN
+           dardt_sum = 0.
+           drcdt_sum = 0.
+           drndt_sum = 0.
+           rainc_sum = 0.
+           raint_sum = 0.
+           rainnc_sum = 0.
+           sfcevp_sum = 0.
+           hfx_sum = 0.
+           lh_sum = 0.
+           raincmax = 0.
+           rainncmax = 0.
 
-! compute global sum
-   dpsdt_sum = wrf_dm_sum_real ( dpsdt_sum )
-   dmudt_sum = wrf_dm_sum_real ( dmudt_sum )
+           DO j = jps, min(jpe,jde-1)
+           DO i = ips, min(ipe,ide-1)
+              drcdt_sum = drcdt_sum + abs(raincv(i,j))
+              drndt_sum = drndt_sum + abs(rainncv(i,j))
+              dardt_sum = dardt_sum + abs(raincv(i,j)) + abs(rainncv(i,j))
+              rainc_sum = rainc_sum + abs(rainc(i,j))
+              ! MAX for accumulated conv precip
+              IF(rainc(i,j).gt.raincmax)then
+                raincmax=rainc(i,j)
+                irc=i
+                jrc=j
+              ENDIF
+              rainnc_sum = rainnc_sum + abs(rainnc(i,j))
+              ! MAX for accumulated resolved precip
+              IF(rainnc(i,j).gt.rainncmax)then
+                rainncmax=rainnc(i,j)
+                irnc=i
+                jrnc=j
+              ENDIF
+              raint_sum = raint_sum + abs(rainc(i,j)) + abs(rainnc(i,j))
+              sfcevp_sum = sfcevp_sum + abs(sfcevp(i,j))
+              hfx_sum = hfx_sum + abs(hfx(i,j))
+              lh_sum = lh_sum + abs(lh(i,j))
+           ENDDO
+           ENDDO
 
-!  print *, 'dpsdt, dmudt : ', dpsdt_sum, dmudt_sum
+           ! compute global MAX
+           CALL wrf_dm_maxval ( raincmax, irc, jrc )
+           CALL wrf_dm_maxval ( rainncmax, irnc, jrnc )
 
-   IF ( diag_print .eq. 2 ) THEN
-   dardt_sum = 0.
-   drcdt_sum = 0.
-   drndt_sum = 0.
-   rainc_sum = 0.
-   raint_sum = 0.
-   rainnc_sum = 0.
-   sfcevp_sum = 0.
-   hfx_sum = 0.
-   lh_sum = 0.
-   raincmax = 0.
-   rainncmax = 0.
+           ! compute global sum
+           drcdt_sum = wrf_dm_sum_real ( drcdt_sum )
+           drndt_sum = wrf_dm_sum_real ( drndt_sum )
+           dardt_sum = wrf_dm_sum_real ( dardt_sum )
+           rainc_sum = wrf_dm_sum_real ( rainc_sum )
+           rainnc_sum = wrf_dm_sum_real ( rainnc_sum )
+           raint_sum = wrf_dm_sum_real ( raint_sum )
+           sfcevp_sum = wrf_dm_sum_real ( sfcevp_sum )
+           hfx_sum = wrf_dm_sum_real ( hfx_sum )
+           lh_sum = wrf_dm_sum_real ( lh_sum )
 
-   DO j = jps, min(jpe,jde-1)
-     DO i = ips, min(ipe,ide-1)
-       drcdt_sum = drcdt_sum + abs(raincv(i,j))
-       drndt_sum = drndt_sum + abs(rainncv(i,j))
-       dardt_sum = dardt_sum + abs(raincv(i,j)) + abs(rainncv(i,j))
-       rainc_sum = rainc_sum + abs(rainc(i,j))
-! MAX for accumulated conv precip
-       IF(rainc(i,j).gt.raincmax)then
-          raincmax=rainc(i,j)
-          irc=i
-          jrc=j
-       ENDIF
-       rainnc_sum = rainnc_sum + abs(rainnc(i,j))
-! MAX for accumulated resolved precip
-       IF(rainnc(i,j).gt.rainncmax)then
-          rainncmax=rainnc(i,j)
-          irnc=i
-          jrnc=j
-       ENDIF
-       raint_sum = raint_sum + abs(rainc(i,j)) + abs(rainnc(i,j))
-       sfcevp_sum = sfcevp_sum + abs(sfcevp(i,j))
-       hfx_sum = hfx_sum + abs(hfx(i,j))
-       lh_sum = lh_sum + abs(lh(i,j))
-     ENDDO
-   ENDDO
+         ENDIF !diag_print .eq. 2
 
-! compute global MAX
-   CALL wrf_dm_maxval ( raincmax, irc, jrc )
-   CALL wrf_dm_maxval ( rainncmax, irnc, jrnc )
-
-! compute global sum
-   drcdt_sum = wrf_dm_sum_real ( drcdt_sum )
-   drndt_sum = wrf_dm_sum_real ( drndt_sum )
-   dardt_sum = wrf_dm_sum_real ( dardt_sum )
-   rainc_sum = wrf_dm_sum_real ( rainc_sum )
-   rainnc_sum = wrf_dm_sum_real ( rainnc_sum )
-   raint_sum = wrf_dm_sum_real ( raint_sum )
-   sfcevp_sum = wrf_dm_sum_real ( sfcevp_sum )
-   hfx_sum = wrf_dm_sum_real ( hfx_sum )
-   lh_sum = wrf_dm_sum_real ( lh_sum )
-
-   ENDIF
-
-! print out the average values
-
-   CALL get_current_grid_name( grid_str )
+         ! print out the average values
+          CALL get_current_grid_name( grid_str )
 
 #ifdef DM_PARALLEL
-   IF ( wrf_dm_on_monitor() ) THEN
+          IF ( wrf_dm_on_monitor() ) THEN
 #endif
-      WRITE(outstring,*) grid_str,&
-         'Domain average of dpsdt, dmudt (mb/3h): ', xtime, &
-         dpsdt_sum/no_points*108., &
-         dmudt_sum/no_points*108.
-      CALL wrf_message ( TRIM(outstring) )
+          WRITE(outstring,*) grid_str,&
+          'Domain average of dpsdt, dmudt (mb/3h): ', xtime, &
+          dpsdt_sum/no_points*108., &
+          dmudt_sum/no_points*108.
+          CALL wrf_message ( TRIM(outstring) )
 
-      WRITE(outstring,*) grid_str,'Max mu change time step: ', idp,jdp,dmumax
-      CALL wrf_message ( TRIM(outstring) )
+          WRITE(outstring,*) grid_str,'Max mu change time step: ', idp,jdp,dmumax
+          CALL wrf_message ( TRIM(outstring) )
 
-      IF ( diag_print .eq. 2) THEN
-         WRITE(outstring,*) grid_str,&
-         'Domain average of dardt, drcdt, drndt (mm/sec): ', xtime, &
-         dardt_sum/dt/no_points, &
-         drcdt_sum/dt/no_points, &
-         drndt_sum/dt/no_points
-      CALL wrf_message ( TRIM(outstring) )
-      WRITE(outstring,*) grid_str,&
-         'Domain average of rt_sum, rc_sum, rnc_sum (mm): ', xtime, &
-         raint_sum/no_points, &
-         rainc_sum/no_points, &
-         rainnc_sum/no_points
-      CALL wrf_message ( TRIM(outstring) )
-      WRITE(outstring,*) grid_str,&
-         'Max Accum Resolved Precip,   I,J  (mm): '               ,&
-         rainncmax,irnc,jrnc
-      CALL wrf_message ( TRIM(outstring) )
-      WRITE(outstring,*) grid_str,&
-         'Max Accum Convective Precip,   I,J  (mm): '             ,&
-         raincmax,irc,jrc
-      CALL wrf_message ( TRIM(outstring) )
-      WRITE(outstring,*) grid_str,&
-         'Domain average of sfcevp, hfx, lh: ', xtime, &
-         sfcevp_sum/no_points, &
-         hfx_sum/no_points, &
-         lh_sum/no_points
-      CALL wrf_message ( TRIM(outstring) )
-      ENDIF
+         IF ( diag_print .eq. 2) THEN
+            WRITE(outstring,*) grid_str,&
+            'Domain average of dardt, drcdt, drndt (mm/sec): ', xtime, &
+            dardt_sum/dt/no_points, &
+            drcdt_sum/dt/no_points, &
+            drndt_sum/dt/no_points
+            CALL wrf_message ( TRIM(outstring) )
+            WRITE(outstring,*) grid_str,&
+            'Domain average of rt_sum, rc_sum, rnc_sum (mm): ', xtime, &
+            raint_sum/no_points, &
+            rainc_sum/no_points, &
+            rainnc_sum/no_points
+            CALL wrf_message ( TRIM(outstring) )
+            WRITE(outstring,*) grid_str,&
+            'Max Accum Resolved Precip,   I,J  (mm): '               ,&
+            rainncmax,irnc,jrnc
+            CALL wrf_message ( TRIM(outstring) )
+            WRITE(outstring,*) grid_str,&
+            'Max Accum Convective Precip,   I,J  (mm): '             ,&
+            raincmax,irc,jrc
+            CALL wrf_message ( TRIM(outstring) )
+            WRITE(outstring,*) grid_str,&
+            'Domain average of sfcevp, hfx, lh: ', xtime, &
+            sfcevp_sum/no_points, &
+            hfx_sum/no_points, &
+            lh_sum/no_points
+            CALL wrf_message ( TRIM(outstring) )
+         ENDIF
 #ifdef DM_PARALLEL
-   ENDIF
+         ENDIF
 #endif
 
-    ENDIF        ! print frequency
-   ENDIF
+    ENDIF  ! print frequency
+   ENDIF   ! xtime .ne. 0.
 
 ! save values at this time step
    !$OMP PARALLEL DO   &

@@ -42,7 +42,7 @@ CONTAINS
                                           F_QV, F_QC, F_QI, F_QS,                      &
                      KESSLERSCHEME, LINSCHEME, SBU_YLINSCHEME, WSM3SCHEME, WSM5SCHEME, &
                      WSM6SCHEME, ETAMPNEW, THOMPSON, THOMPSONAERO, THOMPSONGH,         &
-                     MORR_TWO_MOMENT, GSFCGCESCHEME, WDM5SCHEME, WDM6SCHEME,           &
+                     MORR_TWO_MOMENT, GSFCGCESCHEME, WDM5SCHEME, WDM6SCHEME, TEMPO,    &
                      MILBRANDT2MOM , CAMMGMPSCHEME, FAST_KHAIN_LYNN_SHPUND, FULL_KHAIN_LYNN,  &
                      NSSL_2MOM, MORR_TM_AERO !TWG add    !,MILBRANDT3MOM, MORR_MILB_P3
 
@@ -1368,10 +1368,11 @@ END IF ! JOE: use hrrr_diagnostics OR nwp diags, not both
                 ,T=grid%t_2,U_PHY=grid%u_phy,V_PHY=grid%v_phy        & !joe-wfip     
                 ,P=grid%p,PB=grid%pb                                 &               
                 ,WSPD10MAX=grid%wspd10max                            &               
-                ,WSPD10=grid%wspd10,WSPD80=grid%wspd80               & !joe-wfip     
+                ,WSPD10=grid%wspd10,WSPD80=grid%wspd80               &
+                ,WSPD160=grid%wspd160                                & !joe-wfip     
                 ,LWP=grid%lwp2d,IWP=grid%iwp2d,SWP=grid%swp2d        & !joe-wfip     
                 ,MAXCLDFRA=grid%maxcldfra                            & !joe-wfip
-                ,MAXCLDFRA_pbl=grid%maxcldfra_pbl                    &               
+                ,MAXCLDFRA_pbl=grid%maxcldfra_bl                     &               
                 ,UP_HELI_MAX=grid%up_heli_max                        &               
                 ,W_UP_MAX=grid%w_up_max,W_DN_MAX=grid%w_dn_max       &               
                 ,ZNW=grid%znw,W_COLMEAN=grid%w_colmean               &               
