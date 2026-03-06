@@ -1,14 +1,7 @@
-#if ( NMM_CORE == 1)
-MODULE module_diag_hrrr
-CONTAINS
-   SUBROUTINE diag_hrrr_stub
-   END SUBROUTINE diag_hrrr_stub
-END MODULE module_diag_hrrr
-#else
 !WRF:MEDIATION_LAYER:PHYSICS
 !
-
 MODULE module_diag_hrrr
+      
       USE module_model_constants
       PRIVATE :: WGAMMA
       PRIVATE :: GAMMLN
@@ -506,11 +499,7 @@ CONTAINS
                                                       ,refd_max  &
                ,refl_10cm_1km,refl_10cm_4km,composite_refl_10cm  &  ! dcd
                                                             ,ht  &  ! dcd
-<<<<<<< HEAD
                              ,wspd10,wspd80,wspd160,lwp,iwp,swp  &
-=======
-                             ,wspd10,wspd80,wspd160,LWP,IWP,SWP  &
->>>>>>> e8b75b7c312f9e5dc4b2650916c48e97da3cbe39
                                        ,maxcldfra,maxcldfra_pbl  &
                                                  ,cloud_regime
 
@@ -1300,35 +1289,6 @@ ENDIF !check for diagflag
 
    mp_select: SELECT CASE(mphysics_opt)
 
-     CASE (KESSLERSCHEME)
-!      nothing to do here
-
-     CASE (LINSCHEME)
-       scheme_has_graupel = .true.
-       xrho_g = 917.
-       xam_g = 3.1415926536/6.0*xrho_g
-       N0exp = 4.e4
-!      !$OMP PARALLEL DO   &
-!      !$OMP PRIVATE ( ij )
-       DO ij = 1 , num_tiles
-         DO j=j_start(ij),j_end(ij)
-         DO k=kme-1, kms, -1
-         DO i=i_start(ij),i_end(ij)
-           if (temp_qg(i,k,j) .LT. 1.E-6) CYCLE
-           lam_exp = (N0exp*xam_g*cgg(1)/temp_qg(i,k,j))**(1./cge(1))
-           temp_ng(i,k,j) = N0exp*cgg(2)*lam_exp**(-cge(2))
-         ENDDO
-         ENDDO
-         ENDDO
-       ENDDO
-!      !$OMP END PARALLEL DO
-
-     CASE (WSM3SCHEME)
-!      nothing to do here
-
-     CASE (WSM5SCHEME)
-!      nothing to do here
-
      CASE (WSM6SCHEME)
        scheme_has_graupel = .true.
        xrho_g = 500.
@@ -1348,9 +1308,6 @@ ENDIF !check for diagflag
          ENDDO
        ENDDO
 !      !$OMP END PARALLEL DO
-
-     CASE (WDM5SCHEME)
-!      nothing to do here
 
      CASE (WDM6SCHEME)
        scheme_has_graupel = .true.
@@ -1376,35 +1333,6 @@ ENDIF !check for diagflag
        ENDDO
 !      !$OMP END PARALLEL DO
 
-<<<<<<< HEAD
-=======
-     CASE (GSFCGCESCHEME)
-      if (gsfcgce_2ice.eq.0 .OR. gsfcgce_2ice.eq.2) then
-       scheme_has_graupel = .true.
-       if (gsfcgce_hail .eq. 1) then
-          xrho_g = 900.
-       else
-          xrho_g = 400.
-       endif
-       xam_g = 3.1415926536/6.0*xrho_g
-       N0exp = 4.e4
-!      !$OMP PARALLEL DO   &
-!      !$OMP PRIVATE ( ij )
-       DO ij = 1 , num_tiles
-         DO j=j_start(ij),j_end(ij)
-         DO k=kme-1, kms, -1
-         DO i=i_start(ij),i_end(ij)
-           if (temp_qg(i,k,j) .LT. 1.E-6) CYCLE
-           lam_exp = (N0exp*xam_g*cgg(1)/temp_qg(i,k,j))**(1./cge(1))
-           temp_ng(i,k,j) = N0exp*cgg(2)*lam_exp**(-cge(2))
-         ENDDO
-         ENDDO
-         ENDDO
-       ENDDO
-!      !$OMP END PARALLEL DO
-      endif
-
->>>>>>> e8b75b7c312f9e5dc4b2650916c48e97da3cbe39
      CASE (THOMPSON, THOMPSONAERO, TEMPO)
 
        scheme_has_graupel = .true.
@@ -1437,29 +1365,6 @@ ENDIF !check for diagflag
 !  !$OMP END PARALLEL DO
 
 
-<<<<<<< HEAD
-=======
-!    CASE (MORR_MILB_P3)
-!      scheme_has_graupel = .true.
-!      either Hugh or Jason need to implement.
-
-     CASE (MORR_TWO_MOMENT)
-       scheme_has_graupel = .true.
-       xrho_g = 400.
-       if (mpuse_hail .eq. 1) xrho_g = 900.
-       xam_g = 3.1415926536/6.0*xrho_g
-
-     CASE (MILBRANDT2MOM)
-       WRITE(outstring,*) 'Using Milbrandt2mom, which has 2-moment hail'
-       CALL wrf_debug (150, TRIM(outstring))
-       scheme_has_graupel = .true.
-       xrho_g = 900.
-       xam_g = 3.1415926536/6.0*xrho_g
-
-!    CASE (MILBRANDT3MOM)
-!      coming in future?
-
->>>>>>> e8b75b7c312f9e5dc4b2650916c48e97da3cbe39
      CASE (NSSL_2MOM)
 
        scheme_has_graupel = .true.
@@ -1576,11 +1481,7 @@ ENDIF !check for diagflag
 
       if(diag_print.eq.1) then
          prfreq = dt
-<<<<<<< HEAD
          !prfreq = max(2,int(dt/60.))   ! in min
-=======
-!        prfreq = max(2,int(dt/60.))   ! in min
->>>>>>> e8b75b7c312f9e5dc4b2650916c48e97da3cbe39
       else
          prfreq=10                   ! in min
       endif
@@ -1594,7 +1495,6 @@ ENDIF !check for diagflag
         !  !$OMP PARALLEL DO   &
         !  !$OMP PRIVATE ( ij )
 
-<<<<<<< HEAD
         dmumax = 0.
         do ij = 1 , num_tiles
           do j=j_start(ij),j_end(ij)
@@ -1618,23 +1518,6 @@ ENDIF !check for diagflag
 
         dpsdt_sum = 0.
         dmudt_sum = 0.
-=======
-   dmumax = 0.
-   do ij = 1 , num_tiles
-      do j=j_start(ij),j_end(ij)
-      do i=i_start(ij),i_end(ij)
-         dpsdt(i,j)=(p8w(i,kms,j)-pk1m(i,j))/dt
-         dmudt(i,j)=(mu_2(i,j)-mu_2m(i,j))/dt
-         if(abs(dmudt(i,j)*dt).gt.dmumax)then
-           dmumax=abs(dmudt(i,j)*dt)
-           idp=i
-           jdp=j
-         endif
-      enddo      
-      enddo
-   enddo
-!  !$OMP END PARALLEL DO
->>>>>>> e8b75b7c312f9e5dc4b2650916c48e97da3cbe39
 
         do j = jps, min(jpe,jde-1)
         do i = ips, min(ipe,ide-1)
@@ -1647,7 +1530,6 @@ ENDIF !check for diagflag
         dpsdt_sum = wrf_dm_sum_real ( dpsdt_sum )
         dmudt_sum = wrf_dm_sum_real ( dmudt_sum )
 
-<<<<<<< HEAD
         IF ( diag_print .eq. 2 ) THEN
            dardt_sum = 0.
            drcdt_sum = 0.
@@ -1660,14 +1542,6 @@ ENDIF !check for diagflag
            lh_sum = 0.
            raincmax = 0.
            rainncmax = 0.
-=======
-   do j = jps, min(jpe,jde-1)
-     do i = ips, min(ipe,ide-1)
-       dpsdt_sum = dpsdt_sum + abs(dpsdt(i,j))
-       dmudt_sum = dmudt_sum + abs(dmudt(i,j))
-     enddo
-   enddo
->>>>>>> e8b75b7c312f9e5dc4b2650916c48e97da3cbe39
 
            DO j = jps, min(jpe,jde-1)
            DO i = ips, min(ipe,ide-1)
@@ -1765,66 +1639,65 @@ ENDIF !check for diagflag
 ! save values at this time step
    !$OMP PARALLEL DO   &
    !$OMP PRIVATE ( ij,i,j )
-   DO ij = 1 , num_tiles
+   do ij = 1 , num_tiles
 
-      DO j=j_start(ij),j_end(ij)
-      DO i=i_start(ij),i_end(ij)
+      do j=j_start(ij),j_end(ij)
+      do i=i_start(ij),i_end(ij)
          pk1m(i,j)=p8w(i,kms,j)
          mu_2m(i,j)=mu_2(i,j)
-      ENDDO
-      ENDDO
+      enddo
+      enddo
 
-      IF ( xtime .lt. 0.0001 ) THEN
-      DO j=j_start(ij),j_end(ij)
-      DO i=i_start(ij),i_end(ij)
+      if ( xtime .lt. 0.0001 ) then
+      do j=j_start(ij),j_end(ij)
+      do i=i_start(ij),i_end(ij)
          dpsdt(i,j)=0.
          dmudt(i,j)=0.
-      ENDDO
-      ENDDO
-      ENDIF
+      enddo
+      enddo
+      endif
 
-   ENDDO
-   !$OMP END PARALLEL DO
+   enddo
+   !$omp end parallel do
 
-   END SUBROUTINE hrrr_diagnostic_driver
+   end subroutine hrrr_diagnostic_driver
 
 
 !+---+-----------------------------------------------------------------+ 
-      REAL FUNCTION GAMMLN(XX)
-!     --- RETURNS THE VALUE LN(GAMMA(XX)) FOR XX > 0.
-      IMPLICIT NONE
-      REAL, INTENT(IN):: XX
-      DOUBLE PRECISION, PARAMETER:: STP = 2.5066282746310005D0
-      DOUBLE PRECISION, DIMENSION(6), PARAMETER:: &
-               COF = (/76.18009172947146D0, -86.50532032941677D0, &
-                       24.01409824083091D0, -1.231739572450155D0, &
-                      .1208650973866179D-2, -.5395239384953D-5/)
-      DOUBLE PRECISION:: SER,TMP,X,Y
-      INTEGER:: J
+      real function gammln(xx)
+!     --- returns the value ln(gamma(xx)) for xx > 0.
+      implicit none
+      real, intent(in):: xx
+      double precision, parameter:: stp = 2.5066282746310005d0
+      double precision, dimension(6), parameter:: &
+               cof = (/76.18009172947146d0, -86.50532032941677d0, &
+                       24.01409824083091d0, -1.231739572450155d0, &
+                      .1208650973866179d-2, -.5395239384953d-5/)
+      double precision:: ser,tmp,x,y
+      integer:: j
 
-      X=XX
-      Y=X
-      TMP=X+5.5D0
-      TMP=(X+0.5D0)*LOG(TMP)-TMP
-      SER=1.000000000190015D0
-      DO 11 J=1,6
-        Y=Y+1.D0
-        SER=SER+COF(J)/Y
-11    CONTINUE
-      GAMMLN=TMP+LOG(STP*SER/X)
-      END FUNCTION GAMMLN
+      x=xx
+      y=x
+      tmp=x+5.5d0
+      tmp=(x+0.5d0)*log(tmp)-tmp
+      ser=1.000000000190015d0
+      do 11 j=1,6
+        y=y+1.d0
+        ser=ser+cof(j)/y
+11    continue
+      gammln=tmp+log(stp*ser/x)
+      end function gammln
 !  (C) Copr. 1986-92 Numerical Recipes Software 2.02
 !+---+-----------------------------------------------------------------+ 
-      REAL FUNCTION WGAMMA(y)
+      real function wgamma(y)
 
-      IMPLICIT NONE
-      REAL, INTENT(IN):: y
+      implicit none
+      real, intent(in):: y
 
-      WGAMMA = EXP(GAMMLN(y))
+      wgamma = exp(gammln(y))
 
-      END FUNCTION WGAMMA
+      end function wgamma
 !+---+-----------------------------------------------------------------+ 
 
-
 END MODULE module_diag_hrrr
-#endif
+
