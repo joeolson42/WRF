@@ -385,6 +385,21 @@ state    real   PSFC             ij     misc        1         -     i01rh01du   
 
 state    real   U10              ij     misc        1         -     irh01{22}{23}du     "U10"                "U at 10 M"         "m s-1"
 state    real   V10              ij     misc        1         -     irh01{22}{23}du     "V10"                "V at 10 M"         "m s-1"
+
+#hrrr diagnostics
+state    real   WSPD10           ij     misc        1         -     irh      "WSPD10"                "Wind Speed at 10 M"            "m s-1"
+state    real   WSPD80           ij     misc        1         -     irh      "WSPD80"                "Wind Speed at 80 M"            "m s-1"
+state    real   WSPD160          ij     misc        1         -     irh      "WSPD160"               "Wind Speed at 160 M"           "m s-1"
+state    real   MAXCLDFRA        ij     misc        1         -     irh      "MAXCLDFRA"             "MAX CLOUD FRACTION"            "0 to 1"
+state    real   MAXCLDFRA_BL     ij     misc        1         -     irh      "MAXCLDFRA_BL"          "MAX CLOUD FRACTION in PBL"     "0 to 1"
+state    real   lwp2d            ij     misc        1         -     irh      "LWP"                   "TIME-STEP Liquid water path"   "g/m2"
+state    real   iwp2d            ij     misc        1         -     irh      "IWP"                   "TIME-STEP ice water path"      "g/m2"
+state    real   swp2d            ij     misc        1         -     irh      "SWP"                   "TIME-STEP snow water path"      "g/m2"
+state    real   composite_refl_10cm  ij  misc       1         -     ihdu     "composite_refl_10cm"   "Composite reflectivity"        "dBZ"
+state    real   refl_10cm_1km    ij     misc        1         -     ihdu     "refl_10cm_1km"         "Reflectivity at 1 km AGL"      "dBZ"
+state    real   refl_10cm_4km    ij     misc        1         -     ihdu     "refl_10cm_4km"         "Reflectivity at 4 km AGL"      "dBZ"
+state    real   cloud_regime     ij     misc        1         -     irh      "cloud_regime"          "cloud regime"                  "category"
+
 # LPI
 state    real   LPI              ij     misc        1         -     rhdu   "LPI"                 "Lightning Potential Index"      "m^2 s-2"
 
@@ -544,7 +559,7 @@ state   real    qnn            ikjftb  scalar      1         -     \
 state   real    qnc            ikjftb  scalar      1         -     \
    i0rhusdf=(bdy_interp:dt)    "QNCLOUD"       "cloud water Number concentration" "# kg(-1)"
 state   real    qvolg          ikjftb  scalar      1         -     \
-   i0rhusdf=(bdy_interp:dt)    "QVGRAUPEL"     "Graupel Particle Volume" "m(3) kg(-1)"
+   i0rhusdf=(bdy_interp:dt)    "QVGRAUPEL"     "Graupel Particle Volume" "m(3) kg(-1) or L kg(-1) for TEMPO"
 state   real    qvolh          ikjftb  scalar      1         -     \
    i0rhusdf=(bdy_interp:dt)    "QVHAIL"        "Hail Particle Volume" "m(3) kg(-1)"
 state   real    qzr             ikjftb  scalar      1         -     \
@@ -1237,10 +1252,10 @@ state    real    dlg_bep       ikj     misc        1         Z      -        "dl
 state    real    dl_u_bep      ikj     misc        1         Z      -        "dl_u_bep"              "urban length scale"        "m"
 state    real    sf_bep        ikj     misc        1         Z      -        "sf_bep"                "surface grid"              "-"
 state    real    vl_bep        ikj     misc        1         Z      -        "vl_bep"                "volume grid"               "-"
-state    real   tke_pbl        ikj     misc        1         Z      rh       "tke_pbl"              "TKE from PBL"      "m2 s-2"
-state    real   el_pbl         ikj     misc        1         Z      rh       "el_pbl"               "Length scale from PBL"      "m"
+state    real   tke_pbl        ikj     misc        1         Z      r        "tke_pbl"               "TKE from PBL"      "m2 s-2"
+state    real   el_pbl         ikj     misc        1         Z      rh       "el_pbl"                "Length scale from PBL"      "m"
 state    real    diss_pbl      ikj     misc        1         -      rh       "diss_pbl"              "Dissipation Rrate from PBL - keps"      "m2 s-3"
-state    real    tpe_pbl       ikj     misc        1         -      rh       "tpe_pbl"              "TPE from PBL- keps"      "K2"
+state    real    tpe_pbl       ikj     misc        1         -      rh       "tpe_pbl"               "TPE from PBL- keps"      "K2"
 state    real    tke_adv       ikjftb  scalar      1         -      i0rusdf=(bdy_interp:dt) "tke_adv"       "Advected TKE from keps"      "m2 s-2"
 state    real    diss_adv      ikjftb  scalar      1         -      i0rusdf=(bdy_interp:dt) "diss_adv"      "Advected dissipation rate from keps"      "m2 s-3"
 state    real    tpe_adv       ikjftb  scalar      1         -      i0rusdf=(bdy_interp:dt) "tpe_adv"       "Advected TPE from keps"      "K2"
@@ -2220,6 +2235,7 @@ rconfig   logical nocolons                namelist,time_control         1       
 rconfig   logical cycling                 namelist,time_control         1             .false. -    "true for cycling (using wrfout file as input data)"
 rconfig   integer output_diagnostics      namelist,time_control         1              0
 rconfig   integer nwp_diagnostics         namelist,time_control         1              0
+rconfig   integer hrrr_diagnostics        namelist,time_control         1              0
 rconfig   logical output_ready_flag       namelist,time_control         1             .false. -    "drop a flag called wrfoutReady_d<domain>_<date> after history write" "" ""
 rconfig   logical force_use_old_data      namelist,time_control         1             .false. -    "T=use v3 input data, F=only use v4 data" "" ""
 
@@ -3323,6 +3339,8 @@ package   wenopd_scalar  moist_adv_opt==4            -             -
 
 package   maxmin_output  output_diagnostics==1            -    state:t2min,t2max,tt2min,tt2max,t2mean,t2std,q2min,q2max,tq2min,tq2max,q2mean,q2std,skintempmin,skintempmax,tskintempmin,tskintempmax,skintempmean,skintempstd,u10max,v10max,spduv10max,tspduv10max,u10mean,v10mean,spduv10mean,u10std,v10std,spduv10std,raincvmax,rainncvmax,traincvmax,trainncvmax,raincvmean,rainncvmean,raincvstd,rainncvstd
 package   nwp_output     nwp_diagnostics==1            -       state:wspd10max,w_up_max,w_dn_max,up_heli_max,w_mean,grpl_max,hail_maxk1,hail_max2d
+package   hrrr_diags_rt  hrrr_diagnostics==1           -       state:wspd10max,w_up_max,w_dn_max,up_heli_max,w_mean,grpl_max,hail_maxk1,hail_max2d,lwp2d,iwp2d,swp2d,WSPD10,WSPD80,WSPD160,MAXCLDFRA,MAXCLDFA_BL,cloud_regime
+package   hrrr_diags_re  hrrr_diagnostics==2           -       state:wspd10max,w_up_max,w_dn_max,up_heli_max,w_mean,grpl_max,hail_maxk1,hail_max2d,lwp2d,iwp2d,swp2d,WSPD10,WSPD80,WSPD160,MAXCLDFRA,MAXCLDFA_BL,cloud_regime
 
 package   dfi_setup      dfi_stage==0                -             -
 package   dfi_bck        dfi_stage==1                -             -

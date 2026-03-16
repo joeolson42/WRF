@@ -1146,6 +1146,18 @@
    END DO
 
 !-----------------------------------------------------------------------
+! HRRR Diagnostics
+!-----------------------------------------------------------------------
+
+   DO i = 1, model_config_rec % max_dom
+      IF ( model_config_rec%hrrr_diagnostics .GT. 0. ) THEN
+         model_config_rec%prec_acc_opt = 1
+         model_config_rec%bucketf_opt = 1
+         model_config_rec%bucketr_opt = 1
+      END IF
+   END DO
+      
+!-----------------------------------------------------------------------
 ! Check if any stochastic perturbation scheme is turned on in any domain,
 ! if so, set derived variable sppt_on=1 and/or rand_perturb_on and/or skebs_on=1
 !-----------------------------------------------------------------------
@@ -2112,12 +2124,13 @@
       END IF
 
 !-----------------------------------------------------------------------
-! If a user sets nwp_diagnostics = 1, then radar reflectivity computation
+! If a user sets nwp_diagnostics = 1 or hrrr_diagnostics = 1, then radar reflectivity computation
 ! needs to happen
 !-----------------------------------------------------------------------
 
       IF ( model_config_rec % nwp_diagnostics == 1 ) model_config_rec % do_radar_ref = 1
-
+      IF ( model_config_rec % hrrr_diagnostics == 1 )model_config_rec % do_radar_ref = 1
+      
 !-----------------------------------------------------------------------
 ! If hailcast_opt = 1 for any domain, convective parameterization must be off for that domain.           
 !-----------------------------------------------------------------------

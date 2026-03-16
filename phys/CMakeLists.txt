@@ -101,6 +101,7 @@ target_sources(
                   module_diag_hailcast.F
                   module_diag_misc.F
                   module_diag_nwp.F
+		  module_diag_hrrr.F
                   module_diag_pld.F
                   module_diag_rasm.F
                   module_diag_solar.F
@@ -217,11 +218,6 @@ target_sources(
                   module_sf_idealscmsfclay.F
                   module_sf_lake.F
                   module_sf_myjsfc.F
-                  module_sf_mynnsfc_common.F
-                  module_sf_mynnsfc_driver.F
-                  module_sf_mynnsfc_land.F
-                  module_sf_mynnsfc_water.F
-                  module_sf_mynnsfc_ice.F
                   module_sf_noah_seaice.F
                   module_sf_noah_seaice_drv.F
                   module_sf_noahdrv.F
@@ -428,12 +424,28 @@ target_sources(
                   physics_mmm/mp_wsm6_effectRad.F90
                   physics_mmm/sf_sfclayrev.F90
 
+                  # MYNN-SFC
+                  MYNN-SFC/WRF/module_sf_mynnsfc_common.F90
+                  MYNN-SFC/WRF/module_sf_mynnsfc_driver.F90
+                  MYNN-SFC/module_sf_mynnsfc_land.F90
+                  MYNN-SFC/module_sf_mynnsfc_water.F90
+                  MYNN-SFC/module_sf_mynnsfc_ice.F90
+
                   # MYNN-EDMF
                   MYNN-EDMF/module_bl_mynnedmf.F90
                   MYNN-EDMF/WRF/module_bl_mynnedmf_common.F90
                   MYNN-EDMF/WRF/module_bl_mynnedmf_driver.F90
-                  )
 
+                  # TEMPO
+                  TEMPO/src/module_mp_tempo_cfgs.F90
+                  TEMPO/src/module_mp_tempo_params.F90
+                  TEMPO/src/module_mp_tempo_utils.F90
+                  TEMPO/src/module_mp_tempo_diags.F90
+                  TEMPO/src/module_mp_tempo_ml.F90
+                  TEMPO/src/module_mp_tempo_aerosols.F90
+                  TEMPO/src/module_mp_tempo_main.F90
+                  TEMPO/src/module_mp_tempo_driver.F90
+		  )
 
 target_include_directories( 
                             ${PROJECT_NAME}_Core
