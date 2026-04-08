@@ -75,10 +75,6 @@ target_sources(
                   module_cu_camzm_driver.F
                   module_cu_g3.F
                   module_cu_gd.F
-                  module_cu_gf_ctrans.F
-                  module_cu_gf_deep.F
-                  module_cu_gf_sh.F
-                  module_cu_gf_wrfdrv.F
                   module_cu_kf.F
                   module_cu_kfcup.F
                   module_cu_kfeta.F
@@ -417,6 +413,7 @@ target_sources(
                   # Shared physics
                   physics_mmm/bl_gwdo.F90
                   physics_mmm/bl_ysu.F90
+                  physics_mmm/bl_shinhong.F90
                   physics_mmm/cu_ntiedtke.F90
                   physics_mmm/module_libmassv.F90
                   physics_mmm/mp_radar.F90
@@ -445,6 +442,12 @@ target_sources(
                   TEMPO/src/module_mp_tempo_aerosols.F90
                   TEMPO/src/module_mp_tempo_main.F90
                   TEMPO/src/module_mp_tempo_driver.F90
+
+                  # GFL
+                  GFL/module_cu_gfl_deep.F90
+                  GFL/module_cu_gfl_sh.F90
+                  GFL/WRF/module_cu_gfl_common.F90
+                  GFL/WRF/module_cu_gfl_wrf.F90
 		  )
 
 target_include_directories( 

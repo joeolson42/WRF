@@ -1329,7 +1329,7 @@ Options for use with the Noah-MP Land Surface Model (sf_surface_physics=4):
                                                      5 = Miguez-Macho & Fan groundwater scheme (Miguez-Macho et al. 2007 JGR; Fan et al. 2007 JGR)
                                                            geogrid must have been run with GEOGRID.TBL.ARW.noahmp, use with caution
                                                      6 = Variable Infiltration Capacity Model surface runoff scheme (Wood et al., 1992, JGR)
-                                                     7 = Xiananjiang Infiltration and surface runoff scheme ((Jayawardena and Zhou, 2000)
+                                                     7 = Xinanjiang Infiltration and surface runoff scheme ((Jayawardena and Zhou, 2000)
                                                      8 = Dynamic VIC surface runoff scheme (Liang and Xie, 2001)
  opt_runsub                         = 3,        ! Noah-MP Subsurface Runoff option (Same option set as surface runoff option)
  opt_infdv                          = 0,        ! Noah-MP infiltration option in dynamic VIC runoff scheme (only works for opt_run=8)
