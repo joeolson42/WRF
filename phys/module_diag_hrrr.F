@@ -1144,7 +1144,7 @@ IF (prec_acc_dt .gt. 0.) THEN
           else
              qitotal = qi_curr(i,k,j)
           endif
-          qstotal = qs_curr(i,k,j) !ther ecurrently is no sgs snow...
+          qstotal = qs_curr(i,k,j) !there currently is no sgs snow, it's ice+snow...
           sum1 = sum1 + max((dp/grav)*qctotal,0.0)
           sum2 = sum2 + max((dp/grav)*(qitotal+qstotal),0.0) !actually frozen water path
           sum3 = sum3 + max((dp/grav)*qstotal,0.0)
