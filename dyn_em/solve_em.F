@@ -3933,6 +3933,7 @@ BENCH_START(micro_driver_tim)
       &        ,KTS=k_start, KTE=min(k_end,kde-1)                         &
       &        ,NUM_TILES=grid%num_tiles                                  &
       &        ,NAER=grid%naer                                            &
+      &        ,qc_bl=grid%qc_bl,cldfra_bl=grid%cldfra_bl                 &
 !===================== IRRIGATION =========================
       &        ,IRRIGATION=grid%irrigation                                &
       &        ,SF_SURF_IRR_SCHEME=config_flags%sf_surf_irr_scheme        &

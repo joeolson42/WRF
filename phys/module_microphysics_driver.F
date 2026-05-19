@@ -29,6 +29,7 @@ SUBROUTINE microphysics_driver(                                          &
                       ,irr_start_julianday,irr_end_julianday             &
                       ,irr_freq,irr_ph,irr_rand_field                    &
                       ,gmt,xtime                                         &
+                      ,qc_bl,cldfra_bl                                   &
 !======================
                       !Variables required for CAMMGMP Scheme
                       ,dlf,dlf2,t_phy,p_hyd,p8w_hyd,tke_pbl,pblh         &
@@ -507,6 +508,10 @@ SUBROUTINE microphysics_driver(                                          &
          prech3d    ! graupel precipitation rate at all levels (kg/m2/s)
 !NUWRF JJS 20140225  ^^^^^
 
+!subgrid clouds info for tempo
+   REAL, DIMENSION( ims:ime , kms:kme , jms:jme ),                    &
+         OPTIONAL,  INTENT(INOUT) :: qc_bl, cldfra_bl
+      
     REAL, DIMENSION( ims:ime , kms:kme , jms:jme ),INTENT(INOUT), OPTIONAL :: th_old,qv_old
     REAL,DIMENSION(ims:ime,kms:kme,jms:jme,num_scalar),INTENT(INOUT), OPTIONAL   :: scalar
 #if (EM_CORE == 1)
@@ -1455,7 +1460,8 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                      ids=ids,ide=ide, jds=jds,jde=jde, kds=kds,kde=kde, &
                      ims=ims,ime=ime, jms=jms,jme=jme, kms=kms,kme=kme, &
                      its=its,ite=ite, jts=jts,jte=jte, kts=kts,kte=kte, &
-                     tempo_diags = tempo_driver_diags)
+                     tempo_diags = tempo_driver_diags,   &
+                     qc_bl=qc_bl, qcfrac_bl=cldfra_bl    )
              ! map tempo diagnostics to WRF variable names noting that some wrf variables are optional
              do j = jts, jte
                 do i = its, ite

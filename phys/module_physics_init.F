@@ -419,6 +419,7 @@ CONTAINS
    REAL, DIMENSION(ims:ime, kms:kme, jms:jme), INTENT(INOUT) :: re_cloud, &
              re_ice, re_snow
    INTEGER, INTENT(INOUT):: has_reqc, has_reqi, has_reqs
+
 #if ( EM_CORE == 1 )
    REAL, DIMENSION(ims:ime, kms:kme, jms:jme), INTENT(INOUT) :: re_cloud_gsfc, &
              re_ice_gsfc, re_snow_gsfc, re_graupel_gsfc, re_hail_gsfc, re_rain_gsfc
@@ -4777,7 +4778,9 @@ CALL lsm_mosaic_init(IVGTYP,config_flags%ISWATER,config_flags%ISURBAN,config_fla
          if (config_flags%tempo_aerosolaware == 1) config_tempo_aerosolaware = .true.
          if (config_flags%tempo_hailaware == 1) config_tempo_hailaware = .true.
          CALL tempo_init(aerosolaware_flag=config_tempo_aerosolaware, &
-             hailaware_flag=config_tempo_hailaware, tempo_cfgs=tempo_cfgs)
+         hailaware_flag=config_tempo_hailaware,                       &
+         ml_for_bl_nc_flag=config_flags%mp_tempo_bl_nc,               &
+         tempo_cfgs=tempo_cfgs                                        )
 
      CASE (MORR_TWO_MOMENT)
          CALL morr_two_moment_init( config_flags%morr_rimed_ice )

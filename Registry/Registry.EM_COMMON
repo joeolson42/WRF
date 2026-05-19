@@ -2461,6 +2461,7 @@ rconfig   integer  nssl_ssat_output       namelist,physics      1             0 
 
 rconfig   integer  tempo_aerosolaware     namelist,physics      1             1       rh       "TEMPO aerosol-aware flag"  ""      ""
 rconfig   integer  tempo_hailaware        namelist,physics      1             1       rh       "TEMPO hail-aware flag"  ""      ""
+rconfig   logical  mp_tempo_bl_nc         namelist,physics      1           .false.
 
 rconfig   integer     CCNTY               namelist,physics      1            2        rh       "Aerosol background type for NTU microphysics"  ""   ""
 
