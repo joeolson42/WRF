@@ -1175,6 +1175,11 @@ state   real   maxwidth_dd      ij     misc        1         -      h         "m
 state   real   maxtkeprod       ij     misc        1         -      h         "maxtkeprod"       "Maximum tke production by cloud top cooling" "m2/s2/hr"
 state   real   cldtop_cooling   ij     misc        1         -      h         "cldtop_cooling"   "Radiative cooling at cloud top"        "K/hr"
 state   real   ent_eff          ij     misc        1         -      h         "ent_eff"          "Entrainment efficiency for cloud tops" "unitless"
+#old mynn
+state   integer  nupdraft       ij     misc        1         -      h         "nupdraft"           "Number of updrafts (neg: all dry, pos: moist)"    ""
+state   integer  ktop_plume     ij     misc        1         -      h         "ktop_plume"         "k-level of highest pentrating plume"    ""
+state   real   mf_at_base       ij     misc        1         -      h         "mf_at_base"         "Mass-flux at base of shallow-cu"    "m/s * area"
+state   integer kbot_shallow    ij     misc        1         -      h         "KBOT_SHALLOW"       "K-LEVEL AT BASE OF SHALLOW CONVECTION"            ""
 
 #FogDES variables
 state   real   fgdp             ij     misc        1         -      -        "fgdp"                "Accumulated fog deposition"    "mm"
@@ -3247,6 +3252,7 @@ package   myjpblscheme   bl_pbl_physics==2           -             state:tke_pbl
 package   gfsscheme      bl_pbl_physics==3           -             -
 package   qnsepblscheme  bl_pbl_physics==4           -             state:tke_pbl,el_pbl,massflux_EDKF,entr_EDKF,detr_EDKF,thl_up,thv_up,rv_up,rt_up,rc_up,u_up,v_up,frac_up,rc_mf
 package   mynnpblscheme  bl_pbl_physics==5           -             scalar:qke_adv;state:qke,sh3d,sm3d,tsq,qsq,cov,cldfra_bl,qc_bl,qi_bl,el_pbl,tke_pbl
+package   mynnpblschemehrrr bl_pbl_physics==6        -             scalar:qke_adv;state:qke,sh3d,sm3d,tsq,qsq,cov,el_pbl,cldfra_bl,qc_bl,qi_bl
 package   acmpblscheme   bl_pbl_physics==7           -             -
 package   boulacscheme   bl_pbl_physics==8           -             state:el_pbl,tke_pbl,wu_tur,wv_tur,wt_tur,wq_tur
 package   camuwpblscheme bl_pbl_physics==9           -             state:tauresx2d,tauresy2d,tpert2d,qpert2d,wpert2d,tke_pbl,smaw3d,wsedl3d,turbtype3d
@@ -3258,8 +3264,8 @@ package   kepsscheme     bl_pbl_physics==17          -             scalar:tke_ad
 package   mrfscheme      bl_pbl_physics==99          -             -
 
 package   tkebudget      tke_budget==1               -             state:qSHEAR,qBUOY,qDISS,qWT,dqke
-package   mynn_dmp_edmf1 bl_mynn_edmf==1             -             state:ztop_plume,maxmf,maxwidth,excess_h,excess_q,maxmf_dd,maxwidth_dd,maxtkeprod,cldtop_cooling,ent_eff
-package   mynn_dmp_edmf2 bl_mynn_edmf==2             -             state:ztop_plume,maxmf,maxwidth,excess_h,excess_q,maxmf_dd,maxwidth_dd,maxtkeprod,cldtop_cooling,ent_eff
+package   mynn_dmp_edmf1 bl_mynn_edmf==1             -             state:ztop_plume,maxmf,maxwidth,excess_h,excess_q,maxmf_dd,maxwidth_dd,maxtkeprod,cldtop_cooling,ent_eff,ktop_plume,kbot_shallow,nupdraft,mf_at_base
+package   mynn_dmp_edmf2 bl_mynn_edmf==2             -             state:ztop_plume,maxmf,maxwidth,excess_h,excess_q,maxmf_dd,maxwidth_dd,maxtkeprod,cldtop_cooling,ent_eff,ktop_plume,kbot_shallow,nupdraft,mf_at_base
 package   mynn_3Doutput1 bl_mynn_output==1           -             state:edmf_a,edmf_w,edmf_thl,edmf_qt,edmf_ent,edmf_qc,sub_thl3D,sub_sqv3D,det_thl3D,det_sqv3D
 package   mynn_3Doutput2 bl_mynn_output==2           -             state:edmf_a,edmf_w,edmf_thl,edmf_qt,edmf_ent,edmf_qc,sub_thl3D,sub_sqv3D,det_thl3D,det_sqv3D
 
@@ -3267,6 +3273,7 @@ package   sms_3dtke      km_opt==5                   -             state:gamu,ga
 
 # dfi
 package   mynnpblscheme_dfi bl_pbl_physics_dfi==5   -             dfi_scalar:dfi_qke_adv
+package   mynnpblschemehrrr_dfi bl_pbl_physics_dfi==6   -         dfi_scalar:dfi_qke_adv
 
 package   nocuscheme     cu_physics==0               -             -
 package   kfetascheme    cu_physics==1               -             state:w0avg

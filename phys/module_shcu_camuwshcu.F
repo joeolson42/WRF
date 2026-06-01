@@ -10,7 +10,7 @@
   use module_state_description, only: CAMUWPBLSCHEME, MYJPBLSCHEME
 #else
   use module_state_description, only: CAMUWPBLSCHEME, MYJPBLSCHEME, &
-      MYNNPBLSCHEME
+      MYNNPBLSCHEME, MYNNPBLSCHEMEHRRR
 #endif
 #endif
   use error_function, only: erfc
@@ -190,7 +190,7 @@ end subroutine uwshcu_readnl
 #if ( NMM_CORE == 1 )
   case (CAMUWPBLSCHEME, MYJPBLSCHEME)
 #else
-  case (CAMUWPBLSCHEME, MYJPBLSCHEME, MYNNPBLSCHEME)
+  case (CAMUWPBLSCHEME, MYJPBLSCHEME, MYNNPBLSCHEME, MYNNPBLSCHEMEHRRR)
 #endif
      !These are acceptable PBL schemes.
   case default

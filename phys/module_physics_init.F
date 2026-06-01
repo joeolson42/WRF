@@ -2799,7 +2799,8 @@ CHARACTER(LEN=8) :: name
    USE module_bl_mfshconvpbl
    USE module_bl_gbmpbl
 #if ( EM_CORE == 1 )
-   USE module_bl_mynnedmf_driver
+   USE module_bl_mynnedmf_driver, only : mynnedmf_init
+   USE module_bl_mynn, only : mynn_bl_init_driver
    USE module_bl_eeps
    USE module_bl_temf
 #if ( WRFPLUS == 1 )
@@ -3395,7 +3396,6 @@ CHARACTER(LEN=8) :: name
            CALL mynnsfc_init(allowed_to_read,errmsg,errflg)
            isfc=5
 
-           
       CASE (TEMFSFCSCHEME)
            CALL wrf_debug( 100, 'calling temfsfclayinit' )
            CALL temfsfclayinit( restart, allowed_to_read ,        &
@@ -4042,6 +4042,33 @@ CALL lsm_mosaic_init(IVGTYP,config_flags%ISWATER,config_flags%ISURBAN,config_fla
                 &IMS,IME,JMS,JME,KMS,KME,                    &
                 &ITS,ITE,JTS,JTE,KTS,KTE                     )
 
+!old mynn
+        CASE (MYNNPBLSCHEMEHRRR)
+           IF(isfc .NE. 5 .AND. isfc .NE. 1 .AND. isfc .NE. 2) CALL wrf_error_fatal &
+                ( 'module_physics_init: use mynnsfc or sfclay or myjsfc scheme for this pbl option')
+           IF ((SF_URBAN_PHYSICS.eq.2).OR.(SF_URBAN_PHYSICS.EQ.3)) CALL wrf_error_fatal &
+            ( 'module_physics_init: use myj (option 2) or boulac (option 8) with BEP/BEM urban scheme' )
+
+!           SELECT CASE(config_flags%bl_pbl_physics)
+!
+!             CASE(MYNNPBLSCHEMEHRRR)
+                mynn_closure_level=2
+!             CASE DEFAULT
+!
+!           END SELECT
+
+           CALL mynn_bl_init_driver(&
+                &RUBLTEN,RVBLTEN,RTHBLTEN,RQVBLTEN,RQCBLTEN,&
+                &RQIBLTEN,                                  &
+                !RQNCBLTEN,RQNIBLTEN,                       &
+                &QKE,                                       &
+                !&TKE_PBL,                                   &
+                &EXCH_H                                     &
+                &,restart,allowed_to_read,mynn_closure_level &
+                &,IDS,IDE,JDS,JDE,KDS,KDE                    &
+                &,IMS,IME,JMS,JME,KMS,KME                    &
+                &,ITS,ITE,JTS,JTE,KTS,KTE)
+                
       CASE (TEMFPBLSCHEME)
            ! if(isfc .ne. 0)CALL wrf_error_fatal &
            !  ( 'module_physics_init: use sfclay scheme = 0 for this pbl option' )

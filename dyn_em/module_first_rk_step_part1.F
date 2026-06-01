@@ -1295,7 +1295,9 @@ BENCH_START(pbl_driver_tim)
      &        ,ztop_plume=grid%ztop_plume,maxmf_dd=grid%maxmf_dd          &
      &        ,maxtkeprod=grid%maxtkeprod,maxwidth_dd=grid%maxwidth_dd    &
      &        ,cldtop_cooling=grid%cldtop_cooling,ent_eff=grid%ent_eff    &
-     &        ,excess_h=grid%excess_h,excess_q=grid%excess_q              &    
+     &        ,excess_h=grid%excess_h,excess_q=grid%excess_q              &
+     &        ,ktop_plume=grid%ktop_plume,nupdraft=grid%nupdraft          & 
+     &        ,kbot_shallow=grid%kbot_shallow,mf_at_base=grid%mf_at_base  &
      &        ,spp_pbl=config_flags%spp_pbl                               &
      &        ,pattern_spp_pbl=grid%pattern_spp_pbl                       &
      &        ,restart=config_flags%restart,cycling=config_flags%cycling  &
@@ -1385,7 +1387,7 @@ BENCH_START(pbl_driver_tim)
 #if (WRF_CHEM == 1)
 #ifdef DM_PARALLEL
      IF ( num_chem >= PARAM_FIRST_SCALAR .AND. (config_flags%bl_pbl_physics == &
-     & mynnpblscheme)  ) then
+     & mynnpblscheme .OR.  config_flags%bl_pbl_physics == mynnpblschemehrrr)  ) then
          CALL wrf_debug ( 200 , ' call HALO CHEM AFTER PBL' )
          IF      ( config_flags%h_sca_adv_order <= 4 ) THEN
 #      include "HALO_EM_CHEM_E_3.inc"
