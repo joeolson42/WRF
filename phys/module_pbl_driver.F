@@ -1889,7 +1889,7 @@ CONTAINS
                 PRESENT(rmol) .AND.                                 &
                 PRESENT(qcg) .AND. PRESENT(ch) .AND.                &
                 PRESENT(grav_settling) .AND.                        &
-                PRESENT(bl_mynn_tkebudget) .AND.                    &
+                PRESENT(tke_budget) .AND.                           &
 !ACF,JOE-QKE advection
                 PRESENT(qke_adv) .AND. PRESENT(bl_mynn_tkeadvect) .AND.&
 !ACF,JOE-end
@@ -1979,7 +1979,7 @@ CONTAINS
                  'qcg, '//                                          &
                  'ch, '//                                           &
                  'grav_settling, '//                                &
-                 'bl_mynn_tkebudget, '//                            &
+                 'tke_budget, '//                                   &
                  'qke_adv, '//                                      &
                  'bl_mynn_tkeadvect, '//                            &
                  'vdfg = ' ,                                        &
@@ -1999,7 +1999,7 @@ CONTAINS
                   PRESENT( qcg      ) ,                             &
                   PRESENT( ch       ) ,                             &
                   PRESENT( grav_settling),                          &
-                  PRESENT( bl_mynn_tkebudget) ,                     &
+                  PRESENT( tke_budget) ,                            &
                   PRESENT( qke_adv  ) ,                             &
                   PRESENT( bl_mynn_tkeadvect) ,                     &
                   PRESENT( vdfg )
