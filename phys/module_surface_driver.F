@@ -368,6 +368,7 @@ CONTAINS
                                        ,CTSMSCHEME                &
                                        ,SSIBSCHEME                & !ssib
                                        ,MYNNSFCSCHEME             &
+                                       ,MYNNSFCHRRRV4             &
                                        ,OMLSCHEME                 &
                                        ,PWP3DSCHEME               &
                                        ,DRIP                      &
@@ -404,6 +405,7 @@ CONTAINS
    USE module_sf_noah_seaice_drv
 #if ( EM_CORE==1)
    USE module_sf_mynnsfc_driver
+   USE module_sf_mynn !hrrrv4 version   
    USE module_sf_fogdes    ! Katata - fog deposition module
    USE module_sf_ocean_driver
    USE module_sf_idealscmsfclay
@@ -884,8 +886,8 @@ CONTAINS
 
    REAL, DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(INOUT) ::   TKE_PBL
 
-   REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),INTENT(INOUT),OPTIONAL ::   pattern_spp_lsm,field_sf
-   REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),INTENT(INOUT),OPTIONAL ::   pattern_spp_pbl
+   REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),INTENT(INOUT),OPTIONAL :: pattern_spp_lsm,field_sf
+   REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),INTENT(INOUT),OPTIONAL :: pattern_spp_pbl
    INTEGER, INTENT(IN), OPTIONAL                 ::     spp_lsm,spp_pbl
 
    REAL, DIMENSION(1:num_soil_layers), INTENT(IN)::   DZS
@@ -1973,6 +1975,7 @@ CONTAINS
             (sf_sfclay_physics .EQ. QNSESFCSCHEME ) .OR. &  !emt
 #if (EM_CORE==1)
             (sf_sfclay_physics .EQ. MYNNSFCSCHEME ) .OR. &
+            (sf_sfclay_physics .EQ. MYNNSFCHRRRV4 ) .OR. & 
 #endif
             (sf_sfclay_physics .EQ. GFSSFCSCHEME ) )    &
            )
@@ -2490,6 +2493,49 @@ CONTAINS
        ENDIF
 #endif
 
+#if ( EM_CORE==1)
+      CASE(MYNNSFCHRRRV4)
+         IF (PRESENT(qv_curr)    .AND.  PRESENT(qc_curr)     &
+         & .AND.  PRESENT(qcg) ) THEN
+            CALL wrf_debug(100,'in MYNNSFCHRRRv4')
+            IF (FRACTIONAL_SEAICE == 1) THEN
+               CALL MYNN_SEAICE_HRRRV4(u_phytmp,v_phytmp,t_phy,qv_curr,&
+               p_phy,dz8w,cp,g,rcp,r_d,xlv,psfc,chs,chs2,cqs2,cpm, &
+               znt,ust,pblh,mavail,zol,mol,regime,psim,psih,       &
+               xland,hfx,qfx,lh,tsk,flhc,flqc,qgh,qsfc,rmol,       &
+               u10,v10,th2,t2,q2,SNOWH,                            &
+               gz1oz0,wspd,br,isfflx,dx,                           &
+               svp1,svp2,svp3,svpt0,ep_1,ep_2,karman,              &
+               itimestep,ch,th_phy,pi_phy,qc_curr,rho,qcg,         &
+               spp_pbl,pattern_spp_pbl,                            &
+               XICE,SST,TSK_SEA,                                   &
+               CHS2_SEA,CHS_SEA,CPM_SEA,CQS2_SEA,FLHC_SEA,FLQC_SEA,&
+               HFX_SEA,LH_SEA,QFX_SEA,QGH_SEA,QSFC_SEA,ZNT_SEA,    &
+               TICE2TSK_IF2COLD,XICE_THRESHOLD,                    &
+               ids,ide, jds,jde, kds,kde,                          &
+               ims,ime, jms,jme, kms,kme,                          &
+               i_start(ij),i_end(ij),j_start(ij),j_end(ij),kts,kte,&
+               ustm,ck,cka,cd,cda,isftcflx,iz0tlnd                 )
+            ELSE
+               CALL SFCLAY_mynn(u_phytmp,v_phytmp,t_phy,qv_curr,   &
+               p_phy,dz8w,cp,g,rcp,r_d,xlv,psfc,chs,chs2,cqs2,cpm, &
+               znt,ust,pblh,mavail,zol,mol,regime,psim,psih,       &
+               xland,hfx,qfx,lh,tsk,flhc,flqc,qgh,qsfc,rmol,       &
+               u10,v10,th2,t2,q2,SNOWH,                            &
+               gz1oz0,wspd,br,isfflx,dx,                           &
+               svp1,svp2,svp3,svpt0,ep_1,ep_2,karman,              &
+               itimestep,ch,th_phy,pi_phy,qc_curr,rho,qcg,         &
+               spp_pbl,pattern_spp_pbl,                            &
+               ids,ide, jds,jde, kds,kde,                          &
+               ims,ime, jms,jme, kms,kme,                          &
+               i_start(ij),i_end(ij),j_start(ij),j_end(ij),kts,kte,&
+               ustm,ck,cka,cd,cda,isftcflx,iz0tlnd                 )
+            ENDIF
+         ELSE
+            CALL wrf_error_fatal('Lacking arguments for SFCLAY_mynn in surface driver')
+         ENDIF
+#endif
+       
 #if ( EM_CORE==1)
      CASE (TEMFSFCSCHEME)
        IF (PRESENT(qv_curr).and.PRESENT(hd_temf)) THEN
@@ -5694,6 +5740,319 @@ CONTAINS
 
 
    END SUBROUTINE mynn_seaice_wrapper
+
+!-------------------------------------------------------------------------                         
+                                                                                                   
+   SUBROUTINE mynn_seaice_hrrrv4(U3D,V3D,T3D,QV3D,                 &                               
+              P3D,dz8w,CP,G,ROVCP,R,XLV,PSFC,CHS,CHS2,CQS2,CPM,    &                               
+              ZNT,UST,PBLH,MAVAIL,ZOL,MOL,REGIME,PSIM,PSIH,        &                               
+              XLAND,HFX,QFX,LH,TSK,FLHC,FLQC,QGH,QSFC,RMOL,        &                               
+              U10,V10,TH2,T2,Q2,SNOWH,                             &                               
+              GZ1OZ0,WSPD,BR,ISFFLX,DX,                            &                               
+              SVP1,SVP2,SVP3,SVPT0,EP1,EP2,KARMAN,                 &                               
+              &itimestep,ch,th3d,pi3d,qc3d,rho,qcg,                &                               
+              &spp_pbl,pattern_spp_pbl,                            &                               
+              XICE,SST,TSK_SEA,                                    &                               
+              CHS2_SEA,CHS_SEA,CPM_SEA,CQS2_SEA,FLHC_SEA,FLQC_SEA, &                               
+              HFX_SEA,LH_SEA,QFX_SEA,QGH_SEA,QSFC_SEA,ZNT_SEA,     &                               
+              TICE2TSK_IF2COLD,XICE_THRESHOLD,                     &                               
+              ids,ide, jds,jde, kds,kde,                           &                               
+              ims,ime, jms,jme, kms,kme,                           &                               
+              its,ite, jts,jte, kts,kte,                           &                               
+              ustm,ck,cka,cd,cda,isftcflx,iz0tlnd                  )                                
+                                                                                                   
+     USE module_sf_mynn                                                                            
+                                                                                                   
+     implicit none                                                                                 
+                                                                                                   
+     INTEGER,  INTENT(IN )   ::       ids,ide, jds,jde, kds,kde,  &                                
+                                      ims,ime, jms,jme, kms,kme,  &                                
+                                      its,ite, jts,jte, kts,kte                                    
+     INTEGER,  INTENT(IN )   ::       itimestep, ISFFLX                                            
+     INTEGER,  INTENT(IN ), optional ::                           &                                
+                                      ISFTCFLX, IZ0TLND                                          
+     REAL,     INTENT(IN )   ::       SVP1,SVP2,SVP3,SVPT0                                         
+     REAL,     INTENT(IN )   ::       EP1,EP2,KARMAN,             &
+                                           CP,G,ROVCP,R,XLV,DX                                          
+                                                                                                   
+     INTEGER,  INTENT(IN), optional      ::     spp_pbl                                            
+     REAL,     DIMENSION( ims:ime, kms:kme, jms:jme ),            &                                
+               INTENT(IN), OPTIONAL      ::   pattern_spp_pbl                                      
+                                                                                                   
+     REAL,     DIMENSION( ims:ime, kms:kme, jms:jme )           , &                                
+               INTENT(IN   )   ::                           dz8w, &                                
+                                                            QV3D, &                                
+                                                             P3D, &                                
+                                                             T3D, &                                
+                                                            QC3D, &                                
+                                                             U3D, &                                
+                                                             V3D, &                                
+                                                   rho,th3d,pi3d                                   
+                                                                                                   
+     REAL,     DIMENSION( ims:ime, jms:jme )                    , &                                
+               INTENT(IN   )               ::             MAVAIL, &                                
+                                                            PBLH, &                                
+                                                           XLAND, &                                
+                                                             QCG, &                                
+                                                            PSFC, &                                
+                                                           SNOWH, &                                
+                                                             TSK                                   
+                                                                                                   
+     REAL,     DIMENSION( ims:ime, jms:jme )                    , &                                
+               INTENT(OUT  )               ::                U10, &                                
+                                                             V10, &                                
+                                                             TH2, &                                
+                                                              T2, &                                
+                                                              Q2
+          REAL,     DIMENSION( ims:ime, jms:jme )                    , &                                
+               INTENT(INOUT)               ::             REGIME, &                                
+                                                             HFX, &                                
+                                                             QFX, &                                
+                                                              LH, &                                
+                                                        MOL,RMOL, &                                
+                                                            QSFC, &                                
+                                                             QGH, &                                
+                                                             ZNT, &                                
+                                                             ZOL, &                                
+                                                             UST, &                                
+                                                             CPM, &                                
+                                                            CHS2, &                                
+                                                            CQS2, &                                
+                                                             CHS, &                                
+                                                              CH, &                                
+                                                       FLHC,FLQC, &                                
+                                                  GZ1OZ0,WSPD,BR, &                                
+                                                       PSIM,PSIH                                   
+                                                                                                   
+     REAL,     DIMENSION( ims:ime, jms:jme )                    , &                                
+               INTENT(OUT), OPTIONAL  ::      ck,cka,cd,cda,ustm                                   
+                                                                                                   
+!--------------------------------------------------------------------                              
+!    New for wrapper                                                                               
+!--------------------------------------------------------------------                              
+     LOGICAL,  INTENT(IN)               ::      TICE2TSK_IF2COLD                                   
+     REAL,     INTENT(IN)               ::      XICE_THRESHOLD                                     
+     REAL,     DIMENSION( ims:ime, jms:jme ),                     &                                
+               INTENT(IN)               ::      XICE
+     REAL,     DIMENSION( ims:ime, jms:jme ),                     &                                
+               INTENT(INOUT)            ::      SST                                                
+     REAL,     DIMENSION( ims:ime, jms:jme ), OPTIONAL,           &                                
+               INTENT(OUT)              ::      TSK_SEA,          &                                
+                                                CHS2_SEA,         &                                
+                                                CHS_SEA,          &                                
+                                                CPM_SEA,          &                                
+                                                CQS2_SEA,         &                                
+                                                FLHC_SEA,         &                                
+                                                FLQC_SEA,         &                                
+                                                HFX_SEA,          &                                
+                                                LH_SEA,           &                                
+                                                QFX_SEA,          &                                
+                                                QGH_SEA,          &                                
+                                                QSFC_SEA,         &                                
+                                                ZNT_SEA                                            
+                                                                                                   
+!--------------------------------------------------------------------                              
+!    Local                                                                                         
+!--------------------------------------------------------------------                              
+     INTEGER :: I, J                                                                               
+     REAL,     DIMENSION( ims:ime, jms:jme ) :: TSK_LOCAL,        &                                
+                 XLAND_SEA,                                       &                                
+                 MAVAIL_sea,                                      &                                
+                 BR_SEA,                        BR_HOLD,          &                                
+                                                FLHC_HOLD,        &                                
+                                                FLQC_HOLD,        &                                
+                 GZ1OZ0_SEA,                    GZ1OZ0_HOLD,      &                                
+                                                HFX_HOLD,         &                                
+                                                LH_HOLD,          &                                
+                 CH_SEA,                                          &                                
+                 MOL_SEA,                       MOL_HOLD,         &                                
+                 PSIH_SEA,                      PSIH_HOLD,        &
+                 PSIM_SEA,                      PSIM_HOLD,        &                                
+                                                QFX_HOLD,         &                                
+                                                QGH_HOLD,         &                                
+                                                CPM_HOLD,         &                                
+                 RMOL_SEA,                      RMOL_HOLD,        &                                
+                 UST_SEA,                       UST_HOLD,         &                                
+                 WSPD_SEA,                      WSPD_HOLD,        &                                
+                                                ZNT_HOLD,         &                                
+                 ZOL_SEA,                       ZOL_HOLD,         &                                
+                 Q2_SEA,                                          &                                
+                 T2_SEA,                                          &                                
+                 TH2_SEA,                                         &                                
+                 U10_SEA,                                         &                                
+                 V10_SEA,                                         &                                
+                 CD_SEA,                                          &                                
+                 CDA_SEA,                                         &                                
+                 CK_SEA,                                          &                                
+                 CKA_SEA,                                         &                                
+                 USTM_SEA,                      USTM_HOLD                                          
+                                                                                                   
+                                                                                                   
+    CALL get_local_ice_tsk( ims, ime, jms, jme, its, ite, jts, jte,  &                             
+                            itimestep, .true., tice2tsk_if2cold,     &                             
+                            XICE, XICE_THRESHOLD,                    &                             
+                            SST, TSK, TSK_SEA, TSK_LOCAL )
+
+    ! Save the variables before the first call                                                         
+! (for land/frozen water) to SFCLAY_mynn.                                                          
+     BR_HOLD(its:ite,jts:jte)   = BR(its:ite,jts:jte)                                              
+     CPM_HOLD(its:ite,jts:jte)  = CPM(its:ite,jts:jte)                                             
+     FLHC_HOLD(its:ite,jts:jte) = FLHC(its:ite,jts:jte)                                            
+     FLQC_HOLD(its:ite,jts:jte) = FLQC(its:ite,jts:jte)                                            
+     GZ1OZ0_HOLD(its:ite,jts:jte) = GZ1OZ0(its:ite,jts:jte)                                        
+     HFX_HOLD(its:ite,jts:jte)  = HFX(its:ite,jts:jte)                                             
+     LH_HOLD(its:ite,jts:jte)   = LH(its:ite,jts:jte)                                              
+     MOL_HOLD(its:ite,jts:jte)  = MOL(its:ite,jts:jte)                                             
+     PSIH_HOLD(its:ite,jts:jte) = PSIH(its:ite,jts:jte)                                            
+     PSIM_HOLD(its:ite,jts:jte) = PSIM(its:ite,jts:jte)                                            
+     QFX_HOLD(its:ite,jts:jte)  = QFX(its:ite,jts:jte)                                             
+     QGH_HOLD(its:ite,jts:jte)  = QGH(its:ite,jts:jte)                                             
+     RMOL_HOLD(its:ite,jts:jte) = RMOL(its:ite,jts:jte)                                            
+     UST_HOLD(its:ite,jts:jte)  = UST(its:ite,jts:jte)                                             
+     USTM_HOLD(its:ite,jts:jte) = USTM(its:ite,jts:jte)                                            
+     WSPD_HOLD(its:ite,jts:jte) = WSPD(its:ite,jts:jte)                                            
+     ZNT_HOLD(its:ite,jts:jte)  = ZNT(its:ite,jts:jte)                                             
+     ZOL_HOLD(its:ite,jts:jte)  = ZOL(its:ite,jts:jte)                                             
+                                                                                                   
+     ! We'll want to save the ouput                                                                
+     ! for weighting after the second call to SFCLAY.                                              
+                                                                                                   
+     ! land/frozen-water call                                                                      
+     CALL SFCLAY_mynn(U3D,V3D,T3D,QV3D,P3D,dz8w,              &                                    
+          CP,G,ROVCP,R,XLV,PSFC,CHS,CHS2,CQS2,CPM,            &                                    
+          ZNT,UST,PBLH,MAVAIL,ZOL,MOL,REGIME,PSIM,PSIH,       &                                    
+          XLAND,HFX,QFX,LH,TSK_LOCAL,FLHC,FLQC,QGH,QSFC,RMOL, &                                    
+          U10,V10,TH2,T2,Q2,SNOWH,                            &                                    
+          GZ1OZ0,WSPD,BR,ISFFLX,DX,                           &
+          SVP1,SVP2,SVP3,SVPT0,EP1,EP2,KARMAN,                &                                    
+          itimestep,ch,th3d,pi3d,qc3d,rho,qcg,                &
+          spp_pbl,pattern_spp_pbl,                            &                                    
+          ids,ide, jds,jde, kds,kde,                          &                                    
+          ims,ime, jms,jme, kms,kme,                          &                                    
+          its,ite, jts,jte, kts,kte,                          &                                    
+          ustm,ck,cka,cd,cda,isftcflx,iz0tlnd                 )                                    
+                                                                                                   
+                                                                                                   
+     ! Set up lower boundary conditions to force an open-water call                                
+      DO j = JTS , JTE                                                                             
+        DO i = ITS , ITE                                                                           
+           IF ( ( XICE(i,j) .GE. XICE_THRESHOLD ) .and. ( XICE(i,j) .LE. 1.0 ) ) THEN              
+              XLAND_SEA(i,j) = 2. !water                                                           
+              MAVAIL_SEA(i,j)= 1.                                                                  
+              ZNT_SEA(i,j)   = 0.0001 !will be recalculated anyway                                 
+              TSK_SEA(i,j)   = SST(i,j)                                                            
+              IF ( SST(i,j) .LT. 271.4 ) THEN                                                      
+                 SST(i,j)    = 271.4                                                               
+                 TSK_SEA(i,j)= SST(i,j)                                                            
+              ENDIF                                                                                
+              QSFC_SEA(i,j)  = QSFC(i,j) !will be recalculated anyway                              
+           ELSE                                                                                    
+              !keep original values                                                                
+              XLAND_SEA(i,j) = XLAND(i,j)                                                          
+              MAVAIL_SEA(i,j)= MAVAIL(i,j)                                                         
+              ZNT_SEA(i,j)   = ZNT_HOLD(i,j)                                                       
+              TSK_SEA(i,j)   = TSK_LOCAL(i,j)                                                      
+              QSFC_SEA(i,j)  = QSFC(i,j)                                                           
+           ENDIF
+        ENDDO                                                                                      
+      ENDDO                                                                                        
+                                                                                                   
+     ! Restore the values from before the land/frozen-water call                                   
+     BR_SEA(its:ite,jts:jte)   = BR_HOLD(its:ite,jts:jte)                                          
+     CPM_SEA(its:ite,jts:jte)  = CPM_HOLD(its:ite,jts:jte)                                         
+     FLHC_SEA(its:ite,jts:jte) = FLHC_HOLD(its:ite,jts:jte)                                        
+     FLQC_SEA(its:ite,jts:jte) = FLQC_HOLD(its:ite,jts:jte)                                        
+     GZ1OZ0_SEA(its:ite,jts:jte) = GZ1OZ0_HOLD(its:ite,jts:jte)                                    
+     HFX_SEA(its:ite,jts:jte)  = HFX_HOLD(its:ite,jts:jte)                                         
+     LH_SEA(its:ite,jts:jte)   = LH_HOLD(its:ite,jts:jte)                                          
+     MOL_SEA(its:ite,jts:jte)  = MOL_HOLD(its:ite,jts:jte)                                         
+     PSIH_SEA(its:ite,jts:jte) = PSIH_HOLD(its:ite,jts:jte)                                        
+     PSIM_SEA(its:ite,jts:jte) = PSIM_HOLD(its:ite,jts:jte)                                        
+     QFX_SEA(its:ite,jts:jte)  = QFX_HOLD(its:ite,jts:jte)                                         
+     QGH_SEA(its:ite,jts:jte)  = QGH_HOLD(its:ite,jts:jte)                                         
+     RMOL_SEA(its:ite,jts:jte) = RMOL_HOLD(its:ite,jts:jte)                                        
+     UST_SEA(its:ite,jts:jte)  = UST_HOLD(its:ite,jts:jte)                                         
+     USTM_SEA(its:ite,jts:jte) = USTM_HOLD(its:ite,jts:jte)                                        
+     WSPD_SEA(its:ite,jts:jte) = WSPD_HOLD(its:ite,jts:jte)                                        
+     ZOL_SEA(its:ite,jts:jte)  = ZOL_HOLD(its:ite,jts:jte)                                         
+                                                                                                   
+                                                                                                   
+     ! open-water call                                                                             
+          CALL SFCLAY_mynn(U3D,V3D,T3D,QV3D,P3D,dz8w,              &                               
+               CP,G,ROVCP,R,XLV,PSFC,                              &                               
+               CHS_SEA,CHS2_SEA,CQS2_SEA,CPM_SEA,                  &                               
+               ZNT_SEA,UST_SEA,                                    &                               
+               PBLH,MAVAIL_SEA,                                    &                               
+               ZOL_SEA,MOL_SEA,REGIME,PSIM_SEA,PSIH_SEA,           &                               
+               XLAND_SEA,                                          &                               
+               HFX_SEA,QFX_SEA,LH_SEA,                             &
+               TSK_SEA,                                            &                               
+               FLHC_SEA,FLQC_SEA,QGH_SEA,QSFC_SEA,RMOL_SEA,        &                               
+               U10_SEA,V10_SEA,TH2_SEA,T2_SEA,Q2_SEA,SNOWH,        &                               
+               GZ1OZ0_SEA,WSPD_SEA,BR_SEA,                         &                               
+               ISFFLX,DX,                                          &                               
+               SVP1,SVP2,SVP3,SVPT0,EP1,EP2,KARMAN,                &                               
+               &itimestep,CH_SEA,th3d,pi3d,qc3d,rho,qcg,           &
+               &spp_pbl,pattern_spp_pbl,                           &                               
+               ids,ide, jds,jde, kds,kde,                          &                               
+               ims,ime, jms,jme, kms,kme,                          &                               
+               its,ite, jts,jte, kts,kte,                          &                               
+               ustm_sea,ck_sea,cka_sea,cd_sea,cda_sea,isftcflx,    &                               
+               iz0tlnd                                             )                                                                                     
+                                                                                                   
+      DO j = JTS , JTE                                                                             
+         DO i = ITS, ITE                                                                           
+           IF ( ( XICE(I,J) .GE. XICE_THRESHOLD )  .and.( XICE(i,j) .LE. 1.0 ) ) THEN              
+              ! weighted average for sea ice points                                                
+              br(i,j)     = br(i,j)     * XICE(i,j) + (1.0-XICE(i,j)) * br_sea(i,j)                
+              ! CHS2 -- wait                                                                       
+              ! CHS  -- wait                                                                       
+              ! CPM  -- wait                                                                       
+              ! CQS2 -- wait                                                                       
+              !FLHC(i,j)   = FLHC(i,j)   * XICE(i,j) + (1.0-XICE(i,j)) * FLHC_SEA (i,j)            
+              !FLQC(i,j)   = FLQC(i,j)   * XICE(i,j) + (1.0-XICE(i,j)) * FLQC_SEA (i,j)            
+              gz1oz0(i,j) = gz1oz0(i,j) * XICE(i,j) + (1.0-XICE(i,j)) * gz1oz0_sea(i,j)            
+              ! HFX  -- wait
+              ! LH   -- wait
+              mol(i,j)    = mol(i,j)    * XICE(i,j) + (1.0-XICE(i,j)) * mol_sea(i,j)               
+              psih(i,j)   = psih(i,j)   * XICE(i,j) + (1.0-XICE(i,j)) * psih_sea(i,j)              
+              psim(i,j)   = psim(i,j)   * XICE(i,j) + (1.0-XICE(i,j)) * psim_sea(i,j)              
+              ! QFX  -- wait                                                                       
+              ! QGH  -- wait                                                                       
+              rmol(i,j)   = rmol(i,j)   * XICE(i,j) + (1.0-XICE(i,j)) * rmol_sea(i,j)              
+              ust(i,j)    = ust(i,j)    * XICE(i,j) + (1.0-XICE(i,j)) * ust_sea(i,j)               
+              wspd(i,j)   = wspd(i,j)   * XICE(i,j) + (1.0-XICE(i,j)) * wspd_sea(i,j)              
+              zol(i,j)    = zol(i,j)    * XICE(i,j) + (1.0-XICE(i,j)) * zol_sea(i,j)               
+              ch(i,j)     = ch(i,j)     * XICE(i,j) + (1.0-XICE(i,j)) * ch_sea(i,j)                
+              ! INTENT(OUT)                                                                        
+              ! --------------------------------------------------------------------               
+              IF ( PRESENT ( CD ) ) THEN                                                           
+                 CD(i,j)  = CD(i,j)  * XICE(i,j) + (1.0-XICE(i,j)) * CD_sea(i,j)                   
+              ENDIF                                                                                
+              IF ( PRESENT ( CDA ) ) THEN                                                          
+                 CDA(i,j) = CDA(i,j) * XICE(i,j) + (1.0-XICE(i,j)) * CDA_sea(i,j)                  
+              ENDIF                                                                                
+              IF ( PRESENT ( CK ) ) THEN                                                           
+                 CK(i,j)  = CK(i,j)  * XICE(i,j) + (1.0-XICE(i,j)) * CK_sea(i,j)                   
+              ENDIF                                                                                
+              IF ( PRESENT ( CKA ) ) THEN                                                          
+                 CKA(i,j) = CKA(i,j) * XICE(i,j) + (1.0-XICE(i,j)) * CKA_sea(i,j)                  
+              ENDIF                                                                                
+              q2(i,j)     = q2(i,j)  * XICE(i,j) + (1.0-XICE(i,j)) * q2_sea(i,j)                   
+              ! QSFC -- wait                                                                       
+              t2(i,j)     = t2(i,j)  * XICE(i,j) + (1.0-XICE(i,j)) * t2_sea(i,j)                   
+              th2(i,j)    = th2(i,j) * XICE(i,j) + (1.0-XICE(i,j)) * th2_sea(i,j)                  
+              u10(i,j)    = u10(i,j) * XICE(i,j) + (1.0-XICE(i,j)) * u10_sea(i,j)                  
+              IF ( PRESENT ( USTM ) ) THEN                                                         
+                 USTM(i,j)= USTM(i,j)* XICE(i,j) + (1.0-XICE(i,j)) * USTM_sea(i,j)                 
+              ENDIF                                                                                
+              v10(i,j)    = v10(i,j) * XICE(i,j) + (1.0-XICE(i,j)) * v10_sea(i,j)
+               ENDIF                                                                                   
+         END DO                                                                                    
+      END DO                                                                                       
+                                                                                                   
+                                                                                                   
+   END SUBROUTINE mynn_seaice_hrrrv4
 
 !-------------------------------------------------------------------------
 

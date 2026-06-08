@@ -767,6 +767,11 @@ module_sf_mynnsfc_driver.o: \
 	module_sf_mynnsfc_common.o
 
 
+module_sf_mynn.o: module_sf_sfclay.o \
+		../share/module_model_constants.o \
+		../frame/module_wrf_error.o
+
+
 module_sf_fogdes.o: \
 	../share/module_model_constants.o 
 

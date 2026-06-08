@@ -2808,6 +2808,7 @@ CHARACTER(LEN=8) :: name
 #endif
    USE module_sf_temfsfclay
    USE module_sf_mynnsfc_driver
+   USE module_sf_mynn
 #endif
 
 #if (NMM_CORE == 1)
@@ -3391,11 +3392,14 @@ CHARACTER(LEN=8) :: name
 #endif
 
 #if ( EM_CORE == 1 )
-        CASE (MYNNSFCSCHEME)
-
+      CASE (MYNNSFCSCHEME)
            CALL mynnsfc_init(allowed_to_read,errmsg,errflg)
            isfc=5
 
+      CASE (MYNNSFCHRRRV4)
+           CALL mynn_sf_init_driver(allowed_to_read)
+           isfc=6
+           
       CASE (TEMFSFCSCHEME)
            CALL wrf_debug( 100, 'calling temfsfclayinit' )
            CALL temfsfclayinit( restart, allowed_to_read ,        &
@@ -4028,7 +4032,7 @@ CALL lsm_mosaic_init(IVGTYP,config_flags%ISWATER,config_flags%ISURBAN,config_fla
 !mynn 
            
         CASE (MYNNPBLSCHEME)
-           IF(isfc .NE. 5 .AND. isfc .NE. 1 .AND. isfc .NE. 2) CALL wrf_error_fatal &
+           IF(isfc .NE. 5 .AND. isfc .NE. 6 .AND. isfc .NE. 1 .AND. isfc .NE. 2) CALL wrf_error_fatal &
                 ( 'module_physics_init: use mynnsfc or sfclay or myjsfc scheme for this pbl option')
            IF ((SF_URBAN_PHYSICS.eq.2).OR.(SF_URBAN_PHYSICS.EQ.3)) CALL wrf_error_fatal &
             ( 'module_physics_init: use ysu (option1), myj (option 2), or boulac (option 8) with BEP/BEM urban scheme' )
@@ -4044,7 +4048,7 @@ CALL lsm_mosaic_init(IVGTYP,config_flags%ISWATER,config_flags%ISURBAN,config_fla
 
 !old mynn
         CASE (MYNNPBLSCHEMEHRRR)
-           IF(isfc .NE. 5 .AND. isfc .NE. 1 .AND. isfc .NE. 2) CALL wrf_error_fatal &
+           IF(isfc .NE. 5 .AND. isfc .NE. 6 .AND. isfc .NE. 1 .AND. isfc .NE. 2) CALL wrf_error_fatal &
                 ( 'module_physics_init: use mynnsfc or sfclay or myjsfc scheme for this pbl option')
            IF ((SF_URBAN_PHYSICS.eq.2).OR.(SF_URBAN_PHYSICS.EQ.3)) CALL wrf_error_fatal &
             ( 'module_physics_init: use myj (option 2) or boulac (option 8) with BEP/BEM urban scheme' )

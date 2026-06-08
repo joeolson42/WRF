@@ -428,6 +428,9 @@ target_sources(
                   MYNN-SFC/module_sf_mynnsfc_water.F90
                   MYNN-SFC/module_sf_mynnsfc_ice.F90
 
+		  # MYNN-SFC (hrrrv4)
+		  module_sf_mynn.F
+		  
                   # MYNN-EDMF
                   MYNN-EDMF/module_bl_mynnedmf.F90
                   MYNN-EDMF/WRF/module_bl_mynnedmf_common.F90

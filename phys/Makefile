@@ -183,6 +183,7 @@ MODULES = \
 	module_sf_mynnsfc_land.o \
 	module_sf_mynnsfc_water.o \
 	module_sf_mynnsfc_ice.o \
+	module_sf_mynn.o \
 	module_sf_fogdes.o \
 	module_sf_pxsfclay.o \
 	module_sf_temfsfclay.o \
