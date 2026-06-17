@@ -1788,7 +1788,7 @@
 
       DO i = 1, model_config_rec % max_dom
          IF ( .NOT. model_config_rec % grid_allowed(i) ) CYCLE
-         IF ( ( model_config_rec%bl_pbl_physics(i) .NE. MYNNPBLSCHEME  ) .OR. &
+         IF ( ( model_config_rec%bl_pbl_physics(i) .NE. MYNNPBLSCHEME  ) .AND. &
               ( model_config_rec%bl_pbl_physics(i) .NE. MYNNPBLSCHEMEHRRR) ) THEN
               model_config_rec % bl_mynn_edmf(i)   = 0
               model_config_rec % bl_mynn_edmf_dd(i)= 0
